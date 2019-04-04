@@ -6,4 +6,7 @@ In this repository, I will show how to do the tweet sentiment analysis based on 
 2. Tweet text preprocessing 
 3. Tweet representation 
 4. Locate tweets based on their geoinformation
-5. Sentiment Classification
+5. Model selection and sentiment classification
+6. Result visualization
+
+

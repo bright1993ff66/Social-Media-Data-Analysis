@@ -9,15 +9,16 @@ import time
 # Load some text resources in nltk
 import nltk
 from nltk.corpus import stopwords
-from nltk.corpus import wordnet
 from nltk.tokenize import word_tokenize
 from nltk.stem.wordnet import WordNetLemmatizer
+from nltk.corpus import wordnet
 
 # Shuffle the rows of the pandas dataframe
 from sklearn.utils import shuffle
 
-# pre-defined file which contains paths
+# pre-defined packages
 import read_data
+import utils
 
 # An package which could cope with emoji
 import emoji as ej
@@ -30,8 +31,7 @@ from ekphrasis.dicts.emoticons import emoticons
 # For Machine Translation
 from google.cloud import translate
 
-# Load the credentials used in Google translate
-# The json file which contains the credentials of Google Translate
+# Set the credential environment in jupyter notebook
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"]=r"XXXXX"
 # Instantiates a client
 translate_client = translate.Client()
@@ -73,6 +73,24 @@ postfixStr = '</div'
 emoji_pattern = ej.get_emoji_regexp()
 
 
+"""
+def handle_emojis(tweet):
+    # Smile -- :), : ), :-), (:, ( :, (-:, :')
+    tweet = re.sub(r'(:\s?\)|:-\)|\(\s?:|\(-:|:\'\))', ' EMO_POS ', tweet)
+    # Laugh -- :D, : D, :-D, xD, x-D, XD, X-D
+    tweet = re.sub(r'(:\s?D|:-D|x-?D|X-?D)', ' EMO_POS ', tweet)
+    # Love -- <3, :*
+    tweet = re.sub(r'(<3|:\*)', ' EMO_POS ', tweet)
+    # Wink -- ;-), ;), ;-D, ;D, (;,  (-;
+    tweet = re.sub(r'(;-?\)|;-?D|\(-?;)', ' EMO_POS ', tweet)
+    # Sad -- :-(, : (, :(, ):, )-:
+    tweet = re.sub(r'(:\s?\(|:-\(|\)\s?:|\)-:)', ' EMO_NEG ', tweet)
+    # Cry -- :,(, :'(, :"(
+    tweet = re.sub(r'(:,\(|:\'\(|:"\()', ' EMO_NEG ', tweet)
+    return tweet
+"""
+
+
 # Clean the txt data - my function
 def clean_raw_text(raw_text, caller, remove_stopwords=True, lemmatize = True):
 
@@ -112,34 +130,6 @@ def clean_raw_text(raw_text, caller, remove_stopwords=True, lemmatize = True):
         raise RuntimeError
 
 
-# Pos Tag the Words
-def nltk2wn_tag(nltk_tag):
-  if nltk_tag.startswith('J'):
-    return wordnet.ADJ
-  elif nltk_tag.startswith('V'):
-    return wordnet.VERB
-  elif nltk_tag.startswith('N'):
-    return wordnet.NOUN
-  elif nltk_tag.startswith('R'):
-    return wordnet.ADV
-  else:
-    return None
-
-
-# Lemmatize the sentence
-def lemmatize_sentence(sentence):
-  nltk_tagged = nltk.pos_tag(nltk.word_tokenize(sentence))
-  wn_tagged = map(lambda x: (x[0], nltk2wn_tag(x[1])), nltk_tagged)
-  res_words = []
-  for word, tag in wn_tagged:
-    if tag is None:
-      res_words.append(word)
-    else:
-      res_words.append(lemmatizer.lemmatize(word, tag))
-  return " ".join(res_words)
-
-
-# Translate the Chinese words in Chinese tweets into English
 def show_translated_chinese(text):
     result1 = re.sub('\<u\+', '\\' + 'u', text.lower())
     result2 = re.sub('\>', '', result1)
@@ -156,7 +146,30 @@ def show_translated_chinese(text):
     return ' '.join(all_chars)
 
 
-# Text Processer from ekphrasis
+"""
+def show_translated_chinese_for_review(text):
+    all_chars = text.split()
+    emojis = emoji_pattern.findall(text)
+    for index, char in enumerate(all_chars):
+        try:
+            if translate_client.detect_language(char)['language'][:2] != 'en':
+                if len(emojis) == 0:
+                    all_chars[index] = translate_client.translate(char, target_language='en')['translatedText']
+                else:
+                    all_chars[index] = re.sub(emoji_pattern, '', all_chars[index])
+                    all_chars[index] = translate_client.translate(char, target_language='en')['translatedText']
+            else:
+                all_chars[index] = char.encode('utf-8').decode('utf-8')
+        except:
+            print('The text we cannot process is: ', text)
+            pass
+
+        for emoji in emojis:
+            all_chars[index] += emoji
+    return ' '.join(all_chars)
+"""
+
+
 text_processor = TextPreProcessor(
     # terms that will be normalized
     normalize=['url', 'email', 'percent', 'money', 'phone', 'user',
@@ -185,6 +198,31 @@ text_processor = TextPreProcessor(
     # with other expressions. You can pass more than one dictionaries.
     dicts=[emoticons]
 )
+
+
+def nltk2wn_tag(nltk_tag):
+  if nltk_tag.startswith('J'):
+    return wordnet.ADJ
+  elif nltk_tag.startswith('V'):
+    return wordnet.VERB
+  elif nltk_tag.startswith('N'):
+    return wordnet.NOUN
+  elif nltk_tag.startswith('R'):
+    return wordnet.ADV
+  else:
+    return None
+
+
+def lemmatize_sentence(sentence):
+  nltk_tagged = nltk.pos_tag(nltk.word_tokenize(sentence))
+  wn_tagged = map(lambda x: (x[0], nltk2wn_tag(x[1])), nltk_tagged)
+  res_words = []
+  for word, tag in wn_tagged:
+    if tag is None:
+      res_words.append(word)
+    else:
+      res_words.append(lemmatizer.lemmatize(word, tag))
+  return " ".join(res_words)
 
 
 # delete unmeaningful terms
@@ -288,12 +326,11 @@ def show_chinese_step3(text):
 
 
 def clean_chinese_tweet(text, emoji_dictionary):
-    # Show emoji in tweet
     tweet_with_emoji = show_emoji_in_tweet(text, emoji_dictionary)
-    # Show Chinese
     step1 = show_chinese_step1(tweet_with_emoji, emoji_dictionary)
     step2 = show_chinese_step2(step1)
     step3 = show_chinese_step3(step2)
+    # For the preparation of review data, we don't need to show translated Chinese and preprocessing_for_chinese
     text_with_translated_chinese = show_translated_chinese(step3)
     processed_text = preprocessing_for_chinese(text_processor, text_with_translated_chinese)
     return processed_text
@@ -310,8 +347,19 @@ if __name__ == '__main__':
     sentiment140['text'] = sentiment140['text'].apply(lambda x: clean_raw_text(raw_text=x, caller='bilstm'))
     sentiment140_cleaned = sentiment140
     sentiment140_cleaned.to_pickle(os.path.join(read_data.path, 'sentiment140_cleaned.pkl'))
-    """
+
     
+    # Clean the concatenated HK 2016 Tweet Data from May to October
+    May_to_Oct_tweet = pd.read_pickle(os.path.join(read_data.path, 'concatenated_tweet_data.pkl'))
+    # If caller = 'bilstm', the cleaned text is string. Otherwise it's list
+    May_to_Oct_tweet['processed_text'] = May_to_Oct_tweet['processed_text'].apply(lambda x: clean_raw_text(raw_text=x, caller='bilstm'))
+    May_to_Oct_tweet.to_pickle(os.path.join(read_data.path, 'concatenated_tweet_data_cleaned.pkl'))
+
+    end = time.time()
+    time_spent = end-start
+
+    print('Total time spent is: ', time_spent)
+    """
     # For 2016 tweets
     start_time_2016 = time.time()
 
@@ -333,8 +381,11 @@ if __name__ == '__main__':
         lambda row: lemmatize_sentence(row['cleaned_text']), axis=1)
     final_tweets_for_comparision_2016['cleaned_text'] = final_tweets_for_comparision_2016.apply(
         lambda row: delete_unmeaningful_terms(row['cleaned_text']), axis=1)
+    final_tweets_for_comparision_2016_without_non_cleaned_text = \
+        final_tweets_for_comparision_2016.loc[final_tweets_for_comparision_2016['cleaned_text'] != '']
     # Save the tweets in 2016 which could be used for transit non-transit comparision
-    final_tweets_for_comparision_2016.to_pickle(os.path.join(read_data.tweet_2016, 'tweet_2016_cleaned_text.pkl'))
+    final_tweets_for_comparision_2016_without_non_cleaned_text.to_pickle(os.path.join(read_data.tweet_2016,
+                                                                                      'tweet_2016_cleaned_text.pkl'))
 
     end_time = time.time()
     print("Total time for 2016: ", end_time-start_time_2016)
@@ -361,7 +412,10 @@ if __name__ == '__main__':
         lambda row: lemmatize_sentence(row['cleaned_text']), axis=1)
     final_tweets_in_2017['cleaned_text'] = final_tweets_in_2017.apply(
         lambda row: delete_unmeaningful_terms(row['cleaned_text']), axis=1)
-    final_tweets_in_2017.to_pickle(os.path.join(read_data.tweet_2017, 'final_zh_en_for_paper.pkl'))
+    final_tweets_in_2017_without_non_cleaned_text = \
+        final_tweets_in_2017.loc[final_tweets_in_2017['cleaned_text'] != '']
+    final_tweets_in_2017_without_non_cleaned_text.to_pickle(
+        os.path.join(read_data.tweet_2017, 'final_zh_en_for_paper.pkl'))
 
     end_time_2017 = time.time()
     print("Total time: ", end_time_2017 - start_time_2017)

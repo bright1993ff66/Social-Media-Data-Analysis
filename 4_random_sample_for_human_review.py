@@ -8,6 +8,7 @@ from collections import Counter
 import re
 from datetime import datetime, timedelta
 from codecs import encode
+import pytz
 
 # A package for preprocessing(officially used in SemEval NLP competition)
 from ekphrasis.classes.preprocessor import TextPreProcessor
@@ -15,6 +16,11 @@ from ekphrasis.classes.tokenizer import SocialTokenizer
 from ekphrasis.dicts.emoticons import emoticons
 
 from sklearn.utils import shuffle
+
+
+# Hong Kong and Shanghai share the same time zone.
+# Hence, we transform the utc time in our dataset into Shanghai time
+time_zone_hk = pytz.timezone('Asia/Shanghai')
 
 
 def remove_u_plus(text):
@@ -29,12 +35,12 @@ def encode_decode(text):
 
 # The time of tweet we have collected is recorded as the UTC time
 # Add 8 hours to get the Hong Kong time
-def add_eight_hours(df):
+def get_hk_time(df):
     changed_time_list = []
     for _, row in df.iterrows():
         time_to_change = datetime.strptime(row['created_at'], '%a %b %d %H:%M:%S %z %Y')
-        # add 8 hours
-        changed_time = time_to_change + timedelta(hours=8)
+        # get the hk time
+        changed_time = time_to_change.astimezone(time_zone_hk)
         changed_time_list.append(changed_time)
     df['hk_time'] = changed_time_list
     return df
@@ -190,7 +196,7 @@ if __name__ == '__main__':
     final_uncleaned = pd.read_pickle(os.path.join(read_data.tweet_2017, 'final_uncleaned.pkl'))
     emoji_dict = pd.read_pickle(os.path.join(read_data.tweet_2017, 'emoji.pkl'))
     final_uncleaned_without_tl = final_uncleaned.loc[final_uncleaned['lang'] != 'tl']
-    final_uncleaned_without_tl_hk_time = add_eight_hours(final_uncleaned_without_tl)
+    final_uncleaned_without_tl_hk_time = get_hk_time(final_uncleaned_without_tl)
     final_uncleaned_without_tl_hk_time['month'] = final_uncleaned_without_tl_hk_time.apply(
         lambda row: get_month_hk_time(row['hk_time']), axis=1)
     all_zh = final_uncleaned_without_tl_hk_time.loc[final_uncleaned_without_tl_hk_time['lang'] == 'zh']

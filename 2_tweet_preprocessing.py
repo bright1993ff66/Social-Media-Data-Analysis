@@ -31,7 +31,7 @@ from ekphrasis.dicts.emoticons import emoticons
 # For Machine Translation
 from google.cloud import translate
 
-# Set the credential environment in jupyter notebook
+# Set the credential environment
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"]=r"XXXXX"
 # Instantiates a client
 translate_client = translate.Client()
@@ -227,7 +227,7 @@ def lemmatize_sentence(sentence):
 
 # delete unmeaningful terms
 def delete_unmeaningful_terms(tweet):
-    deleted_text = " ".join(w for w in nltk.wordpunct_tokenize(tweet) if w.lower() in english_words)
+    deleted_text = " ".join(w for w in nltk.wordpunct_tokenize(tweet) if w.lower() in english_words_lower)
     return deleted_text
 
 

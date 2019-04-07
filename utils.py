@@ -113,9 +113,10 @@ def select_data_based_on_location(row, station_lat, station_lon):
 
 def read_file_from_multi_csvs(path):
     all_csv_files = os.listdir(path)
-    dataframes = []
+    dataframes_list = []
     for file in all_csv_files:
         dataframe = pd.read_csv(os.path.join(path, file), encoding='latin-1', na_values=['nan',''])
+		dataframes_list.append(dataframe)
     combined_dataframes = pd.concat(dataframes)
     return combined_dataframes
 

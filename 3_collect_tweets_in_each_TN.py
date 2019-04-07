@@ -7,33 +7,38 @@ import utils
 stations_location_dict = read_data.location_stations
 
 
+# Find tweets based on the geoinformation of each station
 def station_relatd_dataframes(df, station_name, path):
     df[station_name] = df.apply(
-        lambda row: utils.select_data_based_on_location(row,stations_location_dict[station_name][0],
-                                                        stations_location_dict[station_name][1]), axis=1)
+        lambda row: utils.select_data_based_on_location(row, float(stations_location_dict[station_name][0]),
+                                                        float(stations_location_dict[station_name][1])), axis=1)
     new_dataframes = df[df[station_name] == 'TRUE']
     new_dataframes.to_pickle(os.path.join(path, station_name+'.pkl'))
     return new_dataframes
+	
+
+# Some latitude is nonsense - we find two tweets in 2016 of which the latitude is a website link	
+def find_unuseful_geoinformation(df):
+    wrong_list = []
+    for _, row in df.iterrows():
+        try:
+            float(row['lat'])
+        except:
+            wrong_list.append(row['lat'])
+    return wrong_list
 
 
 if __name__ == '__main__':
-    # Select the tweets near specific stations
 
-    # For 2017
-    final_cleaned = pd.read_pickle(os.path.join(read_data.tweet_2017, 'final_zh_en_for_paper_hk_time_2017.pkl'))
-    station_names = list(stations_location_dict.keys())
-    # neutral1 means that the sentiment of a Tweet will be neutral if one reviewer labels neutral
-    station_related_zh_en_cleaned = read_data.station_related_path_zh_en 
-    for name in station_names:
-        station_relatd_dataframes(final_cleaned, name, station_related_zh_en_cleaned)
-		
+    # Select the tweets near specific stations
     # For 2016
+	# For the 2017 data, just change the path and the dataset
     start_time = time.time()
-    final_cleaned = pd.read_pickle(os.path.join(read_data.tweet_2016, 'tweet_2016_compare_with_Yao_with_sentiment.pkl'))
+    final_cleaned = pd.read_pickle(os.path.join(read_data.tweet_2016, 'final_zh_en_for_paper_hk_time_2016_with_sentiment.pkl'))
 	# It is very strange that the geoinformation of two tweets in tweet 2016 are not latitudes and longitudes, but website links
 	# Find these tweets
-    wrong_list = find_unuseful_geoinformation(final_cleaned)
-    filtered_final_cleaned = final_cleaned.loc[~final_cleaned['lat'].isin(wrong_list)]
+    wrong_list_2016 = find_unuseful_geoinformation(final_cleaned)
+    filtered_final_cleaned = final_cleaned.loc[~final_cleaned['lat'].isin(wrong_list_2016)]
     print(filtered_final_cleaned.shape)
     station_names = list(stations_location_dict.keys())
     # neutral1 means that the sentiment of a Tweet will be neutral if one reviewer labels neutral

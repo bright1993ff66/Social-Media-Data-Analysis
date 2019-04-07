@@ -1,22 +1,19 @@
-# Commonly used
 import pandas as pd
 import os
 import numpy as np
 import read_data
 import time
-from collections import Counter
 from datetime import datetime, timedelta
+import pytz
 
-# The package used to collect tweets and filter bots
 import tweepy
 
-# Check whether an account is bot. To use this package, you should load tweepy first
+# An API which is used to check whether an account is bot
 import botometer
 
-# Load the raw tweets
-raw_tweets_path = r'...\Hong Kong Tweets 2016\raw tweets'
-# Specify the saving path
-target_path = r'...\Datasets\Hong Kong Tweets 2016'
+from collections import Counter
+
+target_path = read_data.tweet_2016
 
 # The key to run the botometer: https://github.com/IUNetSci/botometer-python
 mashape_key = "XXXXX"
@@ -33,6 +30,9 @@ bom = botometer.Botometer(wait_on_ratelimit=True,
                           mashape_key=mashape_key,
                           **twitter_app_auth)
 
+# Hong Kong and Shanghai share the same time zone.
+# Hence, we transform the utc time in our dataset into Shanghai time
+time_zone_hk = pytz.timezone('Asia/Shanghai')
 
 # Function used to output a pandas dataframe for each user based on the user account number
 def derive_dataframe_for_each_user(df, all_users):
@@ -65,12 +65,12 @@ def check_bot(id_str):
 
 # The time of tweet we have collected is recorded as the UTC time
 # Add 8 hours to get the Hong Kong time
-def add_eight_hours(df):
+def get_hk_time(df):
     changed_time_list = []
     for _, row in df.iterrows():
         time_to_change = datetime.strptime(row['created_at'], '%a %b %d %H:%M:%S %z %Y')
-        # add 8 hours
-        changed_time = time_to_change + timedelta(hours=8)
+        # get the hk time
+        changed_time = time_to_change.astimezone(time_zone_hk)
         changed_time_list.append(changed_time)
     df['hk_time'] = changed_time_list
     return df
@@ -108,11 +108,11 @@ def get_month_hk_time(timestamp):
         result = 'Dec'
     return result
 
+
 if __name__ == '__main__':
 
-  start_time = time.time()
+    start_time = time.time()
     print('Data generation starts.....')
-    files = os.listdir(raw_tweets_path)
     whole_data = pd.read_pickle(os.path.join(target_path, 'raw_tweets_2016.pkl'))
     # 1. Only consider the English and Chinese tweets
     whole_data_zh_en = whole_data.loc[whole_data['lang'].isin(['zh', 'en'])]
@@ -127,6 +127,8 @@ if __name__ == '__main__':
     time_range_list = []
 
     for df in dataframes:
+        # Each value in time_range_list contains the user_id_str and the maximum time range betweet the first
+        # tweet and the last tweet
         time_range_list.append(compute_time_range_for_one_user(df))
 
     locals = []
@@ -162,8 +164,9 @@ if __name__ == '__main__':
             bot_result_list.append(check_bot(account_integer_set_list[index]))
             print('The ', index + 1, 'th account out of ', len(account_integer_set_list), ' is done...')
         except:
-            # Some accounts don't exist
             bot_result_list.append(1)
+            # In this case, the api shows that this account does not exit
+            # We choose not to consider these accounts
             print('Something wrong with the ', index + 1, 'th account')
 
     check_bot_dataframe = pd.DataFrame({'account':account_integer_set_list, 'bot_score': bot_result_list})
@@ -173,8 +176,9 @@ if __name__ == '__main__':
     selected_accounts = list(dataframe_without_bot['account'])
     tweet_2016_zh_en_local_without_bot = \
         tweet_2016_zh_en_local.loc[tweet_2016_zh_en_local['user_id_str'].isin(selected_accounts)]
+    # We forgot add eight hours when first generating the raw_tweets_final.pkl file
     # run the add_eight_hours function on raw_tweets_final.pkl file and delete these two lines of comments
-    tweet_2016_zh_en_local_without_bot_hk_time = add_eight_hours(tweet_2016_zh_en_local_without_bot)
+    tweet_2016_zh_en_local_without_bot_hk_time = get_hk_time(tweet_2016_zh_en_local_without_bot)
     tweet_2016_zh_en_local_without_bot_hk_time['month'] = tweet_2016_zh_en_local_without_bot_hk_time.apply(
         lambda row: get_month_hk_time(row['hk_time']), axis=1)
     tweet_2016_zh_en_local_without_bot_hk_time.to_pickle(os.path.join(target_path, 'raw_tweets_final.pkl'))

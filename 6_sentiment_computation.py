@@ -29,92 +29,10 @@ from adjustText import adjust_text
 
 
 # Load all the necessary paths
-station_related_path_zh_en_cleaned = r'F:\CityU\Datasets\Hong Kong Tweets 2017\station_related_zh_en_cleaned'
-station_related_2016 = r'F:\CityU\Datasets\Hong Kong Tweets 2016\station_zh_en_cleaned'
-plot_path = r'F:\CityU\Datasets\Hong Kong Tweets 2017\plots'
+station_related_path_zh_en_cleaned = read_data.station_related_path_zh_en
+plot_path = read_data.plot_path
 
 months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-# # Some Global Variables for the bilstm model
-# vocabulary_size = 50000
-# dim = 100
-# input_length = 50
-# lstm_output_dim = 100
-# word_vec_dim = 100
-
-
-def get_month_from_hk_time(text_time_stamp):
-    month = text_time_stamp.month
-    return month
-
-
-# # Create the embedding matrix for the lstm/bilstm model
-# def create_embedding_matrix(word_index_dict, vocabulary_size, word_vec_dim, e2v, fasttext_model):
-#     """
-#     :param word_index_dict: the word-index pair given by the keras tokenizer
-#     :param vocabulary_size: the vocabulary size
-#     :param word_vec_dim: the dimension of word vectors
-#     :param e2v: the emoji2vec model
-#     :param fasttext_model: the fasttext model
-#     :return: the embedding matrix which could be used as weights in the lstm/bilstm model
-#     """
-#     embedding_matrix = np.zeros((vocabulary_size, word_vec_dim))
-#     for word, index in word_index_dict.items():
-#         try:
-#             if char_is_emoji(word):
-#                 print('The emoji is: ', word, 'and its index is: ', index)
-#                 embedding_vector = e2v[word]
-#                 if embedding_vector is not None:
-#                     embedding_matrix[index-1] = embedding_vector
-#             elif index-1 >= vocabulary_size:
-#                 pass
-#             else:
-#                 embedding_vector = fasttext_model[word]
-#                 if embedding_vector is not None:
-#                     embedding_matrix[index-1] = embedding_vector
-#         except KeyError:
-#             print('The words are: ', word)
-#     return embedding_matrix
-#
-#
-# # Function which could be used add the emoji embedding to the Keras tokenier
-# def add_emoji_to_tokenizer(tokenizer, emoji2vec, vocabulary_size):
-#     word_index_dict = tokenizer.word_index
-#     max_value_tokenizer_index = max(tokenizer.word_index.values())
-#     distinct_emoji_num = len(emoji2vec.wv.vocab.keys())
-#     emoji_index_list = []
-#     for i in range(max_value_tokenizer_index+1, max_value_tokenizer_index+distinct_emoji_num):
-#         emoji_index_list.append((list(emoji2vec.wv.vocab.keys())[i-max_value_tokenizer_index-1], i))
-#     for emoji, index in emoji_index_list:
-#         word_index_dict[emoji] = index
-#     new_vocabulary_size = vocabulary_size + len(emoji_index_list)
-#     return word_index_dict, new_vocabulary_size
-#
-#
-# # the lstm model
-# def get_lstm_model():
-#     model_lstm = Sequential()
-#     # The output of the Embedding layer is a matrix (batch_size, input_length, output_dim(the dimension of word vectors))
-#     model_lstm.add(Embedding(input_dim=vocabulary_size, output_dim=dim, input_length=input_length, name='embedding_1'))
-#     model_lstm.add(LSTM(lstm_output_dim, dropout=0.2, recurrent_dropout=0.2, name='lstm_1'))
-#     model_lstm.add(Dense(3, activation='softmax', name='dense_1'))
-#     model_lstm.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
-#     return model_lstm
-#
-#
-# # BiLSTM model with fasttext word embedding
-# def get_bi_lstm_model(embedding_matrix, vocabulary_size):
-#     model = Sequential()
-#     # The output of the Embedding layer is a matrix (batch_size, input_length, output_dim(the dimension of word vectors))
-#     # set trainable to False because we don't want our embedding vectors to change during training
-#     model.add(Embedding(input_dim=vocabulary_size, output_dim=dim, input_length=input_length,
-#                         weights=[embedding_matrix], trainable=False, name='embedding_1'))
-#     model.add(Bidirectional(LSTM(lstm_output_dim, dropout=0.2, recurrent_dropout=0.2, return_sequences=True), merge_mode='concat',
-#               name='bidirectional_1'))
-#     model.add(Flatten(name = 'flatten_1'))
-#     model.add(Dense(3, activation='softmax', name='dense_1'))
-#     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
-#     return model
 
 
 # compute the percentage of positive Tweets: 2 is positive
@@ -171,7 +89,7 @@ def positive_tweets_divide_negative_tweets(df):
 
 # compute the sentiment level for each month
 def sentiment_by_month(df, compute_positive_percent=False):
-    Jan =df.loc[df['month']=='Jan']
+    Jan = df.loc[df['month']=='Jan']
     Feb = df.loc[df['month']=='Feb']
     Mar = df.loc[df['month'] == 'Mar']
     Apr = df.loc[df['month'] == 'Apr']
@@ -197,16 +115,16 @@ def sentiment_by_month(df, compute_positive_percent=False):
 def compute_tweet_activity_for_all_stations(for_human_review=False, for_review=True,
                                             on_monthly_basis=False):
     if for_human_review:
-        if for_review: # path for the review data
+        if for_review: # path for the human reviewed data
             input_path = r'F:\CityU\Datasets\Hong Kong Tweets 2017\human review\station_review'
-        else: # path for the data outputed from algorithm
+        else: # path for the predictions generated from algorithms based on the human review data
             input_path = r'F:\CityU\Datasets\Hong Kong Tweets 2017\human review\stations_algo'
     else:
         input_path = r'F:\CityU\Datasets\Hong Kong Tweets 2017\station_related_zh_en_cleaned'
     if not on_monthly_basis:
         tweet_activity_for_each_station = {}
         for file in os.listdir(input_path):
-            station_name = file[0:-4]
+            station_name = file[0:-4] # The file name is like Admiralty.pkl. Use file[:-4] get the station name
             df = pd.read_pickle(os.path.join(input_path, file))
             activity = df.shape[0]
             tweet_activity_for_each_station[station_name] = activity
@@ -236,17 +154,17 @@ def compute_sentiment_for_one_station_ffnn(df_name, input_path, human_review=Fal
                                            sentiment_for_each_month=False, compute_positive_percent=False):
     """
     df_name: the name of the dataframe
-    model: our sentiment classification model
     input_path: the path of our df
+    human_review: if we want the human review result
+    for_review: just see the sentiment result based on human review. Otherwise, see how the algo performs on the
+    human reviewed data
     output_path: the output path which contains sentiment column
-    output_dataframe: whether output the dataframe contains the sentiment column or not
+    output_dataframe: whether output the dataframe contains the sentiment column
     sentiment_for_each_month: whether compute the sentiment for each month or not(the output would be a dictionary)
+    compute_positive_percent: compute the positive percent or compute the positive percent minus negative percent
 
     """
     df = pd.read_pickle(os.path.join(input_path, df_name))
-    # df.created_at = df.created_at.astype(str)
-    # make predictions: use the key final sentiment to get the sample data(5000)'s sentiment and use the key sentiment
-    # to get the sentiment of the whole data
     if human_review:
         if for_review:
             classes = df['final sentiment_2']
@@ -316,6 +234,7 @@ def select_stations_for_overall_sentiment_plot(sentiment_dict, activity_dict, hu
                 pass
         for station in stations_list:
             sentiment_list.append(sentiment_dict[station])
+    # Here each value of a sentiment list is (posisitve percent, negative percent, pos percent-neg percent)
     pos_minus_neg_list = [value[2] for value in sentiment_list]
     pos_percent_list = [value[0] for value in sentiment_list]
     neg_percent_list = [value[1] for value in sentiment_list]
@@ -328,45 +247,11 @@ def select_stations_for_overall_sentiment_plot(sentiment_dict, activity_dict, hu
     df['Activity_log10'] = df.apply(lambda row: np.log10(row['Activity']), axis=1)
     df['Activity_log_e'] = df.apply(lambda row: np.log(row['Activity']), axis=1)
     tweet_with_abbreviation = pd.read_csv(os.path.join(read_data.tweet_2017,
-                                                       'tweet_sentiment_activity_with_abbreviation.csv'))
+                                                       'station_with_abbreviations.csv'))
     name_abbre = tweet_with_abbreviation[['Station', 'Station_abbreviation']]
     result = pd.merge(df, name_abbre, on='Station')
     result = result.reset_index(drop=True)
     return result
-
-
-# def plot_overall_sentiment(df_review, df_sample, saved_file_name):
-#     fig, ax = plt.subplots(figsize=(10,10))
-#     selected_stations = ['CEN', 'WAC', 'HOK', 'CAB', 'ADM', 'HKU', 'HUH', 'SHT', 'MOS', 'TAP', 'LAT', 'RAC',
-#                          'TSW', 'TIS', 'OCP', 'AWE', 'TWO', 'KET', 'DIH', 'AUS']
-#     selected_df_review = df_review.loc[df_review['Station_abbreviation'].isin(selected_stations)]
-#     selected_df_sample = df_sample.loc[df_sample['Station_abbreviation'].isin(selected_stations)]
-#     x_review = df_review['Activity_log10']
-#     y_review = df_review['Sentiment']
-#     x_sample = df_sample['Activity_log10']
-#     y_sample = df_sample['Sentiment']
-#     plt.xlabel('Tweet Activity(log10)')
-#     plt.ylabel('Sentiment(Num of Pos/Num of Neg)')
-#     ax.scatter(x_review,y_review, color='red', marker=".", label='Human Reviewers')
-#     ax.scatter(x_sample,y_sample, color='blue', marker="P", label='MLP Algorithm')
-#     plt.legend(loc='upper right')
-#     x_review_label = list(selected_df_review['Activity_log10'])
-#     y_review_label = list(selected_df_review['Sentiment'])
-#     x_sample_label = list(selected_df_sample['Activity_log10'])
-#     y_sample_label = list(selected_df_sample['Sentiment'])
-#     stations_abbreviations_for_annotations_reivew = list(selected_df_review['Station_abbreviation'])
-#     stations_abbreviations_for_annotations_sample = list(selected_df_sample['Station_abbreviation'])
-#
-#     font = matplotlib.font_manager.FontProperties(family='Tahoma', weight='extra bold', size=8)
-#
-#     for index, station in enumerate(stations_abbreviations_for_annotations_reivew):
-#         ax.annotate(station, (x_review_label[index], y_review_label[index]), color='red', fontproperties=font)
-#
-#     for index, station in enumerate(stations_abbreviations_for_annotations_sample):
-#         ax.annotate(station, (x_sample_label[index], y_sample_label[index]), color='blue', fontproperties=font)
-#
-#     fig.savefig(os.path.join(plot_path, saved_file_name), dpi=fig.dpi, bbox_inches='tight')
-#     plt.show()
 
 
 def plot_overall_sentiment_for_whole_tweets(df, y_label_name, figure_title=None, saved_file_name=None,
@@ -434,7 +319,6 @@ def plot_heatmap(df):
 def plot_line_graph(df, figure_title_name, local_figure_name):
     # plot the linegraph of sentiment of the selected transit neighborhooods on a monthly basis
     plt.subplots(figsize=(10, 10))
-
     months = list(range(1, 13))
     values = df.values
     rows = list(df.index)

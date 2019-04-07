@@ -199,15 +199,16 @@ def kfold_with_smote(clf, train_valid_data_X, train_valid_label_y, tuned_paramet
                      whole_tweets_array, save_path, clf_name=None):
     """
     clf: the classifier
-    data_X: the original imbalanced data(2d numpy array)
-    label_y: the labels
+    train_valid_data_X: the data used for cross validation with grid search
+    train_valid_label_y: the labels used for cross validation with grid search
     tuned_parameters: the hyperparameters we want to tune
     X_test: the test data
     y_test: the test labels
     whole_tweets_array: a numpy array which records the representations of tweets
     save_path: the path used to save predictions
-    Return: two dictionaries: 1. the hyperparameters we use for each evaluation metric; 2. the mean test score in
-    5 fold cross validation
+    clf_name: the name of the classifier
+    Return: two dictionaries: 1. the best hyperparameters in cross validation; 2. the mean test score in
+    4 fold cross validation
     """
     scores = ['f1']
     # The dict which records the performance based on the evaluation metric
@@ -255,6 +256,11 @@ def kfold_with_smote(clf, train_valid_data_X, train_valid_label_y, tuned_paramet
         # Make predictions on the review data
         whole_predictions_review = Grid_clf.predict(tweets_representations_whole_sample_array)
         np.save(os.path.join(save_path, 'whole_predictions_by_' + clf_name +'_review'), whole_predictions_review)
+
+        # Make predictions on the 2016 data compare with yao
+        whole_predictions_2016_compare_with_yao = Grid_clf.predict(tweets_representations_2016_array_compare_with_yao)
+        np.save(os.path.join(save_path, 'whole_predictions_2016_by_' + clf_name + '_compare_with_yao'),
+                whole_predictions_2016_compare_with_yao)
 
         # Make predictions on the whole 2016 data
         whole_predictions_2016 = Grid_clf.predict(tweets_representations_2016_array)
@@ -340,18 +346,27 @@ if __name__ == '__main__':
     # Get the text of Chinese and English tweets
     sample_zh_tweets = list(new_final_zh_sample['cleaned_text'])
     sample_en_tweets = list(final_en_sample_cleaned['cleaned_text'])
-    # Load the tweets in 2016
-    # 'final_zh_en_for_paper_hk_time_2016.pkl'
-    tweets_in_2016_dataframe = pd.read_pickle(os.path.join(read_data.tweet_2016,
+    # Load the tweets in 2016 - one for comparision with the previous papaer and another one for sentiment computation
+    tweets_in_2016_dataframe_compare_with_yao = pd.read_pickle(os.path.join(read_data.tweet_2016,
                                                            'tweet_2016_compare_with_Yao.pkl'))
+    tweets_in_2016_dataframe_compare_with_yao = \
+        tweets_in_2016_dataframe_compare_with_yao.loc[tweets_in_2016_dataframe_compare_with_yao['cleaned_text'] != '']
+    tweets_in_2016_compare_with_yao = list(tweets_in_2016_dataframe_compare_with_yao['cleaned_text'])
+    tweets_in_2016_dataframe = pd.read_pickle(os.path.join(read_data.tweet_2016,
+                                                           'final_zh_en_for_paper_hk_time_2016.pkl'))
     tweets_in_2016_dataframe = tweets_in_2016_dataframe.loc[tweets_in_2016_dataframe['cleaned_text'] != '']
     tweets_in_2016 = list(tweets_in_2016_dataframe['cleaned_text'])
 
-    # Get the representation of each tweet in 2017
+
+    # Get the representation of each tweet
     tweets_representations_en_sample = prepare_tweet_vector_averages_for_prediction(sample_en_tweets, p2v_our_emoji)
     tweets_representations_zh_sample = prepare_tweet_vector_averages_for_prediction(sample_zh_tweets, p2v_our_emoji)
     tweets_representations_en_sample_array = list_of_array_to_array(tweets_representations_en_sample)
     tweets_representations_zh_sample_array = list_of_array_to_array(tweets_representations_zh_sample)
+    tweets_representations_2016_compare_with_yao = \
+        prepare_tweet_vector_averages_for_prediction(tweets_in_2016_compare_with_yao, p2v_our_emoji)
+    tweets_representations_2016_array_compare_with_yao = \
+        list_of_array_to_array(tweets_representations_2016_compare_with_yao)
     tweets_representations_2016 = prepare_tweet_vector_averages_for_prediction(tweets_in_2016, p2v_our_emoji)
     tweets_representations_2016_array = list_of_array_to_array(tweets_representations_2016)
 
@@ -381,28 +396,33 @@ if __name__ == '__main__':
     whole_review_result_scheme1 = list(final_review['final sentiment'])
     # Scheme2: The sentiment of a tweet would be neutral only if both two reviewers label it neutral
     whole_review_result_scheme2 = list(final_review['final sentiment_2'])
+	
+	"""
+	# Save the tweet representation for samples
     with open('C:\\Users\\Haoliang Chang\\Desktop\\sample_array.pkl', 'wb') as f:
-        pk.dump(tweets_representations_whole_sample_array, f)
+		pk.dump(tweets_representations_whole_sample_array, f)
+	"""
 
-    # Load the whole Hong Kong 2017 Twitter dataset and make predictions
-    # model_path = r'F:\CityU\Hong Kong Twitter 2016\model'
-    # ffnn_model = models.load_model(os.path.join(model_path, 'ffnn_model'))
-    # en_final = pd.read_pickle(os.path.join(tweet_2017_path, 'en_final.pkl'))
-    # zh_final = pd.read_pickle(os.path.join(tweet_2017_path, 'final_zh_cleaned_and_translated.pkl'))
-    # final_whole_data = pd.concat((en_final, zh_final), axis=0).reset_index(drop=True)
-    # final_whole_data = shuffle(final_whole_data)
+
     final_whole_data = pd.read_pickle(os.path.join(read_data.tweet_2017,
                                                    'final_zh_en_for_paper_hk_time_2017.pkl'))
-    final_whole_data.loc[final_whole_data['cleaned_text'] == '', 'cleaned_text'] = \
-        final_whole_data['text']
+    final_whole_data = final_whole_data.loc[final_whole_data['cleaned_text'] != '']
+    print(final_whole_data.shape)
     whole_tweets_in_2017 = list(final_whole_data['cleaned_text'])
-    tweets_representation_whole_2017_tweets = prepare_tweet_vector_averages_for_prediction(whole_tweets_in_2017, p2v_our_emoji)
+    tweets_representation_whole_2017_tweets = \
+        prepare_tweet_vector_averages_for_prediction(whole_tweets_in_2017, p2v_our_emoji)
     tweets_representation_whole_2017_tweets_array = list_of_array_to_array(tweets_representation_whole_2017_tweets)
-
+	
+	"""
+	# Save the tweet representations
     with open('C:\\Users\\Haoliang Chang\\Desktop\\whole_tweets_array_2017.pkl', 'wb') as f_whole_2017:
         pk.dump(tweets_representation_whole_2017_tweets_array, f_whole_2017)
+    with open('C:\\Users\\Haoliang Chang\\Desktop\\whole_tweets_array_2016_compare_with_yao.pkl', 'wb') \
+            as f_whole_2016_compare_with_yao:
+        pk.dump(tweets_representations_2016_array_compare_with_yao, f_whole_2016_compare_with_yao)
     with open('C:\\Users\\Haoliang Chang\\Desktop\\whole_tweets_array_2016.pkl', 'wb') as f_whole_2016:
         pk.dump(tweets_representations_2016_array, f_whole_2016)
+	"""
 
     # Use kfold with GridSearch to compare the performance of different classification methods
     print("========================================================================")
@@ -410,14 +430,15 @@ if __name__ == '__main__':
     X_train_valid, X_test, y_train_valid, y_test = train_test_split(tweets_representations_whole_sample_array,
                                                                     whole_review_result_scheme2, test_size=0.2,
                                                                     random_state=777)
-
+	
+	"""
     # Use SMOTE to do the oversampling
-    # smt = SMOTE(random_state=777, k_neighbors=2)
-    # oversampled_train_validate_data, oversampled_train_validate_y = smt.fit_sample(X_train_valid,
-    #                                                                                y_train_valid)
+    smt = SMOTE(random_state=777, k_neighbors=2)
+    oversampled_train_validate_data, oversampled_train_validate_y = smt.fit_sample(X_train_valid,                                                                                y_train_valid)
     # Save the X_test and y_test for model selection
-    # np.save(os.path.join(read_data.desktop, 'test_data_for_model_compare'), X_test)
-    # np.save(os.path.join(read_data.desktop, 'test_label_for_model_compare'), y_test)
+    np.save(os.path.join(read_data.desktop, 'test_data_for_model_compare'), X_test)
+    np.save(os.path.join(read_data.desktop, 'test_label_for_model_compare'), y_test)
+	"""
 
     starting_time = time.time()
     #
@@ -481,13 +502,14 @@ if __name__ == '__main__':
 
     end_time = time.time()
     print('Total time for training is: ', end_time-starting_time)
-
-    # Then check each classifier's performance on the test set from the output
+	
+	"""
     # For instance, if SVM performs best, then use the following codes to make predictions of 2016 tweets
-    # predictions = np.load(read_data.model_selection_path, 'whole_predictions_2016_by_SVM.npy')
-    # tweets_in_2016_dataframe['sentiment'] = list(predictions)
-    # tweets_in_2016_dataframe.to_pickle(os.path.join(read_data.tweet_2016,
-    #                                                 'tweet_2016_compare_with_Yao_with_sentiment.pkl'))
+    predictions = np.load(read_data.model_selection_path, 'whole_predictions_2016_by_SVM.npy')
+    tweets_in_2016_dataframe['sentiment'] = list(predictions)
+    tweets_in_2016_dataframe.to_pickle(os.path.join(read_data.tweet_2016,
+                                                     'tweet_2016_compare_with_Yao_with_sentiment.pkl'))
+	"""
 
 
 

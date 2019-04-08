@@ -94,7 +94,7 @@ if __name__ == '__main__':
     positive_text = create_text_for_wordcloud(positive_tweets)
 
     # Generate word cloud for positive text
-    generate_wordcloud(positive_text, circle_mask, file_name='negative_wordcloud.png',
+    generate_wordcloud(positive_text, circle_mask, file_name='positive_wordcloud.png',
                        color_func=grey_color_func)
     # Generate word cloud for negative text
     generate_wordcloud(negative_text, circle_mask, file_name='negative_wordcloud.png',

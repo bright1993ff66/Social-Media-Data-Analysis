@@ -169,6 +169,6 @@ if __name__ == '__main__':
     positive_data_ready = process_words(tokenized_whole_text_positive, stop_words=unuseful_terms_set,
                                         bigram_mod=bigram_mod_positive, trigram_mod=trigram_mod_positive)
     positive_data_sentence_in_one_list = [' '.join(text) for text in positive_data_ready]
-    get_lda_model(negative_data_sentence_in_one_list, grid_search_params=search_params, number_of_keywords=10,
+    get_lda_model(positive_data_sentence_in_one_list, grid_search_params=search_params, number_of_keywords=10,
                   keywords_file='positive_tweets_topic_modelling_result.pkl',
                   topic_predict_file='positive_tweet_topic.pkl')

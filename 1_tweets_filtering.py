@@ -8,22 +8,20 @@ import pytz
 
 import tweepy
 
-# An API which is used to check whether an account is bot
+# Check whether an account is bot
 import botometer
 
 from collections import Counter
 
 target_path = read_data.tweet_2016
 
-# The key to run the botometer: https://github.com/IUNetSci/botometer-python
-mashape_key = "XXXXX"
+mashape_key = "ZHrfXJkrRXmsh8MWYsIIQ0MIVEX1p1YqKSrjsnBRIub9JM9TBU"
 
-# The Twitter Developer Key - Got from: https://developer.twitter.com/en/apps
 twitter_app_auth = {
-    'consumer_key': 'XXXXX',
-    'consumer_secret': 'XXXXX',
-    'access_token': 'XXXXX',
-    'access_token_secret': 'XXXXX',
+    'consumer_key': 'dXkaXPMI57d9qwo9Z5yvqcgRW',
+    'consumer_secret': 'RYQtYtd2OSDyGOQrP75n1qZSCAEcPArhuWgpDJSVq1XaiMB7tb',
+    'access_token': '3586804034-n24NEGjhOQnnXYZy2NRkDHMViFm8Cms5D0ZLzNo',
+    'access_token_secret': 'EPYBRomDyb8x2alwgqZ4rvhSdydDqn0zICf9MGZWW15wp',
   }
 
 bom = botometer.Botometer(wait_on_ratelimit=True,
@@ -61,6 +59,23 @@ def compute_time_range_for_one_user(df):
 def check_bot(id_str):
     result = bom.check_account(int(id_str))
     return result['cap']['universal']
+
+
+# Delete users which have same geoinformation and the total number of posted tweets is bigger than 10
+def delete_bots_have_same_geoinformation(df, saving_path, file_name):
+    users = set(list(df['user_id_str']))
+    bot_account = []
+    for user in users:
+        dataframe = df.loc[df['user_id_str']==user]
+        # If only one unqiue geoinformation is found and more than 10 tweets are posted, we regard this account as bot
+        if (len(set(dataframe['lat'])) == 1 and dataframe.shape[0]>10) or (len(set(dataframe['lon'])) == 1
+                                                                           and dataframe.shape[0]>10):
+            bot_account.append(user)
+        else:
+            pass
+    cleaned_df = df.loc[~df['user_id_str'].isin(bot_account)]
+    cleaned_df.to_pickle(os.path.join(saving_path, file_name))
+    return cleaned_df
 
 
 # The time of tweet we have collected is recorded as the UTC time
@@ -145,6 +160,7 @@ if __name__ == '__main__':
     print()
 
     # 5. Remove the bots
+    # 5.1 First we use botometer API to filter bots
     print('Check bots starts....')
     bot_result_list = []
     accounts = list(tweet_2016_zh_en_local['user_id_str'])
@@ -181,7 +197,11 @@ if __name__ == '__main__':
     tweet_2016_zh_en_local_without_bot_hk_time = get_hk_time(tweet_2016_zh_en_local_without_bot)
     tweet_2016_zh_en_local_without_bot_hk_time['month'] = tweet_2016_zh_en_local_without_bot_hk_time.apply(
         lambda row: get_month_hk_time(row['hk_time']), axis=1)
-    tweet_2016_zh_en_local_without_bot_hk_time.to_pickle(os.path.join(target_path, 'raw_tweets_final.pkl'))
+
+    # 5.2 We notic that the API still could not filter some bots, which lead to bad results in sentiment classification
+    final_tweets = delete_bots_have_same_geoinformation(tweet_2016_zh_en_local_without_bot_hk_time,
+                                                        saving_path=target_path, file_name='raw_tweets_final.pkl')
+    print(final_tweets.shape)
     
     end_time = time.time()
     print('Check bots ends....')

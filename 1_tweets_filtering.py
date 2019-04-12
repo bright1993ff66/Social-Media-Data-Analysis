@@ -15,13 +15,13 @@ from collections import Counter
 
 target_path = read_data.tweet_2016
 
-mashape_key = "ZHrfXJkrRXmsh8MWYsIIQ0MIVEX1p1YqKSrjsnBRIub9JM9TBU"
+mashape_key = "XXXXX"
 
 twitter_app_auth = {
-    'consumer_key': 'dXkaXPMI57d9qwo9Z5yvqcgRW',
-    'consumer_secret': 'RYQtYtd2OSDyGOQrP75n1qZSCAEcPArhuWgpDJSVq1XaiMB7tb',
-    'access_token': '3586804034-n24NEGjhOQnnXYZy2NRkDHMViFm8Cms5D0ZLzNo',
-    'access_token_secret': 'EPYBRomDyb8x2alwgqZ4rvhSdydDqn0zICf9MGZWW15wp',
+    'consumer_key': 'XXXXX',
+    'consumer_secret': 'XXXXX',
+    'access_token': 'XXXXX',
+    'access_token_secret': 'XXXXX',
   }
 
 bom = botometer.Botometer(wait_on_ratelimit=True,

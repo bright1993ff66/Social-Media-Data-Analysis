@@ -26,6 +26,8 @@ topic_modelling_path = r'XXXXX'
 lda_plot_path = r'XXXXX'
 # Save the result derived from ArcGis
 arcgis_path = r'XXXXX'
+# Save the tweet representations
+tweet_representation_path = r'XXXXX'
 
 
 # The location of the stations

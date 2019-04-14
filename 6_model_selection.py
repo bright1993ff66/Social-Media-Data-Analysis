@@ -279,10 +279,13 @@ if __name__ == '__main__':
                                                              'tweet_array_2016.npy'))
     tweets_representation_whole_2017_tweets_array = \
         np.load(os.path.join(read_data.tweet_representation_path, 'tweet_array_2017.npy'))
-    # Split the data for cross validation and testing
-    X_train_valid, X_test, y_train_valid, y_test = train_test_split(tweets_representations_whole_sample_array,
-                                                                    whole_review_result_scheme2, test_size=0.2,
-                                                                    random_state=random_seed)
+    X_train_valid = np.load(os.path.join(read_data.tweet_representation_path,
+                                         'train_valid_cross_validation_data.npy'))
+    y_train_valid = np.load(os.path.join(read_data.tweet_representation_path,
+                                         'train_valid_cross_validation_label.npy'))
+    X_test = np.load(os.path.join(read_data.tweet_representation_path, 'test_data_for_model_compare.npy'))
+    y_test = np.load(os.path.join(read_data.tweet_representation_path, 'test_label_for_model_compare.npy'))
+	
     class_weights_train_valid = compute_class_weight(class_weight='balanced', classes=np.unique(y_train_valid),
                                                      y=y_train_valid)
     print(class_weights_train_valid)
@@ -294,9 +297,6 @@ if __name__ == '__main__':
     # smt = SMOTE(random_state=777, k_neighbors=2)
     # oversampled_train_validate_data, oversampled_train_validate_y = smt.fit_sample(X_train_valid,
     #                                                                                y_train_valid)
-    # Save the X_test and y_test for model selection
-    np.save(os.path.join(read_data.tweet_representation_path, 'test_data_for_model_compare'), X_test)
-    np.save(os.path.join(read_data.tweet_representation_path, 'test_label_for_model_compare'), y_test)
 
     # Build the Classifiers
     ffnn_model = get_ffnn_model()

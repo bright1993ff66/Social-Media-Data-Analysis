@@ -157,7 +157,7 @@ def weighted_categorical_crossentropy(weights):
     return loss
 
 
-def get_ffnn_model(label_weights=np.array([1, 1, 1]), dropout_rate=0.2):
+def get_ffnn_model(dropout_rate=0.2):
     model = models.Sequential()
     # Dense(1000) is a fully-connected layer with 1000 hidden units.
     # in the first layer, you must specify the expected input data shape:
@@ -169,8 +169,8 @@ def get_ffnn_model(label_weights=np.array([1, 1, 1]), dropout_rate=0.2):
     model.add(layers.Dense(1000, activation='relu',name='dense_3'))
     model.add(layers.Dropout(dropout_rate, name='dropout_3'))
     model.add(layers.Dense(3, activation='softmax', name='output_layer'))
-    loss = weighted_categorical_crossentropy(label_weights)
-    model.compile(loss=loss,
+    #loss = weighted_categorical_crossentropy(label_weights)
+    model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
                   metrics=[precision, recall, f1])
     return model
@@ -226,6 +226,11 @@ def kfold_with_smote(clf, train_valid_data_X, train_valid_label_y, tuned_paramet
         performance_dict[score] = means
         # Call predict on the estimator with the best found parameters.
         y_true, y_pred = y_test, Grid_clf.predict(X_test)
+        print('The distribution of the test set is: ')
+        print(Counter(y_test))
+        print('The distribution of the predictions computed by ', clf_name, ' is: ')
+        print(Counter(y_pred))
+        print()
         # ffnn_dataframe = pd.DataFrame({'y_true': y_true, 'y_pred':y_pred})
         # ffnn_dataframe.to_csv(os.path.join(read_data.desktop, 'ffnn_on_test.csv'))
 
@@ -245,6 +250,8 @@ def kfold_with_smote(clf, train_valid_data_X, train_valid_label_y, tuned_paramet
 
         # Make predictions on the review data
         whole_predictions_review = Grid_clf.predict(tweets_representations_whole_sample_array)
+        print('The distribution of the review prediction is:')
+        print(Counter(whole_predictions_review))
         np.save(os.path.join(save_path, 'whole_predictions_by_' + clf_name +'_review'), whole_predictions_review)
 
         # Make predictions on the 2016 data compare with yao
@@ -285,25 +292,22 @@ if __name__ == '__main__':
                                          'train_valid_cross_validation_label.npy'))
     X_test = np.load(os.path.join(read_data.tweet_representation_path, 'test_data_for_model_compare.npy'))
     y_test = np.load(os.path.join(read_data.tweet_representation_path, 'test_label_for_model_compare.npy'))
-	
-    class_weights_train_valid = compute_class_weight(class_weight='balanced', classes=np.unique(y_train_valid),
-                                                     y=y_train_valid)
-    print(class_weights_train_valid)
-    print(type(class_weights_train_valid))
-
-    class_weights_dict = {class_label: weight for class_label, weight in enumerate(class_weights_train_valid)}
 
     # Use SMOTE to do the oversampling
-    # smt = SMOTE(random_state=777, k_neighbors=2)
-    # oversampled_train_validate_data, oversampled_train_validate_y = smt.fit_sample(X_train_valid,
-    #                                                                                y_train_valid)
+    smt = SMOTE(random_state=random_seed, k_neighbors=1)
+    oversampled_train_validate_data, oversampled_train_validate_y = smt.fit_sample(X_train_valid,
+                                                                                   y_train_valid)
+    print('====================================================')
+    print('The distribution of the oversampled data is: ')
+    print(Counter(oversampled_train_validate_y))
+    print('====================================================')
 
     # Build the Classifiers
     ffnn_model = get_ffnn_model()
     ffnn_model.summary()
     # The KerasClassifier Wrapper helps us GridSearch the hyperparameters of our neural net
     ffnn_model_wrapper = KerasClassifier(build_fn=get_ffnn_model, verbose=0,
-                                         epochs=5, batch_size=80)
+                                         epochs=5, batch_size=128)
 
     classifiers_svm = {'SVM': svm.SVC(random_state=random_seed)}
 
@@ -315,45 +319,45 @@ if __name__ == '__main__':
 
     print('Decision Tree...')
 
-    tuned_parameters_tree = {'max_depth': np.arange(3, 11), 'class_weight':
-        ['balanced', class_weights_dict]}
+    tuned_parameters_tree = {'max_depth': np.arange(3, 11)}
 
     params_dict_tree, performance_dict_tree = kfold_with_smote(clf=classifiers_decision_tree['Decision Tree'],
-                                                                  train_valid_data_X=X_train_valid,
-                                                             train_valid_label_y=y_train_valid,
+                                                                  train_valid_data_X=oversampled_train_validate_data,
+                                                             train_valid_label_y=oversampled_train_validate_y,
                                                              tuned_parameters=tuned_parameters_tree, X_test=X_test,
                                                            y_test=y_test,
                                                            whole_tweets_array=tweets_representation_whole_2017_tweets_array,
-                                                           save_path=read_data.model_selection_path, clf_name='DT')
+                                                           save_path=read_data.model_selection_path_oversampling,
+                                                               clf_name='DT')
     print(params_dict_tree)
     print()
     print(performance_dict_tree)
 
     print('Random Forest...')
 
-    tuned_parameters_rf = {'n_estimators': np.arange(10, 60), 'class_weight':
-        ['balanced', class_weights_dict, 'balanced_subsample']}
+    tuned_parameters_rf = {'n_estimators': np.arange(10, 60)}
     params_dict_rf, performance_dict_rf = kfold_with_smote(clf=ensembled_classifiers['Random Forest'],
-                                                           train_valid_data_X=X_train_valid,
-                                                           train_valid_label_y=y_train_valid,
+                                                           train_valid_data_X=oversampled_train_validate_data,
+                                                           train_valid_label_y=oversampled_train_validate_y,
                                                              tuned_parameters=tuned_parameters_rf, X_test=X_test,
                                                            y_test=y_test,
                                                            whole_tweets_array=tweets_representation_whole_2017_tweets_array,
-                                                           save_path=read_data.model_selection_path, clf_name='RF')
+                                                           save_path=read_data.model_selection_path_oversampling,
+                                                           clf_name='RF')
     print(params_dict_rf)
     print()
     print(performance_dict_rf)
 
     print('SVM......')
-    tuned_parameters_svm = [{'kernel': ['rbf', 'poly', 'sigmoid'], 'C': [1, 10, 100, 1000],
-                             'class_weight':['balanced', class_weights_dict, 'balanced_subsample']}]
+    tuned_parameters_svm = {'kernel': ['rbf', 'poly', 'sigmoid'], 'C': [1, 10, 100, 1000]}
     params_dict_svm, performance_dict_svm = kfold_with_smote(clf=classifiers_svm['SVM'],
-                                                             train_valid_data_X=X_train_valid,
-                                                             train_valid_label_y=y_train_valid,
+                                                             train_valid_data_X=oversampled_train_validate_data,
+                                                             train_valid_label_y=oversampled_train_validate_y,
                                                            tuned_parameters=tuned_parameters_svm, X_test=X_test,
                                                            y_test=y_test,
                                                            whole_tweets_array=tweets_representation_whole_2017_tweets_array,
-                                                           save_path=read_data.model_selection_path, clf_name='SVM')
+                                                           save_path=read_data.model_selection_path_oversampling,
+                                                             clf_name='SVM')
     print(params_dict_svm)
     print()
     print(performance_dict_svm)
@@ -361,17 +365,15 @@ if __name__ == '__main__':
     print('Neural Net...')
 
     dropout_rate = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
-    label_weight_array = [class_weights_train_valid, np.array([1,1,1]), np.array([5, 0.7, 1])]
-    print(label_weight_array)
-    tuned_parameters_ffnn = dict(dropout_rate=dropout_rate, label_weights=label_weight_array)
+    tuned_parameters_ffnn = dict(dropout_rate=dropout_rate)
 
     params_dict_ffnn, performance_dict_ffnn = kfold_with_smote(clf=ffnn_model_wrapper,
                                                                tuned_parameters=tuned_parameters_ffnn,
-                                                               train_valid_data_X=X_train_valid,
-                                                               train_valid_label_y=y_train_valid,
+                                                               train_valid_data_X=oversampled_train_validate_data,
+                                                               train_valid_label_y=oversampled_train_validate_y,
                                                                X_test = X_test, y_test = y_test,
                                                                whole_tweets_array = tweets_representation_whole_2017_tweets_array,
-                                                               save_path = read_data.model_selection_path,
+                                                               save_path = read_data.model_selection_path_oversampling,
                                                                clf_name='ffnn')
     print(params_dict_ffnn)
     print()

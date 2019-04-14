@@ -1,6 +1,6 @@
 import os
-# change the working directory to emoji2vec
-working_directory = r'...\emoji2vec'
+# Change the current working directory to emoji2vec
+working_directory = r'XXXX\emoji2vec'
 os.chdir(working_directory)
 print('The current working directory has changed to: ',os.getcwd())
 
@@ -25,6 +25,8 @@ from model import ModelParams
 
 # tokenization
 import nltk.tokenize as tk
+
+from sklearn.model_selection import train_test_split
 
 # Ignore the tedious warnings
 import warnings
@@ -163,6 +165,17 @@ if __name__ == '__main__':
     np.save(os.path.join(read_data.tweet_representation_path, 'whole_sample_array'),
             tweets_representations_whole_sample_array)
     np.save(os.path.join(read_data.tweet_representation_path, 'whole_samply_label'), whole_review_result_scheme2)
+    # Build the cross validation data and the test data. Then we store them
+    X_train_valid, X_test, y_train_valid, y_test = train_test_split(tweets_representations_whole_sample_array,
+                                                                    whole_review_result_scheme2, test_size=0.2,
+                                                                    random_state=random_seed)
+    # Save the X_test and y_test for model selection
+    np.save(os.path.join(read_data.tweet_representation_path, 'train_valid_cross_validation_data'),
+            X_train_valid)
+    np.save(os.path.join(read_data.tweet_representation_path, 'train_valid_cross_validation_label'),
+            y_train_valid)
+    np.save(os.path.join(read_data.tweet_representation_path, 'test_data_for_model_compare'), X_test)
+    np.save(os.path.join(read_data.tweet_representation_path, 'test_label_for_model_compare'), y_test)
 
     # Load the tweets in 2016 - one for comparision with the previous papaer and another one for sentiment computation
     tweets_in_2016_dataframe_compare_with_yao = pd.read_pickle(os.path.join(read_data.tweet_2016,

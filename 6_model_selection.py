@@ -292,12 +292,14 @@ if __name__ == '__main__':
                                          'train_valid_cross_validation_label.npy'))
     X_test = np.load(os.path.join(read_data.tweet_representation_path, 'test_data_for_model_compare.npy'))
     y_test = np.load(os.path.join(read_data.tweet_representation_path, 'test_label_for_model_compare.npy'))
-
+    #
     # Use SMOTE to do the oversampling
     smt = SMOTE(random_state=random_seed, k_neighbors=1)
     oversampled_train_validate_data, oversampled_train_validate_y = smt.fit_sample(X_train_valid,
                                                                                    y_train_valid)
     print('====================================================')
+    print('The distribution of the train_valid_data is: ')
+    print(Counter(y_train_valid))
     print('The distribution of the oversampled data is: ')
     print(Counter(oversampled_train_validate_y))
     print('====================================================')
@@ -383,11 +385,30 @@ if __name__ == '__main__':
     print('Total time for training is: ', end_time-starting_time)
 
     # Then check each classifier's performance on the test set from the output
-    # For instance, if SVM performs best, then use the following codes to make predictions of 2016 tweets
-    # predictions = np.load(read_data.model_selection_path, 'whole_predictions_2016_by_SVM.npy')
-    # tweets_in_2016_dataframe['sentiment'] = list(predictions)
-    # tweets_in_2016_dataframe.to_pickle(os.path.join(read_data.tweet_2016,
-    #                                                 'tweet_2016_compare_with_Yao_with_sentiment.pkl'))
+    # Load the predictions
+    whole_predictions_2016 = \
+        np.load(os.path.join(read_data.model_selection_path_oversampling, 'whole_predictions_2016_by_SVM.npy'))
+    whole_predictions_2017 = \
+        np.load(os.path.join(read_data.model_selection_path_oversampling, 'whole_predictions_2017_by_SVM.npy'))
+    print('The shape of the prediction files are....')
+    print(np.shape(whole_predictions_2016), np.shape(whole_predictions_2017))
+    # Load the datasets
+    tweets_in_2016_dataframe = pd.read_pickle(os.path.join(read_data.tweet_2016,
+                                                           'final_zh_en_for_paper_hk_time_2016.pkl'))
+    tweets_in_2016_dataframe = tweets_in_2016_dataframe.loc[tweets_in_2016_dataframe['cleaned_text'] != '']
+    tweets_in_2017_dataframe = pd.read_pickle(os.path.join(read_data.tweet_2017,
+                                                           'final_zh_en_for_paper_hk_time_2017.pkl'))
+    tweets_in_2017_dataframe = tweets_in_2017_dataframe.loc[tweets_in_2017_dataframe['cleaned_text'] != '']
+    print("The shape of the 2017 dataframe is: ", tweets_in_2017_dataframe.shape)
+    print("The shape of the 2016 dataframe is: ", tweets_in_2016_dataframe.shape)
+
+    tweets_in_2016_dataframe['sentiment'] = list(whole_predictions_2016)
+    tweets_in_2017_dataframe['sentiment'] = list(whole_predictions_2017)
+
+    tweets_in_2016_dataframe.to_pickle(os.path.join(read_data.tweet_2016,
+                                                    'final_2016_with_sentiment_smote.pkl'))
+    tweets_in_2017_dataframe.to_pickle(os.path.join(read_data.tweet_2017,
+                                                    'final_2017_with_sentiment_smote.pkl'))
 
 
 

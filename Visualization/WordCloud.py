@@ -17,11 +17,12 @@ from nltk.tokenize import word_tokenize
 import matplotlib.pyplot as plt
 from PIL import Image
 
-plot_path = r'F:\CityU\Datasets\Hong Kong Tweets 2017\plots'
+plot_path = read_data.plot_path
 
 # gensim.corpora.MmCorpus.serialize('MmCorpusTest.mm', corpus)
 stopwords = list(set(STOPWORDS))
 strange_terms = ['allcaps', 'repeated', 'elongated', 'repeat', 'user', 'percent_c']
+
 unuseful_terms = stopwords + strange_terms
 unuseful_terms_set = set(unuseful_terms)
 
@@ -29,9 +30,14 @@ nlp = spacy.load('en_core_web_sm', disable=['parser', 'ner'])
 
 
 # Change the color of the wordcloud
-def grey_color_func(word, font_size, position, orientation, random_state=None,
+def green_func(word, font_size, position, orientation, random_state=None,
                     **kwargs):
-    return "hsl(0, 0%%, %d%%)" % np.random.randint(60, 100)
+    return "hsl(127, 0%%, %d%%)" % np.random.randint(49, 100)
+
+
+def red_func(word, font_size, position, orientation, random_state=None,
+                    **kwargs):
+    return "hsl(19, 0%%, %d%%)" % np.random.randint(49, 100)
 
 
 def generate_wordcloud(words, mask, file_name, color_func):
@@ -44,7 +50,7 @@ def generate_wordcloud(words, mask, file_name, color_func):
     """
     # stopwords argument in word_cloud: specify the words we neglect when outputing the wordcloud
     word_cloud = WordCloud(width = 512, height = 512, background_color='white', stopwords=unuseful_terms_set,
-                           mask=mask, max_words=500).generate(words)
+                           mask=mask, max_words=800).generate(words)
     plt.figure(figsize=(15,13), facecolor = 'white', edgecolor='black')
     plt.imshow(word_cloud.recolor(color_func=color_func, random_state=3), interpolation="bilinear")
     plt.axis('off')
@@ -81,21 +87,39 @@ def create_text_for_wordcloud(df):
     text_ready = ' '.join(text_in_list)
     return text_ready
 
+# Delete users which have same geoinformation and the total number of posted tweets is bigger than 10
+def delete_bots_have_same_geoinformation(df):
+    users = set(list(df['user_id_str']))
+    bot_account = []
+    for user in users:
+        dataframe = df.loc[df['user_id_str']==user]
+        # If only one unqiue geoinformation is found and more than 10 tweets are posted, we regard this account as bot
+        if (len(set(dataframe['lat'])) == 1 and dataframe.shape[0]>10) or (len(set(dataframe['lon'])) == 1
+                                                                           and dataframe.shape[0]>10):
+            bot_account.append(user)
+        else:
+            pass
+    cleaned_df = df.loc[~df['user_id_str'].isin(bot_account)]
+    return cleaned_df
+
 
 
 if __name__ == '__main__':
     # Load a mask
     circle_mask = np.array(Image.open(r"F:\CityU\Datasets\Hong Kong Tweets 2017\circle.png"))
-    whole_tweets = pd.read_pickle(os.path.join(read_data.tweet_2017, 'final_zh_en_for_paper_hk_time_2017.pkl'))
-    negative_tweets = whole_tweets.loc[whole_tweets['sentiment'] == 0]
-    positive_tweets = whole_tweets.loc[whole_tweets['sentiment'] == 2]
+    whole_tweets = pd.read_pickle(os.path.join(read_data.tweet_2017, 'final_2017_with_sentiment_smote.pkl'))
+    # Just in case: filter out the users whose tweets have exactly the same geoinformation
+    whole_tweets_filterd = delete_bots_have_same_geoinformation(whole_tweets)
+
+    negative_tweets = whole_tweets_filterd.loc[whole_tweets_filterd['sentiment'] == 0]
+    positive_tweets = whole_tweets_filterd.loc[whole_tweets_filterd['sentiment'] == 2]
 
     negative_text = create_text_for_wordcloud(negative_tweets)
     positive_text = create_text_for_wordcloud(positive_tweets)
 
     # Generate word cloud for positive text
     generate_wordcloud(positive_text, circle_mask, file_name='positive_wordcloud.png',
-                       color_func=grey_color_func)
+                       color_func=green_func)
     # Generate word cloud for negative text
     generate_wordcloud(negative_text, circle_mask, file_name='negative_wordcloud.png',
-                       color_func=grey_color_func)
+                       color_func=red_func)

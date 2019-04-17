@@ -31,7 +31,10 @@ from PIL import Image
 nlp = spacy.load('en_core_web_sm', disable=['parser', 'ner'])
 tokenizer = Tokenizer(nlp.vocab)
 
-whole_tweets = pd.read_pickle(os.path.join(read_data.tweet_2017, 'final_zh_en_for_paper_hk_time_2017.pkl'))
+whole_tweets = pd.read_pickle(os.path.join(read_data.tweet_2017, 'final_2017_with_sentiment_smote.pkl'))
+
+# gensim.corpora.MmCorpus.serialize('MmCorpusTest.mm', corpus)
+# gensim.corpora.MmCorpus.serialize('MmCorpusTest.mm', corpus)
 stopwords = list(set(STOPWORDS))
 strange_terms = ['allcaps', 'repeated', 'elongated', 'repeat', 'user', 'percent_c']
 unuseful_terms = stopwords + strange_terms
@@ -69,6 +72,22 @@ def show_topics(vectorizer, lda_model, n_words=20):
         top_keyword_locs = (-topic_weights).argsort()[:n_words]
         topic_keywords.append(keywords.take(top_keyword_locs))
     return topic_keywords
+
+
+# Delete users which have same geoinformation and the total number of posted tweets is bigger than 10
+def delete_bots_have_same_geoinformation(df):
+    users = set(list(df['user_id_str']))
+    bot_account = []
+    for user in users:
+        dataframe = df.loc[df['user_id_str']==user]
+        # If only one unqiue geoinformation is found and more than 10 tweets are posted, we regard this account as bot
+        if (len(set(dataframe['lat'])) == 1 and dataframe.shape[0]>10) or (len(set(dataframe['lon'])) == 1
+                                                                           and dataframe.shape[0]>10):
+            bot_account.append(user)
+        else:
+            pass
+    cleaned_df = df.loc[~df['user_id_str'].isin(bot_account)]
+    return cleaned_df
 
 
 def get_lda_model(sentiment_text_in_one_list, grid_search_params, number_of_keywords, topic_predict_file, keywords_file):
@@ -133,12 +152,36 @@ def get_lda_model(sentiment_text_in_one_list, grid_search_params, number_of_keyw
     return df_topic_keywords
 
 
+def plot_topic_num(topic_df, filename):
+    # Use Counter to get the topic distribution
+    topic_count_dict = Counter(topic_df['dominant_topic'])
+    topic_list = []
+    count_list = []
+    # Order a key based on the corresponding value
+    for key, value in sorted(topic_count_dict.items(), key=lambda item: item[1], reverse=False):
+        topic_list.append(key)
+        count_list.append(value)
+
+    fig, ax = plt.subplots(1, 1, figsize=(6, 10))
+
+    y_pos = np.arange(len(np.arange(len(topic_list))))
+    plt.barh(y_pos, count_list, align='center', alpha=0.5, color='black')
+    plt.yticks(y_pos, topic_list)
+    plt.ylabel('Topic Number')
+    plt.xlabel('Count')
+    plt.savefig(os.path.join(read_data.plot_path, filename))
+    plt.show()
+
+
 if __name__ == '__main__':
     whole_tweets = whole_tweets[
         ['user_id_str', 'cleaned_text', 'sentiment', 'url', 'lat', 'lon', 'lang', 'retweet_count',
          'retweeted']]
-    negative_tweets = whole_tweets.loc[whole_tweets['sentiment'] == 0]
-    positive_tweets = whole_tweets.loc[whole_tweets['sentiment'] == 2]
+    whole_tweets_filtered = delete_bots_have_same_geoinformation(whole_tweets)
+    negative_tweets = whole_tweets_filtered.loc[whole_tweets_filtered['sentiment'] == 0]
+    print(negative_tweets.shape)
+    positive_tweets = whole_tweets_filtered.loc[whole_tweets_filtered['sentiment'] == 2]
+    print(positive_tweets.shape)
 
     # Gridsearch params
     search_params = {'n_components': [10, 15, 20, 25, 30]}
@@ -172,3 +215,27 @@ if __name__ == '__main__':
     get_lda_model(positive_data_sentence_in_one_list, grid_search_params=search_params, number_of_keywords=10,
                   keywords_file='positive_tweets_topic_modelling_result.pkl',
                   topic_predict_file='positive_tweet_topic.pkl')
+
+    # Create a bar chart showing the topic count
+    positive_tweet_topic = pd.read_pickle(
+        os.path.join(read_data.topic_modelling_path, 'positive_tweet_topic.pkl'))
+    negative_tweet_topic = pd.read_pickle(
+        os.path.join(read_data.topic_modelling_path, 'negative_tweet_topic.pkl'))
+    plot_topic_num(positive_tweet_topic, filename='positive_tweet_bar_plot.png')
+    plot_topic_num(negative_tweet_topic, filename='negative_tweet_bar_plot.png')
+
+    # Show the keywords in each topic
+    positive_tweets_topic_modeling_result = \
+        pd.read_pickle(os.path.join(read_data.topic_modelling_path,
+                                    'positive_tweets_topic_modelling_result.pkl'))
+    negative_tweets_topic_modeling_result = \
+        pd.read_pickle(os.path.join(read_data.topic_modelling_path,
+                                    'negative_tweets_topic_modelling_result.pkl'))
+    print('The topic modeling result of positive tweets is.....')
+    print(positive_tweets_topic_modeling_result)
+    print('The topic modeling result of negative tweets is.....')
+    print(negative_tweets_topic_modeling_result)
+
+
+
+

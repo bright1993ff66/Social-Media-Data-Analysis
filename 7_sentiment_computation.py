@@ -29,10 +29,93 @@ from adjustText import adjust_text
 
 
 # Load all the necessary paths
-station_related_path_zh_en_cleaned = read_data.station_related_path_zh_en
+station_related_path_zh_en_cleaned = read_data.station_related_2017_zh_en_cleaned
+station_related_without_same_geo = \
+    read_data.station_related_2017_without_same_geo
 plot_path = read_data.plot_path
 
 months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+
+# # Some Global Variables for the bilstm model
+# vocabulary_size = 50000
+# dim = 100
+# input_length = 50
+# lstm_output_dim = 100
+# word_vec_dim = 100
+
+
+# # Create the embedding matrix for the lstm/bilstm model
+# def create_embedding_matrix(word_index_dict, vocabulary_size, word_vec_dim, e2v, fasttext_model):
+#     """
+#     :param word_index_dict: the word-index pair given by the keras tokenizer
+#     :param vocabulary_size: the vocabulary size
+#     :param word_vec_dim: the dimension of word vectors
+#     :param e2v: the emoji2vec model
+#     :param fasttext_model: the fasttext model
+#     :return: the embedding matrix which could be used as weights in the lstm/bilstm model
+#     """
+#     embedding_matrix = np.zeros((vocabulary_size, word_vec_dim))
+#     for word, index in word_index_dict.items():
+#         try:
+#             if char_is_emoji(word):
+#                 print('The emoji is: ', word, 'and its index is: ', index)
+#                 embedding_vector = e2v[word]
+#                 if embedding_vector is not None:
+#                     embedding_matrix[index-1] = embedding_vector
+#             elif index-1 >= vocabulary_size:
+#                 pass
+#             else:
+#                 embedding_vector = fasttext_model[word]
+#                 if embedding_vector is not None:
+#                     embedding_matrix[index-1] = embedding_vector
+#         except KeyError:
+#             print('The words are: ', word)
+#     return embedding_matrix
+#
+#
+# # Function which could be used add the emoji embedding to the Keras tokenier
+# def add_emoji_to_tokenizer(tokenizer, emoji2vec, vocabulary_size):
+#     word_index_dict = tokenizer.word_index
+#     max_value_tokenizer_index = max(tokenizer.word_index.values())
+#     distinct_emoji_num = len(emoji2vec.wv.vocab.keys())
+#     emoji_index_list = []
+#     for i in range(max_value_tokenizer_index+1, max_value_tokenizer_index+distinct_emoji_num):
+#         emoji_index_list.append((list(emoji2vec.wv.vocab.keys())[i-max_value_tokenizer_index-1], i))
+#     for emoji, index in emoji_index_list:
+#         word_index_dict[emoji] = index
+#     new_vocabulary_size = vocabulary_size + len(emoji_index_list)
+#     return word_index_dict, new_vocabulary_size
+#
+#
+# # the lstm model
+# def get_lstm_model():
+#     model_lstm = Sequential()
+#     # The output of the Embedding layer is a matrix (batch_size, input_length,
+# output_dim(the dimension of word vectors))
+#     model_lstm.add(Embedding(input_dim=vocabulary_size, output_dim=dim, input_length=input_length,
+# name='embedding_1'))
+#     model_lstm.add(LSTM(lstm_output_dim, dropout=0.2, recurrent_dropout=0.2, name='lstm_1'))
+#     model_lstm.add(Dense(3, activation='softmax', name='dense_1'))
+#     model_lstm.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
+#     return model_lstm
+#
+#
+# # BiLSTM model with fasttext word embedding
+# def get_bi_lstm_model(embedding_matrix, vocabulary_size):
+#     model = Sequential()
+#     # The output of the Embedding layer is a matrix (batch_size, input_length,
+# output_dim(the dimension of word vectors))
+#     # set trainable to False because we don't want our embedding vectors to change during training
+#     model.add(Embedding(input_dim=vocabulary_size, output_dim=dim, input_length=input_length,
+#                         weights=[embedding_matrix], trainable=False, name='embedding_1'))
+#     model.add(Bidirectional(LSTM(lstm_output_dim, dropout=0.2, recurrent_dropout=0.2, return_sequences=True),
+# merge_mode='concat',
+#               name='bidirectional_1'))
+#     model.add(Flatten(name = 'flatten_1'))
+#     model.add(Dense(3, activation='softmax', name='dense_1'))
+#     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
+#     return model
 
 
 # compute the percentage of positive Tweets: 2 is positive
@@ -120,7 +203,8 @@ def compute_tweet_activity_for_all_stations(for_human_review=False, for_review=T
         else: # path for the predictions generated from algorithms based on the human review data
             input_path = r'F:\CityU\Datasets\Hong Kong Tweets 2017\human review\stations_algo'
     else:
-        input_path = r'F:\CityU\Datasets\Hong Kong Tweets 2017\station_related_zh_en_cleaned'
+        input_path = \
+            r'F:\CityU\Datasets\Hong Kong Tweets 2017\station_related_without_accounts_have_same_geo'
     if not on_monthly_basis:
         tweet_activity_for_each_station = {}
         for file in os.listdir(input_path):
@@ -141,7 +225,7 @@ def compute_tweet_activity_for_all_stations(for_human_review=False, for_review=T
         # Only consider the transit neighborhoods whose Tweet acitivity is bigger than 50 in each month
         selected_stations = []
         for index, items in tweet_activity_for_each_station.items():
-            if min(list(items.values())) > 50:
+            if min(list(items.values())) > 30:
                 selected_stations.append(index)
             else:
                 pass
@@ -199,8 +283,7 @@ def compute_sentiment_for_one_station_ffnn(df_name, input_path, human_review=Fal
             result2 = float('inf')
         try:
             # Compute positive percentage minus negative percentage
-            result3 = (Counter(classes)[2]-Counter(classes)[0])/(Counter(classes)[0]+Counter(classes)[1]+
-                                                                 Counter(classes)[2])
+            result3 = (Counter(classes)[2]-Counter(classes)[0])/sum(Counter(classes).values())
         except:
             print('Result3-The file divided by zero is: ', df_name)
             result3 = float('inf')
@@ -296,18 +379,18 @@ def plot_heatmap(df):
     ax.set_xticks(np.arange(len(months)))
     ax.set_yticks(np.arange(len(stations_we_consider)))
     # ... and label them with the respective list entries
-    ax.set_xticklabels(months)
-    ax.set_yticklabels(stations_we_consider)
+    ax.set_xticklabels(months, fontsize=7)
+    ax.set_yticklabels(stations_we_consider, fontsize=7)
 
     # Loop over data dimensions and create text annotations.
     for i in range(len(stations_we_consider)):
         for j in range(len(months)):
             text = ax.text(j, i, str(round(sentiment_values[i, j], 2)),
-                           ha="center", va="center", color="black", fontsize=8)
+                           ha="center", va="center", color="black", fontsize=6)
 
     # Create colorbar
     cbar = ax.figure.colorbar(im, ax=ax, shrink=0.3)
-    cbar.ax.set_ylabel("Percentage of Positive Tweets Minus Percentage of Negative Tweets",
+    cbar.ax.set_ylabel("Percentage of Positive Tweets Minus Percentage of Negative Tweets %",
                        rotation=-90, va="bottom")
 
     # ax.set_title("Sentiment Level of Transit Neighborhoods - On a Monthly Basis")
@@ -322,10 +405,9 @@ def plot_line_graph(df, figure_title_name, local_figure_name):
     months = list(range(1, 13))
     values = df.values
     rows = list(df.index)
-    feature_stations = ['Wan Chai', 'Admiralty', 'East Tsim Sha Tsui', 'Mong Kok East', 'Tai Shui Hang',
-                        'Airport']
+    feature_stations = ['Wan Chai', 'Admiralty',  'Mong Kok East', 'Airport', 'Disneyland']
     plt.xlabel('Months')
-    plt.ylabel('Sentiment(Percentage of Positive Tweets - Percentage of Negative Tweets)')
+    plt.ylabel('Sentiment(Percentage of Positive Tweets - Percentage of Negative Tweets) %')
     plt.title(figure_title_name)
     for index in range(values.shape[0]):
         if rows[index] in feature_stations:
@@ -398,7 +480,7 @@ if __name__ == '__main__':
     overall_sentiment_dict = {}
 
     for file in os.listdir(station_related_path_zh_en_cleaned):
-        sentiment = compute_sentiment_for_one_station_ffnn(df_name=file, input_path=station_related_path_zh_en_cleaned,
+        sentiment = compute_sentiment_for_one_station_ffnn(df_name=file, input_path=station_related_without_same_geo,
                                                            human_review=False,
                                                            for_review=False, output_dataframe=False,
                                                            sentiment_for_each_month=False,
@@ -422,20 +504,20 @@ if __name__ == '__main__':
     print('Total number of transit neighborhoods shown on the overall sentiment plot is: ',
           whole_df_pos_minus_neg.shape[0])
     plot_overall_sentiment_for_whole_tweets(whole_df_pos_minus_neg,
-                                            figure_title='Overall Sentiment Comparision(Positive Percent Minus Negative Percent)',
+                                            figure_title='Overall Sentiment Comparison(Positive Percent Minus Negative Percent)',
                                             saved_file_name='Overall_sentiment_whole_data_with_outlier(pos minus neg).png',
-                                            y_label_name='Positive Percentage Minus Negative Percentage', without_outlier=False)
+                                            y_label_name='Positive Percentage Minus Negative Percentage %', without_outlier=False)
     plot_overall_sentiment_for_whole_tweets(whole_df_pos_percent,
-                                            figure_title='Overall Sentiment Comparision(Positive Percent)',
+                                            figure_title='Overall Sentiment Comparison(Positive Percent)',
                                             saved_file_name='Overall_sentiment_whole_data_with_outlier(pos).png',
-                                            without_outlier=False, y_label_name='Positive Percentage')
+                                            without_outlier=False, y_label_name='Positive Percentage %')
     plot_overall_sentiment_for_whole_tweets(whole_df_neg_percent,
-                                            figure_title='Overall Sentiment Comparision(Negative Percent)',
+                                            figure_title='Overall Sentiment Comparison(Negative Percent)',
                                             saved_file_name='Overall_sentiment_whole_data_with_outlier(neg).png',
-                                            without_outlier=False, y_label_name='Negative Percentage')
+                                            without_outlier=False, y_label_name='Negative Percentage %')
 
     # One a monthly basis
-    files = os.listdir(station_related_path_zh_en_cleaned)
+    files = os.listdir(station_related_without_same_geo)
 
     activity_dict = compute_tweet_activity_for_all_stations(for_human_review=False, for_review=False,
                                                             on_monthly_basis=True)
@@ -449,7 +531,7 @@ if __name__ == '__main__':
 
     for file in files:
         month_sentiment_dict_pos_minus_neg = compute_sentiment_for_one_station_ffnn(df_name=file,
-                                                                                    input_path=station_related_path_zh_en_cleaned,
+                                                                                    input_path=station_related_without_same_geo,
                                                                                     output_dataframe=False,
                                                                                     sentiment_for_each_month=True)
         station_names_pos_minus_neg.append(file[0:-4])
@@ -471,7 +553,7 @@ if __name__ == '__main__':
 
     plot_heatmap(sentiment_for_selected_stations_by_month_pos_minus_neg)
     plot_line_graph(sentiment_for_selected_stations_by_month_pos_minus_neg,
-                  'Sentiment Level On a Monthly Basis(Pos Percent-Neg Percent)',
+                  'Sentiment Level(Positive Percent-Negative Percent) On a Monthly Basis',
                   'pos_neg_scheme2.png')
 
 

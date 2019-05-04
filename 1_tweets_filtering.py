@@ -179,7 +179,7 @@ if __name__ == '__main__':
             bot_result_list.append(check_bot(int(user)))
         except Exception as e:
             # In this case, the api shows that this page is not authorized or does not exit
-            # We choose to still consider the tweets posted from these accounts
+            # We record these accouts as Not Authorized in the bot_result_list
             bot_result_list.append('Not Authorized')
             account_with_error.append(user)
             continue
@@ -187,7 +187,11 @@ if __name__ == '__main__':
     check_bot_dataframe = pd.DataFrame({'account':account_integer_set_list, 'bot_score': bot_result_list})
     check_bot_dataframe.to_pickle(os.path.join(read_data.desktop, 'check_bot_dataframe.pkl'))
 
-    dataframe_without_bot = check_bot_dataframe.loc[check_bot_dataframe['bot_score'] < 0.4]
+    without_not_authorized = check_bot_dataframe.loc[check_bot_dataframe['user_id_str'] != 'Not authorized']
+    without_not_authorized['bot_score'] = without_not_authorized['bot_score'].apply(pd.to_numeric)
+    dataframe_without_bot = without_not_authorized.loc[without_not_authorized['bot_score'] < 0.4]
+    # Here we only consider the accounts of which the bot likelihood score is less than 0.4
+    # Not authorized accounts will not be considered
     selected_accounts = list(dataframe_without_bot['account'])
     tweet_2016_zh_en_local_without_bot = \
         tweet_2016_zh_en_local.loc[tweet_2016_zh_en_local['user_id_str'].isin(selected_accounts)]

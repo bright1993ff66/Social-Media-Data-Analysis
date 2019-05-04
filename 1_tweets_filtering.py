@@ -5,6 +5,7 @@ import read_data
 import time
 from datetime import datetime, timedelta
 import pytz
+import autopep8
 
 import tweepy
 
@@ -15,13 +16,13 @@ from collections import Counter
 
 target_path = read_data.tweet_2016
 
-mashape_key = "XXXXX"
+mashape_key = "ZHrfXJkrRXmsh8MWYsIIQ0MIVEX1p1YqKSrjsnBRIub9JM9TBU"
 
 twitter_app_auth = {
-    'consumer_key': 'XXXXX',
-    'consumer_secret': 'XXXXX',
-    'access_token': 'XXXXX',
-    'access_token_secret': 'XXXXX',
+    'consumer_key': 'dXkaXPMI57d9qwo9Z5yvqcgRW',
+    'consumer_secret': 'RYQtYtd2OSDyGOQrP75n1qZSCAEcPArhuWgpDJSVq1XaiMB7tb',
+    'access_token': '3586804034-n24NEGjhOQnnXYZy2NRkDHMViFm8Cms5D0ZLzNo',
+    'access_token_secret': 'EPYBRomDyb8x2alwgqZ4rvhSdydDqn0zICf9MGZWW15wp',
   }
 
 bom = botometer.Botometer(wait_on_ratelimit=True,
@@ -31,6 +32,7 @@ bom = botometer.Botometer(wait_on_ratelimit=True,
 # Hong Kong and Shanghai share the same time zone.
 # Hence, we transform the utc time in our dataset into Shanghai time
 time_zone_hk = pytz.timezone('Asia/Shanghai')
+
 
 # Function used to output a pandas dataframe for each user based on the user account number
 def derive_dataframe_for_each_user(df, all_users):
@@ -47,10 +49,7 @@ def compute_time_range_for_one_user(df):
     end_row = list(df.tail(1)['created_at'])[0]
     datetime_object_first_row = datetime.strptime(first_row, '%a %b %d %H:%M:%S %z %Y')
     datetime_object_last_row = datetime.strptime(end_row, '%a %b %d %H:%M:%S %z %Y')
-    # add 8 hours
-    first_time = datetime_object_first_row+timedelta(hours=8)
-    last_time = datetime_object_last_row+timedelta(hours=8)
-    time_range = last_time - first_time
+    time_range = datetime_object_last_row - datetime_object_first_row
     return (user_id_str, time_range.days)
 
 
@@ -127,7 +126,7 @@ def get_month_hk_time(timestamp):
 if __name__ == '__main__':
 
     start_time = time.time()
-    print('Data generation starts.....')
+    print('Tweet filtering starts.....')
     whole_data = pd.read_pickle(os.path.join(target_path, 'raw_tweets_2016.pkl'))
     # 1. Only consider the English and Chinese tweets
     whole_data_zh_en = whole_data.loc[whole_data['lang'].isin(['zh', 'en'])]
@@ -156,13 +155,12 @@ if __name__ == '__main__':
     tweet_2016_zh_en_local.to_pickle(os.path.join(read_data.desktop, 'local_tweets_with_bots.pkl'))
 
     print()
-    print('Data generation ends.....')
-    print()
 
     # 5. Remove the bots
     # 5.1 First we use botometer API to filter bots
     print('Check bots starts....')
     bot_result_list = []
+    account_with_error = []
     accounts = list(tweet_2016_zh_en_local['user_id_str'])
     # The input of the check bot function should be integers
     account_integers = [int(number) for number in accounts]
@@ -175,15 +173,16 @@ if __name__ == '__main__':
     print('===========================================================')
     print()
 
-    for index in range(len(account_integer_set_list)):
+    for index, user in enumerate(account_integer_set_list):
+        print("Coping with the ", index+1, 'th user: ', user)
         try:
-            bot_result_list.append(check_bot(account_integer_set_list[index]))
-            print('The ', index + 1, 'th account out of ', len(account_integer_set_list), ' is done...')
-        except:
-            bot_result_list.append(1)
-            # In this case, the api shows that this account does not exit
-            # We choose not to consider these accounts
-            print('Something wrong with the ', index + 1, 'th account')
+            bot_result_list.append(check_bot(int(user)))
+        except Exception as e:
+            # In this case, the api shows that this page is not authorized or does not exit
+            # We choose to still consider the tweets posted from these accounts
+            bot_result_list.append('Not Authorized')
+            account_with_error.append(user)
+            continue
 
     check_bot_dataframe = pd.DataFrame({'account':account_integer_set_list, 'bot_score': bot_result_list})
     check_bot_dataframe.to_pickle(os.path.join(read_data.desktop, 'check_bot_dataframe.pkl'))
@@ -199,6 +198,10 @@ if __name__ == '__main__':
         lambda row: get_month_hk_time(row['hk_time']), axis=1)
 
     # 5.2 We notic that the API still could not filter some bots, which lead to bad results in sentiment classification
+    # The bot account has two features: 1: the tweets they posted have almost same geoinformation
+    #                                   2: the number of tweets they posted is huge
+    # Hence we consider delete the account of which have the same geoinformation and the number of tweets is bigger
+    # than 10
     final_tweets = delete_bots_have_same_geoinformation(tweet_2016_zh_en_local_without_bot_hk_time,
                                                         saving_path=target_path, file_name='raw_tweets_final.pkl')
     print(final_tweets.shape)

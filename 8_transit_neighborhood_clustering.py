@@ -85,16 +85,12 @@ if __name__ == '__main__':
     # Standardize the data
     standardized_activity = preprocessing.scale(array_for_clustering_activity)
     standardized_sentiment = preprocessing.scale(array_for_clustering_sentiment)
-    standardized_activity_sentiment = preprocessing.scale(array_for_clustering_sentiment_activity)
-	
-	# Draw the dengdrogram to get the number of clusters
-	draw_dendrogram(standardized_activity_sentiment, labels=station_names,
-                    saved_file_name='hierarchical_clustering.png')
+    standardized_activity_sentiment = np.concatenate([standardized_sentiment, standardized_activity], axis=1)
 
-	
-	# Use the hierarchical clustering to do the cluster analysis
     clustering_agglomerative = AgglomerativeClustering(n_clusters=3,
                                                        affinity='euclidean',
                                                        linkage='ward').fit(standardized_activity_sentiment)
     print(clustering_agglomerative.labels_)
-    
+    draw_dendrogram(standardized_activity_sentiment, labels=station_names,
+                    saved_file_name='hierarchical_clustering.png')
+

@@ -6,7 +6,7 @@ In this repository, I will show how to analyze the geo-coded social media data p
 
 1. Tweet filtering 
 2. Tweet text preprocessing 
-3. Generate tweet representation using [FastText](https://fasttext.cc/](https://fasttext.cc/) word embedding
+3. Generate tweet representation using [FastText](https://fasttext.cc/) word embedding
 4. Locate tweets based on their geoinformation(latitude and longitude)
 5. Sentiment analysis model selection and classification
 6. Result visualization(wordcloud, topic modelling, put the tweets on the map, etc)
@@ -15,19 +15,19 @@ In this repository, I will show how to analyze the geo-coded social media data p
 
 In this project, I am using Python 3.5 to analyze the tweets. Here is the list of the necessary packages:
 
-- [gensim==3.6.0](https://radimrehurek.com/gensim/](https://radimrehurek.com/gensim/)
+- [gensim==3.6.0](https://radimrehurek.com/gensim/)
 
-- [tweepy==3.5.0](https://www.tweepy.org/](https://www.tweepy.org/)
+- [tweepy==3.5.0](https://www.tweepy.org/)
 
-- [geopy==1.17.0](https://pypi.org/project/geopy/](https://pypi.org/project/geopy/)
+- [geopy==1.17.0](https://pypi.org/project/geopy/)
 
-- [google.cloud.translate](https://pypi.org/project/google-cloud-translate/](https://pypi.org/project/google-cloud-translate/)
+- [google.cloud.translate](https://pypi.org/project/google-cloud-translate/)
 
-- [wordcloud](https://pypi.org/project/wordcloud/](https://pypi.org/project/wordcloud/)
+- [wordcloud](https://pypi.org/project/wordcloud/)
 
-- [sklearn==0.19.1](https://scikit-learn.org/stable/index.html](https://scikit-learn.org/stable/index.html)
+- [sklearn==0.19.1](https://scikit-learn.org/stable/index.html)
 
-- [keras==2.2.0](https://keras.io/](https://keras.io/)
+- [keras==2.2.0](https://keras.io/)
 
 # 3. Some Results
 

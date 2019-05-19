@@ -29,6 +29,10 @@ lda_plot_path = r'XXXXX'
 arcgis_path = r'XXXXX'
 # Save the tweet representations
 tweet_representation_path = r'XXXXX'
+transit_non_transit_comparison_before_after = \
+    r'XXXXX'
+transit_non_transit_comparison_cross_sectional = \
+    r'XXXXX'
 
 
 # The location of the stations

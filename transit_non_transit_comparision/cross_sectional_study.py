@@ -34,8 +34,8 @@ tns_path = os.path.join(read_data.transit_non_transit_comparison_cross_sectional
 
 class TransitNeighborhood_cross_sectional(object):
 
-    def __init__(self, tn_dataframe, non_tn_dataframe, oct_open, before_and_after, compute_positive,
-                 compute_negative):
+    def __init__(self, tn_dataframe, non_tn_dataframe, oct_open: bool, before_and_after: bool, compute_positive: bool,
+                 compute_negative: bool):
         # the dataframe which contains all the tweets for this TN
         self.tn_dataframe = tn_dataframe # the dataframe which records all the tweets posted in this TN
         self.non_tn_dataframe = non_tn_dataframe # the dataframe which records all the tweets posted in corresponding
@@ -45,9 +45,6 @@ class TransitNeighborhood_cross_sectional(object):
         # after study
         self.compute_positive = compute_positive # boolean, True if use positive percent as the sentiment metric
         self.compute_negative = compute_negative # boolean, True if use negative percent as the sentiment metric
-
-        assert isinstance(self.oct_open, bool)
-        assert isinstance(self.before_and_after, bool)
 
     def output_sent_act_dataframe(self):
         result_dict_tn = before_and_after.sentiment_by_month(self.tn_dataframe,
@@ -60,9 +57,9 @@ class TransitNeighborhood_cross_sectional(object):
         result_dataframe_non_tn = pd.DataFrame(list(result_dict_non_tn.items()), columns=['Date', 'Value'])
         return result_dataframe_tn, result_dataframe_non_tn
 
-    def line_map_comparison(self, line_labels:tuple, ylabel, plot_title_name,
-                            saving_file_name, draw_sentiment=True):
+    def line_map_comparison(self, ax, line_labels:tuple, ylabel, draw_sentiment=True):
         """
+        :param ax: axis to make this plot
         :param line_labels: a tuple which records the line labels in the line graph
         :param ylabel: the ylabel of the final plot
         :param plot_title_name: the title of the final plot
@@ -82,10 +79,9 @@ class TransitNeighborhood_cross_sectional(object):
             y1 = [value[0] for value in list(dataframe_for_plot['Value'])]
             y2 = [value[0] for value in list(tpu_dataframe_for_plot['Value'])]
         else:  # draw the activity comparison plot
-            y1 = [value[1] for value in list(dataframe_for_plot['Value'])]
-            y2 = [value[1] for value in list(tpu_dataframe_for_plot['Value'])]
+            y1 = [np.log10(value[1]) for value in list(dataframe_for_plot['Value'])]
+            y2 = [np.log10(value[1]) for value in list(tpu_dataframe_for_plot['Value'])]
 
-        fig, ax = plt.subplots(1, 1, figsize=(10, 8))
         lns1 = ax.plot(x, y1, 'g-', label=line_labels[0], linestyle='--', marker='o')
         lns2 = ax.plot(x, y2, 'y-', label=line_labels[1], linestyle='--', marker='^')
         # Whether to draw the vertical line which indicates the open date
@@ -104,17 +100,18 @@ class TransitNeighborhood_cross_sectional(object):
 
         # Draw the average of the sentiment level
         if draw_sentiment:
-            ax.axhline(y=0.43, color='r', linestyle='solid')
+            # Specify the average sentiment across all TNs
+            ax.axhline(y=0.40, color='r', linestyle='solid')
+            ax.text(3, 0.43, 'Average Sentiment Level: 0.40', horizontalalignment='center', color='r')
+            ax.set_ylim(-1, 1)
         else:  # here I don't want to draw the horizontal activity line as the activity level varies greatly between TNs
             pass
 
         ax.set_xlabel('Time')
-        ax.set_ylabel(ylabel, color='g')
+        ax.set_ylabel(ylabel, color='b')
         ax.set_xticks(x)
         ax.set_xticklabels(time_list, rotation='vertical')
-        plt.title(plot_title_name)
-        plt.savefig(os.path.join(read_data.transit_non_transit_comparison_cross_sectional, saving_file_name))
-        plt.show()
+        # figure.savefig(os.path.join(read_data.transit_non_transit_comparison_cross_sectional, saving_file_name))
 
 
 def create_dataframe_dicts_for_four_regions(region1_name_list, region2_name_list, region3_name_list, region4_name_list):
@@ -137,6 +134,7 @@ def create_dataframe_dicts_for_four_regions(region1_name_list, region2_name_list
                 region4_dict[station_name] = dataframe
     return region1_dict, region2_dict, region3_dict, region4_dict
 
+	
 
 if __name__ == '__main__':
     october_23_start = datetime(2016, 10, 23, 0, 0, 0, tzinfo=time_zone_hk)
@@ -164,54 +162,65 @@ if __name__ == '__main__':
                                                         non_tn_dataframe=region1_nontn_dataframe,
                                                      before_and_after=False, oct_open=False, compute_positive=False,
                                                      compute_negative=False)
+        figure1, ax1 = plt.subplots(1,2, figsize=(15, 8))
         tn_object.line_map_comparison(line_labels=('Sentiment Level of '+name+' TN', 'Sentiment Level of Non-TN'),
                                    ylabel='Percentage of Positive Tweets Minus Percentage of Negative Tweets',
-                                   plot_title_name='Sentiment Cross Sectional Study: '+name,
-                                   saving_file_name=name+'_sent_compare.png', draw_sentiment=True)
+                                      draw_sentiment=True, ax=ax1[0])
         tn_object.line_map_comparison(line_labels=('Activity Level of ' + name + ' TN', 'Activity Level of Non-TN'),
-                                      ylabel='Number of Posted Tweets',
-                                      plot_title_name='Activity Cross Sectional Study: ' + name,
-                                      saving_file_name=name + '_act_compare.png', draw_sentiment=False)
+                                      ylabel='Number of Posted Tweets(log10)',draw_sentiment=False, ax=ax1[1])
+        figure1.suptitle('Cross Sectional Study: '+name)
+        figure1.savefig(os.path.join(read_data.transit_non_transit_comparison_cross_sectional,
+                                     name+'_cross_sectional.png'))
+        # plt.show()
 
     for name in list(region2_dataframe_dict.keys()):
         tn_object = TransitNeighborhood_cross_sectional(tn_dataframe=region2_dataframe_dict[name],
                                                         non_tn_dataframe=region2_nontn_dataframe,
                                                      before_and_after=False, oct_open=False, compute_positive=False,
                                                      compute_negative=False)
+        figure2, ax2 = plt.subplots(1,2, figsize=(15, 8))
         tn_object.line_map_comparison(line_labels=('Sentiment Level of '+name+' TN', 'Sentiment Level of Non-TN'),
                                    ylabel='Percentage of Positive Tweets Minus Percentage of Negative Tweets',
-                                   plot_title_name='Sentiment Cross Sectional Study: '+name,
-                                   saving_file_name=name+'_sent_compare.png', draw_sentiment=True)
+                                      draw_sentiment=True, ax=ax2[0])
         tn_object.line_map_comparison(line_labels=('Activity Level of ' + name + ' TN', 'Activity Level of Non-TN'),
-                                      ylabel='Number of Posted Tweets',
-                                      plot_title_name='Activity Cross Sectional Study: ' + name,
-                                      saving_file_name=name + '_act_compare.png', draw_sentiment=False)
+                                      ylabel='Number of Posted Tweets(log10)',draw_sentiment=False, ax=ax2[1])
+        figure2.suptitle('Cross Sectional Study: '+name)
+        figure2.savefig(os.path.join(read_data.transit_non_transit_comparison_cross_sectional,
+                                     name+'_cross_sectional.png'))
+        # plt.show()
 
     for name in list(region3_dataframe_dict.keys()):
         tn_object = TransitNeighborhood_cross_sectional(tn_dataframe=region3_dataframe_dict[name],
                                                         non_tn_dataframe=region3_nontn_dataframe,
                                                      before_and_after=False, oct_open=False, compute_positive=False,
                                                      compute_negative=False)
+        figure3, ax3 = plt.subplots(1,2, figsize=(15, 8))
         tn_object.line_map_comparison(line_labels=('Sentiment Level of '+name+' TN', 'Sentiment Level of Non-TN'),
                                    ylabel='Percentage of Positive Tweets Minus Percentage of Negative Tweets',
-                                   plot_title_name='Sentiment Cross Sectional Study: '+name,
-                                   saving_file_name=name+'_sent_compare.png', draw_sentiment=True)
+                                      draw_sentiment=True, ax=ax3[0])
         tn_object.line_map_comparison(line_labels=('Activity Level of ' + name + ' TN', 'Activity Level of Non-TN'),
-                                      ylabel='Number of Posted Tweets',
-                                      plot_title_name='Activity Cross Sectional Study: ' + name,
-                                      saving_file_name=name + '_act_compare.png', draw_sentiment=False)
+                                      ylabel='Number of Posted Tweets(log10)',draw_sentiment=False, ax=ax3[1])
+        figure3.suptitle('Cross Sectional Study: '+name)
+        figure3.savefig(os.path.join(read_data.transit_non_transit_comparison_cross_sectional,
+                                     name+'_cross_sectional.png'))
+        # plt.show()
 
     for name in list(region4_dataframe_dict.keys()):
         tn_object = TransitNeighborhood_cross_sectional(tn_dataframe=region4_dataframe_dict[name],
                                                         non_tn_dataframe=region4_nontn_dataframe,
                                                      before_and_after=False, oct_open=False, compute_positive=False,
                                                      compute_negative=False)
+        figure4, ax4 = plt.subplots(1,2, figsize=(15, 8))
         tn_object.line_map_comparison(line_labels=('Sentiment Level of '+name+' TN', 'Sentiment Level of Non-TN'),
                                    ylabel='Percentage of Positive Tweets Minus Percentage of Negative Tweets',
-                                   plot_title_name='Sentiment Cross Sectional Study: '+name,
-                                   saving_file_name=name+'_sent_compare.png', draw_sentiment=True)
+                                      draw_sentiment=True, ax=ax4[0])
         tn_object.line_map_comparison(line_labels=('Activity Level of ' + name + ' TN', 'Activity Level of Non-TN'),
-                                      ylabel='Number of Posted Tweets',
-                                      plot_title_name='Activity Cross Sectional Study: ' + name,
-                                      saving_file_name=name + '_act_compare.png', draw_sentiment=False)
+                                      ylabel='Number of Posted Tweets(log10)',draw_sentiment=False, ax=ax4[1])
+        figure4.suptitle('Cross Sectional Study: '+name)
+        figure4.savefig(os.path.join(read_data.transit_non_transit_comparison_cross_sectional,
+                                     name+'_cross_sectional.png'))
+        # plt.show()
+
+
+
 

@@ -76,8 +76,8 @@ class TransitNeighborhood_before_after(object):
             y1 = [value[0] for value in list(dataframe_for_plot['Value'])]
             y2 = [value[0] for value in list(tpu_dataframe_for_plot['Value'])]
         else:  # draw the activity comparison plot
-            y1 = [value[1] for value in list(dataframe_for_plot['Value'])]
-            y2 = [value[1] for value in list(tpu_dataframe_for_plot['Value'])]
+            y1 = [np.log10(value[1]) for value in list(dataframe_for_plot['Value'])]
+            y2 = [np.log10(value[1]) for value in list(tpu_dataframe_for_plot['Value'])]
 
         fig, ax = plt.subplots(1, 1, figsize=(10, 8))
         lns1 = ax.plot(x, y1, 'g-', label=line_labels[0], linestyle='--', marker='o')
@@ -86,8 +86,16 @@ class TransitNeighborhood_before_after(object):
         if self.before_and_after:
             if self.oct_open:
                 plt.axvline(3.77, color='black')
+                if draw_sentiment:
+                    ax.text(2.8, 0, 'Opening Date: \nOct 23, 2016', horizontalalignment='center', color='black')
+                else:
+                    ax.text(2.8, 1.5, 'Opening Date: \nOct 23, 2016', horizontalalignment='center', color='black')
             else:
                 plt.axvline(5.95, color='black')
+                if draw_sentiment:
+                    ax.text(5, 0, 'Opening Date: \nDec 28, 2016', horizontalalignment='center', color='black')
+                else:
+                    ax.text(5, 1.8, 'Opening Date: \nDec 28, 2016', horizontalalignment='center', color='black')
         else:
             pass
 
@@ -98,16 +106,18 @@ class TransitNeighborhood_before_after(object):
 
         # Draw the average of the sentiment level
         if draw_sentiment:
-            ax.axhline(y=0.43, color='r', linestyle='solid')
+            ax.axhline(y=0.40, color='r', linestyle='solid')
+            ax.text(3, 0.43, 'Average Sentiment Level: 0.40', horizontalalignment='center', color='r')
+            ax.set_ylim(-1, 1)
         else:  # here I don't want to draw the horizontal activity line as the activity level varies greatly between TNs
             pass
 
         ax.set_xlabel('Time')
-        ax.set_ylabel(ylabel, color='g')
+        ax.set_ylabel(ylabel, color='k')
         ax.set_xticks(x)
         ax.set_xticklabels(time_list, rotation='vertical')
         plt.title(plot_title_name)
-        plt.savefig(os.path.join(read_data.transit_non_transit_comparison, saving_file_name))
+        plt.savefig(os.path.join(read_data.transit_non_transit_comparison_before_after, saving_file_name))
         plt.show()
 
 
@@ -262,13 +272,13 @@ def generate_wordcloud(words_before, words_after, mask, file_name_before, file_n
     plt.imshow(word_cloud_before.recolor(color_func=color_func, random_state=3), interpolation="bilinear")
     plt.axis('off')
     plt.tight_layout(pad=0)
-    fig_before.savefig(os.path.join(read_data.transit_non_transit_comparison, file_name_before))
+    fig_before.savefig(os.path.join(read_data.transit_non_transit_comparison_before_after, file_name_before))
     plt.show()
     fig_after = plt.figure(figsize=(15, 13), facecolor='white', edgecolor='black')
     plt.imshow(word_cloud_after.recolor(color_func=color_func, random_state=3), interpolation="bilinear")
     plt.axis('off')
     plt.tight_layout(pad=0)
-    fig_after.savefig(os.path.join(read_data.transit_non_transit_comparison, file_name_after))
+    fig_after.savefig(os.path.join(read_data.transit_non_transit_comparison_before_after, file_name_after))
     plt.show()
 
 
@@ -296,7 +306,7 @@ def draw_word_count_histogram(df, file_name):
     plt.ylim((0, 450))
     # Check if it is appropriate to set the number of keywords as 7 in this dataframe
     plt.xticks(list(plt.xticks()[0]) + [7])
-    plt.savefig(os.path.join(read_data.transit_non_transit_comparison, file_name))
+    plt.savefig(os.path.join(read_data.transit_non_transit_comparison_before_after, file_name))
     plt.show()
 
 
@@ -356,17 +366,17 @@ if __name__ == '__main__':
     wong_chuk_hang_dataframe = get_tweets_based_on_date('Wong Chuk Hang', start_date, end_date)
     ocean_park_dataframe = get_tweets_based_on_date('Ocean Park', start_date, end_date)
 
-    whammpoa_dataframe.to_pickle(os.path.join(read_data.transit_non_transit_comparison,
+    whammpoa_dataframe.to_pickle(os.path.join(read_data.transit_non_transit_comparison_before_after,
                                               'whole_whampoa_dataframe.pkl'))
-    ho_man_tin_dataframe.to_pickle(os.path.join(read_data.transit_non_transit_comparison,
+    ho_man_tin_dataframe.to_pickle(os.path.join(read_data.transit_non_transit_comparison_before_after,
                                                 'whole_ho_man_tin_dataframe.pkl'))
-    south_horizons_dataframe.to_pickle(os.path.join(read_data.transit_non_transit_comparison,
+    south_horizons_dataframe.to_pickle(os.path.join(read_data.transit_non_transit_comparison_before_after,
                                                     'whole_south_horizons_dataframe.pkl'))
-    lei_tung_dataframe.to_pickle(os.path.join(read_data.transit_non_transit_comparison,
+    lei_tung_dataframe.to_pickle(os.path.join(read_data.transit_non_transit_comparison_before_after,
                                               'whole_lei_tung_dataframe.pkl'))
-    wong_chuk_hang_dataframe.to_pickle(os.path.join(read_data.transit_non_transit_comparison,
+    wong_chuk_hang_dataframe.to_pickle(os.path.join(read_data.transit_non_transit_comparison_before_after,
                                                     'whole_wong_chuk_hang_dataframe.pkl'))
-    ocean_park_dataframe.to_pickle(os.path.join(read_data.transit_non_transit_comparison,
+    ocean_park_dataframe.to_pickle(os.path.join(read_data.transit_non_transit_comparison_before_after,
                                                 'whole_ocean_park_dataframe.pkl'))
 
     # draw_word_count_histogram(whammpoa_dataframe, file_name='whampoa_word_count_hist.png')
@@ -398,13 +408,16 @@ if __name__ == '__main__':
     ocean_park_tn = TransitNeighborhood_before_after(tn_dataframe=ocean_park_dataframe, non_tn_dataframe=dec_28,
                                                      before_and_after=True, oct_open=False, compute_positive=False,
                                                      compute_negative=False)
+    lei_tung_tn = TransitNeighborhood_before_after(tn_dataframe=lei_tung_dataframe, non_tn_dataframe=dec_28,
+                                                   before_and_after=True, oct_open=False, compute_positive=False,
+                                                   compute_negative=False)
 
     whampoa_tn.line_map_comparison(line_labels=('Sentiment Level of Whampoa TN', 'Sentiment Level of Non-TN'),
                                    ylabel='Percentage of Positive Tweets Minus Percentage of Negative Tweets',
                                    plot_title_name='Sentiment Before and After Study: Whampoa',
                                    saving_file_name='Whampoa_sent_compare.png', draw_sentiment=True)
     whampoa_tn.line_map_comparison(line_labels=('Activity Level of Whampoa TN', 'Activity Level of Non-TN'),
-                                   ylabel='Number of Tweets',
+                                   ylabel='Number of Tweets(log10)',
                                    plot_title_name='Activity Before and After Study: Whampoa',
                                    saving_file_name='Whampoa_act_compare.png', draw_sentiment=False)
     ho_man_tin_tn.line_map_comparison(line_labels=('Sentiment Level of Ho Man Tin TN', 'Sentiment Level of Non-TN'),
@@ -412,7 +425,7 @@ if __name__ == '__main__':
                                       plot_title_name='Sentiment Before and After Study: Ho Man Tin',
                                       saving_file_name='Ho_Man_Tin_sent_compare.png', draw_sentiment=True)
     ho_man_tin_tn.line_map_comparison(line_labels=('Activity Level of Ho Man Tin TN', 'Activity Level of Non-TN'),
-                                      ylabel='Number of Tweets',
+                                      ylabel='Number of Tweets(log10)',
                                       plot_title_name='Activity Before and After Study: Ho Man Tin',
                                       saving_file_name='Ho_Man_Tin_act_compare.png', draw_sentiment=False)
     wong_chuk_hang_tn.line_map_comparison(line_labels=('Sentiment Level of Wong Chuk Hang TN', 'Sentiment Level of Non-TN'),
@@ -420,7 +433,7 @@ if __name__ == '__main__':
                                       plot_title_name='Sentiment Before and After Study: Wong Chuk Hang',
                                       saving_file_name='Wong_Chuk_Hang_sent_compare.png', draw_sentiment=True)
     wong_chuk_hang_tn.line_map_comparison(line_labels=('Activity Level of Wong Chuk Hang TN', 'Activity Level of Non-TN'),
-                                      ylabel='Number of Tweets',
+                                      ylabel='Number of Tweets(log10)',
                                       plot_title_name='Activity Before and After Study: Wong Chuk Hang',
                                       saving_file_name='Wong_Chuk_Hang_act_compare.png', draw_sentiment=False)
     south_horizons_tn.line_map_comparison(
@@ -430,7 +443,7 @@ if __name__ == '__main__':
         saving_file_name='South_Horizons_sent_compare.png', draw_sentiment=True)
     south_horizons_tn.line_map_comparison(
         line_labels=('Activity Level of South Horizons TN', 'Activity Level of Non-TN'),
-        ylabel='Number of Tweets',
+        ylabel='Number of Tweets(log10)',
         plot_title_name='Activity Before and After Study: South Horizons',
         saving_file_name='South_Horizons_act_compare.png', draw_sentiment=False)
     ocean_park_tn.line_map_comparison(
@@ -440,74 +453,82 @@ if __name__ == '__main__':
         saving_file_name='Ocean_Park_sent_compare.png', draw_sentiment=True)
     ocean_park_tn.line_map_comparison(
         line_labels=('Activity Level of Ocean Park TN', 'Activity Level of Non-TN'),
-        ylabel='Number of Tweets',
+        ylabel='Number of Tweets(log10)',
         plot_title_name='Activity Before and After Study: Ocean Park',
         saving_file_name='Ocean_Park_act_compare.png', draw_sentiment=False)
+    lei_tung_tn.line_map_comparison(line_labels=('Sentiment Level of Lei Tung TN', 'Sentiment Level of Non-TN'),
+        ylabel='Percentage of Positive Tweets Minus Percentage of Negative Tweets',
+        plot_title_name='Sentiment Before and After Study: Lei Tung',
+        saving_file_name='Lei_Tung_sent_compare.png', draw_sentiment=True)
+    lei_tung_tn.line_map_comparison(line_labels=('Activity Level of Lei Tung TN', 'Activity Level of Non-TN'),
+                                    ylabel='Number of Tweets(log10)',
+                                    plot_title_name='Activity Before and After Study: Lei Tung',
+                                    saving_file_name='Lei_Tung_act_compare.png', draw_sentiment=False)
 
-    # ===================================================================================================
-    #
-    # ======================================Wordcloud comparison=========================================
-    before_text_whampoa, after_text_whampoa = build_text_for_wordcloud_topic_model(whammpoa_dataframe, oct_open=True)
-    before_text_ho_man_tin, after_text_ho_man_tin = build_text_for_wordcloud_topic_model(ho_man_tin_dataframe,
-                                                                                         oct_open=True)
-    before_text_south_horizons, after_text_south_horizons = \
-        build_text_for_wordcloud_topic_model(south_horizons_dataframe, oct_open=False)
-    before_text_lei_tung, after_text_lei_tung = build_text_for_wordcloud_topic_model(lei_tung_dataframe,
-                                                                                     oct_open=False)
-    before_text_wong_chuk_hang, after_text_wong_chuk_hang = \
-        build_text_for_wordcloud_topic_model(wong_chuk_hang_dataframe, oct_open=False)
-    before_text_ocean_park, after_text_ocean_park = build_text_for_wordcloud_topic_model(ocean_park_dataframe,
-                                                                                         oct_open=False)
+	# ===================================================================================================
+	#
+	# ======================================Wordcloud comparison=========================================
+	before_text_whampoa, after_text_whampoa = build_text_for_wordcloud_topic_model(whammpoa_dataframe, oct_open=True)
+	before_text_ho_man_tin, after_text_ho_man_tin = build_text_for_wordcloud_topic_model(ho_man_tin_dataframe,
+																						 oct_open=True)
+	before_text_south_horizons, after_text_south_horizons = \
+		build_text_for_wordcloud_topic_model(south_horizons_dataframe, oct_open=False)
+	before_text_lei_tung, after_text_lei_tung = build_text_for_wordcloud_topic_model(lei_tung_dataframe,
+																					 oct_open=False)
+	before_text_wong_chuk_hang, after_text_wong_chuk_hang = \
+		build_text_for_wordcloud_topic_model(wong_chuk_hang_dataframe, oct_open=False)
+	before_text_ocean_park, after_text_ocean_park = build_text_for_wordcloud_topic_model(ocean_park_dataframe,
+																						 oct_open=False)
 
-    generate_wordcloud(before_text_whampoa, after_text_whampoa, mask=wordcloud_generate.circle_mask,
-                       file_name_before='before_whampoa_wordcloud', file_name_after="after_whampoa_wordcloud",
-                       color_func=wordcloud_generate.green_func)
-    generate_wordcloud(before_text_ho_man_tin, after_text_ho_man_tin, mask=wordcloud_generate.circle_mask,
-                       file_name_before="before_ho_man_tin_wordcloud",
-                       file_name_after="after_ho_man_tin_wordcloud", color_func=wordcloud_generate.green_func)
-    generate_wordcloud(before_text_south_horizons, after_text_south_horizons, mask=wordcloud_generate.circle_mask,
-                       file_name_before="before_south_horizons_wordcloud",
-                       file_name_after="after_south_horizons_wordcloud", color_func=wordcloud_generate.green_func)
-    generate_wordcloud(before_text_lei_tung, after_text_lei_tung, mask=wordcloud_generate.circle_mask,
-                       file_name_before="before_lei_tung_wordcloud",
-                       file_name_after="after_lei_tung_wordcloud", color_func=wordcloud_generate.green_func)
-    generate_wordcloud(before_text_wong_chuk_hang, after_text_wong_chuk_hang, mask=wordcloud_generate.circle_mask,
-                       file_name_before="before_wong_chuk_hang_wordcloud",
-                       file_name_after="after_wong_chuk_hang_wordcloud", color_func=wordcloud_generate.green_func)
-    generate_wordcloud(before_text_ocean_park, after_text_ocean_park, mask=wordcloud_generate.circle_mask,
-                       file_name_before="before_ocean_park_wordcloud",
-                       file_name_after="after_ocean_park_wordcloud", color_func=wordcloud_generate.green_func)
-    # ================================================================================================================
-    #
-    # =======================================Topic Modelling Comparison================================================
-    before_dataframe_whampoa, after_dataframe_whampoa = \
-        build_text_for_wordcloud_topic_model(whammpoa_dataframe, oct_open=True, build_wordcloud=False)
-    before_dataframe_ho_man_tin, after_dataframe_ho_man_tin = \
-        build_text_for_wordcloud_topic_model(ho_man_tin_dataframe, oct_open=True, build_wordcloud=False)
-    before_dataframe_south_horizons, after_dataframe_south_horizons = \
-        build_text_for_wordcloud_topic_model(south_horizons_dataframe, oct_open=False, build_wordcloud=False)
-    before_dataframe_lei_tung, after_datarame_lei_tung = \
-        build_text_for_wordcloud_topic_model(lei_tung_dataframe, oct_open=False, build_wordcloud=False)
-    before_dataframe_wong_chuk_hang, after_dataframe_wong_chuk_hang = \
-        build_text_for_wordcloud_topic_model(wong_chuk_hang_dataframe, oct_open=False, build_wordcloud=False)
-    before_dataframe_ocean_park, after_dataframe_ocean_park = \
-        build_text_for_wordcloud_topic_model(ocean_park_dataframe, oct_open=False, build_wordcloud=False)
+	generate_wordcloud(before_text_whampoa, after_text_whampoa, mask=wordcloud_generate.circle_mask,
+					   file_name_before='before_whampoa_wordcloud', file_name_after="after_whampoa_wordcloud",
+					   color_func=wordcloud_generate.green_func)
+	generate_wordcloud(before_text_ho_man_tin, after_text_ho_man_tin, mask=wordcloud_generate.circle_mask,
+					   file_name_before="before_ho_man_tin_wordcloud",
+					   file_name_after="after_ho_man_tin_wordcloud", color_func=wordcloud_generate.green_func)
+	generate_wordcloud(before_text_south_horizons, after_text_south_horizons, mask=wordcloud_generate.circle_mask,
+					   file_name_before="before_south_horizons_wordcloud",
+					   file_name_after="after_south_horizons_wordcloud", color_func=wordcloud_generate.green_func)
+	generate_wordcloud(before_text_lei_tung, after_text_lei_tung, mask=wordcloud_generate.circle_mask,
+					   file_name_before="before_lei_tung_wordcloud",
+					   file_name_after="after_lei_tung_wordcloud", color_func=wordcloud_generate.green_func)
+	generate_wordcloud(before_text_wong_chuk_hang, after_text_wong_chuk_hang, mask=wordcloud_generate.circle_mask,
+					   file_name_before="before_wong_chuk_hang_wordcloud",
+					   file_name_after="after_wong_chuk_hang_wordcloud", color_func=wordcloud_generate.green_func)
+	generate_wordcloud(before_text_ocean_park, after_text_ocean_park, mask=wordcloud_generate.circle_mask,
+					   file_name_before="before_ocean_park_wordcloud",
+					   file_name_after="after_ocean_park_wordcloud", color_func=wordcloud_generate.green_func)
+	# ================================================================================================================
+	#
+	# =======================================Topic Modelling Comparison================================================
+	before_dataframe_whampoa, after_dataframe_whampoa = \
+		build_text_for_wordcloud_topic_model(whammpoa_dataframe, oct_open=True, build_wordcloud=False)
+	before_dataframe_ho_man_tin, after_dataframe_ho_man_tin = \
+		build_text_for_wordcloud_topic_model(ho_man_tin_dataframe, oct_open=True, build_wordcloud=False)
+	before_dataframe_south_horizons, after_dataframe_south_horizons = \
+		build_text_for_wordcloud_topic_model(south_horizons_dataframe, oct_open=False, build_wordcloud=False)
+	before_dataframe_lei_tung, after_datarame_lei_tung = \
+		build_text_for_wordcloud_topic_model(lei_tung_dataframe, oct_open=False, build_wordcloud=False)
+	before_dataframe_wong_chuk_hang, after_dataframe_wong_chuk_hang = \
+		build_text_for_wordcloud_topic_model(wong_chuk_hang_dataframe, oct_open=False, build_wordcloud=False)
+	before_dataframe_ocean_park, after_dataframe_ocean_park = \
+		build_text_for_wordcloud_topic_model(ocean_park_dataframe, oct_open=False, build_wordcloud=False)
 
-    before_and_after_dataframes_list = [before_dataframe_whampoa, after_dataframe_whampoa, before_dataframe_ho_man_tin,
-                                        after_dataframe_ho_man_tin, before_dataframe_south_horizons,
-                                        after_dataframe_south_horizons, before_dataframe_lei_tung,
-                                        after_datarame_lei_tung, before_dataframe_wong_chuk_hang,
-                                        after_dataframe_wong_chuk_hang, before_dataframe_ocean_park,
-                                        after_dataframe_ocean_park]
-    name_list = ['before_whampoa', 'after_whampoa', 'before_ho_man_tin', 'after_ho_man_tin',
-                 'before_south_horizons', 'after_south_horizons', 'before_lei_tung', 'after_lei_tung',
-                 'before_wong_chuk_hang', 'after_wong_chuk_hang', 'before_ocean_park', 'after_ocean_park']
+	before_and_after_dataframes_list = [before_dataframe_whampoa, after_dataframe_whampoa, before_dataframe_ho_man_tin,
+										after_dataframe_ho_man_tin, before_dataframe_south_horizons,
+										after_dataframe_south_horizons, before_dataframe_lei_tung,
+										after_datarame_lei_tung, before_dataframe_wong_chuk_hang,
+										after_dataframe_wong_chuk_hang, before_dataframe_ocean_park,
+										after_dataframe_ocean_park]
+	name_list = ['before_whampoa', 'after_whampoa', 'before_ho_man_tin', 'after_ho_man_tin',
+				 'before_south_horizons', 'after_south_horizons', 'before_lei_tung', 'after_lei_tung',
+				 'before_wong_chuk_hang', 'after_wong_chuk_hang', 'before_ocean_park', 'after_ocean_park']
 
-    for dataframe, file_name in zip(before_and_after_dataframes_list, name_list):
-        print('-------------------'+file_name+' starts--------------------------')
-        build_topic_model(df=dataframe, keyword_file_name=file_name+'_keyword.pkl',
-                          topic_predict_file_name=file_name+'_tweet_topic.pkl',
-                          saving_path=read_data.before_and_after_topic_modelling_compare)
-        print('------------------'+file_name+' ends-----------------------------')
-    # =================================================================================================================
+	for dataframe, file_name in zip(before_and_after_dataframes_list, name_list):
+		print('-------------------'+file_name+' starts--------------------------')
+		build_topic_model(df=dataframe, keyword_file_name=file_name+'_keyword.pkl',
+						  topic_predict_file_name=file_name+'_tweet_topic.pkl',
+						  saving_path=read_data.before_and_after_topic_modelling_compare)
+		print('------------------'+file_name+' ends-----------------------------')
+	# =================================================================================================================
 

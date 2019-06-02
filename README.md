@@ -22,7 +22,7 @@ In this project, I am using Python 3.5 to analyze the tweets. Here is the list o
 - [wordcloud](https://pypi.org/project/wordcloud/)
 - [sklearn==0.19.1](https://scikit-learn.org/stable/index.html)
 - [keras==2.2.0](https://keras.io/)
-- [ArcPy](http://desktop.arcgis.com/en/arcmap/10.3/analyze/arcpy/what-is-arcpy-.htm)
+- [ArcPy](http://desktop.arcgis.com/en/arcmap/10.3/analyze/arcpy/what-is-arcpy-.htm)(You need Python 2.7 to run this package)
 
 # 3. Some Results
 

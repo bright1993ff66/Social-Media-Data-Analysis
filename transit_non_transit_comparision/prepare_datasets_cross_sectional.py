@@ -126,11 +126,15 @@ if __name__ == '__main__':
             except WindowsError:
                 pass
 
+    print 'Generating tweets for each TPU....'
+
     tpu_list = TPU.whole_tpus
     for tpu in tpus_list:
         if ('&' in tpu) or ('-' in tpu):
             final_name_to_use = re.sub('[\&\-\,]', '_', tpu)
+            print 'generating tweets for TPU: {}'.format(final_name_to_use)
             TPU.get_tweets_for_one_tpu(tpu_name=final_name_to_use)
         else:
             final_name_to_use = tpu
+            print 'generating tweets for TPU: {}'.format(final_name_to_use)
             TPU.get_tweets_for_one_tpu(tpu_name=final_name_to_use)

@@ -4,13 +4,14 @@ import sys
 import arcpy
 import re
 import arcgisscripting
+import time
 import pandas as pd
 import read_data
 import csv
 
 # Give the workspace first
 workspace_path = \
-    r'F:\CityU\Datasets\Hong Kong Tweets 2017\transit_non_transit_comparision\before_and_after\compare_tn_and_nontn'
+    r'XXXXX'
 arcpy.env.workspace = workspace_path
 arcpy.env.overwriteOutput = True
 # List all the shapefiles in the work space
@@ -105,6 +106,8 @@ class TPU(object):
 
 if __name__ == '__main__':
 
+    starting_time = time.clock()
+
     # Read the file which saves the location of MTR stations
     tpu_dataframe = pd.read_csv(os.path.join(read_data.tpu_4326_data_path, 'tpu_data.csv'))
     tpus_list = list(tpu_dataframe['SmallTPU'])
@@ -138,3 +141,6 @@ if __name__ == '__main__':
             final_name_to_use = tpu
             print 'generating tweets for TPU: {}'.format(final_name_to_use)
             TPU.get_tweets_for_one_tpu(tpu_name=final_name_to_use)
+
+    end_time = time.clock()
+    print "Total time for getting datasets for cross sectional study is {}".format(end_time-starting_time)

@@ -9,7 +9,7 @@ import csv
 
 # Give the workspace first
 workspace_path = \
-    r'XXXX'
+    r'F:\CityU\Datasets\Hong Kong Tweets 2017\transit_non_transit_comparision\before_and_after\compare_tn_and_nontn'
 arcpy.env.workspace = workspace_path
 arcpy.env.overwriteOutput = True
 # List all the shapefiles in the work space
@@ -110,11 +110,11 @@ class TransitNeighborhood(object):
                                                                         where_clause=where_statement)
         arcpy.CopyFeatures_management(in_features=selected_tpus_layer, out_feature_class=os.path.join(file_path,
                                                                                                       self.station_name+'_intersected_tpus'))
-        arcpy.CopyFeatures_management(in_features=selected_tweets_layer, out_feature_class=os.path.join(file_path,
-                                                                                                      self.station_name + '_intersected_tweets'))
-        TransitNeighborhood.transform_local_shapefile_to_csv(file_path=file_path,
-                                                             shapefile=self.station_name + '_intersected_tweets.shp',
-                                                             csvfile=self.station_name + '_tn_tweets.csv')
+        # arcpy.CopyFeatures_management(in_features=selected_tweets_layer, out_feature_class=os.path.join(file_path,
+        #                                                                                               self.station_name + '_intersected_tweets'))
+        # TransitNeighborhood.transform_local_shapefile_to_csv(file_path=file_path,
+        #                                                      shapefile=self.station_name + '_intersected_tweets.shp',
+        #                                                      csvfile=self.station_name + '_tn_tweets.csv')
 
     def spatial_join_analysis(self, file_path, file):
         arcpy.MakeFeatureLayer_management(in_features=TransitNeighborhood.tweets, out_layer='tweets_lyr')
@@ -168,35 +168,58 @@ if __name__ == '__main__':
             new_name = 'AsiaWorld'
             station_names_list[index] = new_name
             try:
-                os.mkdir(os.path.join(read_data.check_path, new_name))
+                os.mkdir(os.path.join(read_data.intersected_tpu_path, new_name))
             # The os.mkdir command could not create new folder with the same name
             except WindowsError:
                 pass
         else:
             try:
-                os.mkdir(os.path.join(read_data.check_path, name))
+                os.mkdir(os.path.join(read_data.intersected_tpu_path, name))
             except WindowsError:
                 pass
 
     for name in station_names_list:
         TNs = TransitNeighborhood(name)
         # First Step: Save the Transit neighborhood area for each station
-        TNs.create_buffer(buffer_radius=500, saving_path=os.path.join(read_data.check_path, name),
+        TNs.create_buffer(buffer_radius=500, saving_path=os.path.join(read_data.intersected_tpu_path, name),
                           saved_file_name=name+'_buffer_lyr')
-        TransitNeighborhood.read_local_shapefile(file_path=os.path.join(read_data.check_path, name),
+        TransitNeighborhood.read_local_shapefile(file_path=os.path.join(read_data.intersected_tpu_path, name),
                                                  file=name+'_buffer_lyr.shp', layer_name=name+'_buffer_lyr')
         # Second Step: Do the intersect analysis, see which TPUs intersect with one specific TN
         TNs.intersect_analysis(TN_buffer_lyr=name+'_buffer_lyr',
-                                               saving_path=os.path.join(read_data.check_path, name),
-                                               saved_file_name=name+'_intersected_tpus_lyr')
-        TransitNeighborhood.read_local_shapefile(file_path=os.path.join(read_data.check_path, name),
+                               saving_path=os.path.join(read_data.intersected_tpu_path, name),
+                               saved_file_name=name+'_intersected_tpus_lyr')
+        TransitNeighborhood.read_local_shapefile(file_path=os.path.join(read_data.intersected_tpu_path, name),
                                                  file=name+'_intersected_tpus_lyr.shp',
                                                  layer_name=name+'_intersected_tpus_lyr')
         # Third Step: Based on the second step, output these TPUs
-        TNs.get_intersected_tpus(file_path=os.path.join(read_data.check_path, name))
-        # TransitNeighborhood.read_local_shapefile(file_path=os.path.join(read_data.check_path, name),
-        #                                          file=name + '_intersected_tpus.shp',
-        #                                          layer_name=name + '_intersected_tpus')
-        # # Fourth Step: Get the tweets in each selected TPUs
-        # TNs.spatial_join_analysis(file_path=os.path.join(read_data.check_path, name),
-        #                           file=name+'_tweets_spatial_join_lyr')
+        TNs.get_intersected_tpus(file_path=os.path.join(read_data.intersected_tpu_path, name))
+
+     # transform the tpu_4326 shapefile to the corresponding csv file
+    TransitNeighborhood.transform_local_shapefile_to_csv(file_path=workspace_path,
+                                                         shapefile='tpu_4326.shp',
+                                                         csvfile='tpu_data.csv')
+    # tranform the tweets data to the csv file
+    TransitNeighborhood.transform_local_shapefile_to_csv(file_path=workspace_path, shapefile='tweets_in_tpu.shp',
+                                                 csvfile='all_tweets_with_tpu.csv')
+
+    # Find the intersected tn tpus and non-tn tpus
+    TPU_list = []
+    for file in os.listdir(read_data.intersected_tpu_path):
+        new_path = os.path.join(read_data.intersected_tpu_path, file)
+        dataframe = pd.read_csv(os.path.join(new_path, file + '_tn_tweets.csv'), encoding='latin-1')
+        if float('nan') in list(dataframe['sentiment']):
+            print('There is something wrong with the dataframe: ', file)
+        else:
+            pass
+        TPU_set = set(list(dataframe['SmallTPU']))
+        for tpu in TPU_set:
+            TPU_list.append(tpu)
+    TPU_list_str = [str(tpu) for tpu in TPU_list]
+    tn_tpu_set = set(TPU_list_str)
+    whole_tpu_shapefile_dataframe = pd.read_csv(os.path.join(workspace_path, 'tpu_data.csv'))
+    whole_tpu_list = [str(tpu) for tpu in list(whole_tpu_shapefile_dataframe['SmallTPU'])]
+    non_tpu_set = set(whole_tpu_list) - tn_tpu_set
+    tn_tpu_array, non_tn_tpu_array = np.array(list(tn_tpu_set)), np.array(list(non_tpu_set))
+    np.save(os.path.join(read_data.transit_non_transit_comparison, 'tn_tpus.npy'), tn_tpu_array)
+    np.save(os.path.join(read_data.transit_non_transit_comparison, 'non_tn_tpus.npy'), non_tn_tpu_array)

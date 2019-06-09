@@ -1,0 +1,7 @@
+desktop = r'XXXXX'
+tweet_2017_path = r'XXXXX'
+intersected_tpu_path = r'XXXXX'
+cross_sectional_data_path = r'XXXXX'
+longitudinal_data_path = r'XXXXX'
+transit_non_transit_comparison = r'XXXXX'
+tpu_4326_data_path = r'XXXXX'

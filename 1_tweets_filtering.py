@@ -16,13 +16,13 @@ from collections import Counter
 
 target_path = read_data.tweet_2016
 
-mashape_key = "ZHrfXJkrRXmsh8MWYsIIQ0MIVEX1p1YqKSrjsnBRIub9JM9TBU"
+mashape_key = "XXXXX"
 
 twitter_app_auth = {
-    'consumer_key': 'dXkaXPMI57d9qwo9Z5yvqcgRW',
-    'consumer_secret': 'RYQtYtd2OSDyGOQrP75n1qZSCAEcPArhuWgpDJSVq1XaiMB7tb',
-    'access_token': '3586804034-n24NEGjhOQnnXYZy2NRkDHMViFm8Cms5D0ZLzNo',
-    'access_token_secret': 'EPYBRomDyb8x2alwgqZ4rvhSdydDqn0zICf9MGZWW15wp',
+    'consumer_key': 'XXXXX',
+    'consumer_secret': 'XXXXXX',
+    'access_token': 'XXXXX',
+    'access_token_secret': 'XXXXX',
   }
 
 bom = botometer.Botometer(wait_on_ratelimit=True,
@@ -60,21 +60,34 @@ def check_bot(id_str):
     return result['cap']['universal']
 
 
-# Delete users which have same geoinformation and the total number of posted tweets is bigger than 10
-def delete_bots_have_same_geoinformation(df, saving_path, file_name):
+def delete_bots_have_same_geoinformation(df, saving_path, file_name, prop_threshold=0.85):
     users = set(list(df['user_id_str']))
     bot_account = []
     for user in users:
         dataframe = df.loc[df['user_id_str']==user]
+        lat_counter = Counter(dataframe['lat'])
+        lon_counter = Counter(dataframe['lon'])
+        decide = (compute_the_highest_proportion_from_counter(lat_counter, prop_threshold)) or (compute_the_highest_proportion_from_counter(lon_counter, prop_threshold))
         # If only one unqiue geoinformation is found and more than 10 tweets are posted, we regard this account as bot
-        if (len(set(dataframe['lat'])) == 1 and dataframe.shape[0]>10) or (len(set(dataframe['lon'])) == 1
-                                                                           and dataframe.shape[0]>10):
+        if decide:
             bot_account.append(user)
         else:
             pass
     cleaned_df = df.loc[~df['user_id_str'].isin(bot_account)]
     cleaned_df.to_pickle(os.path.join(saving_path, file_name))
     return cleaned_df
+
+
+def compute_the_highest_proportion_from_counter(counter_dict, prop_threshold):
+    total_count = sum(counter_dict.values())
+    result = False
+    for latitude in list(counter_dict.keys()):
+        if counter_dict[latitude]/total_count > prop_threshold:
+            result = True
+            return result
+        else:
+            pass
+    return result
 
 
 # The time of tweet we have collected is recorded as the UTC time
@@ -206,7 +219,7 @@ if __name__ == '__main__':
     #                                   2: the number of tweets they posted is huge
     # Hence we consider delete the account of which have the same geoinformation and the number of tweets is bigger
     # than 10
-    final_tweets = delete_bots_have_same_geoinformation(tweet_2016_zh_en_local_without_bot_hk_time,
+    final_tweets = delete_bots_have_same_geoinformation(tweet_2016_zh_en_local_without_bot_hk_time, prop_threshold=0.85,
                                                         saving_path=target_path, file_name='raw_tweets_final.pkl')
     print(final_tweets.shape)
     

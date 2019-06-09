@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import sys
+import time
 import arcpy
 import arcgisscripting
 import pandas as pd
@@ -51,7 +52,7 @@ class MTR_Station(object):
     def create_buffer(self, buffer_radius, saving_path, saved_file_name):
         # The 'tn_points_lyr' could only be created for once. So add a try except pair
         arcpy.MakeFeatureLayer_management(in_features=MTR_Station.tn_points, out_layer='tn_points_lyr')
-        buffer_argument = str(buffer_radius) + ' Miles'
+        buffer_argument = str(buffer_radius) + ' Meters'
         selected_layer = arcpy.SelectLayerByAttribute_management(in_layer_or_view='tn_points_lyr',
                                                                      selection_type='NEW_SELECTION',
                                                                      where_clause=""" "Name" = '{}' """.format(
@@ -72,16 +73,40 @@ class MTR_Station(object):
         :param smaller_radius:  the radius of the smaller circle
         """
         MTR_Station.read_local_shapefile(file_path=os.path.join(read_data.longitudinal_data_path, self.station_name),
-                                         file=self.station_name+'_{}mile_buffer_lyr.shp'.format(bigger_radius),
-                                         layer_name=self.station_name+'_{}mile_bigger_buffer_lyr'.format(bigger_radius))
+                                         file=self.station_name+'_{}m_buffer_lyr.shp'.format(bigger_radius),
+                                         layer_name=self.station_name+'_{}m_bigger_buffer_lyr'.format(bigger_radius))
         MTR_Station.read_local_shapefile(file_path=os.path.join(read_data.longitudinal_data_path, self.station_name),
-                                         file=self.station_name + '_{}mile_buffer_lyr.shp'.format(smaller_radius),
-                                         layer_name=self.station_name + '_{}mile_smaller_buffer_lyr'.format(smaller_radius))
+                                         file=self.station_name + '_{}m_buffer_lyr.shp'.format(smaller_radius),
+                                         layer_name=self.station_name + '_{}m_smaller_buffer_lyr'.format(smaller_radius))
         saved_file = os.path.join(read_data.longitudinal_data_path, self.station_name,
                                   self.station_name+'{}_erase_{}_layer'.format(bigger_radius, smaller_radius))
-        arcpy.Erase_analysis(in_features=self.station_name+'_{}mile_bigger_buffer_lyr'.format(bigger_radius),
-                             erase_features=self.station_name + '_{}mile_smaller_buffer_lyr'.format(smaller_radius),
+        arcpy.Erase_analysis(in_features=self.station_name+'_{}m_bigger_buffer_lyr'.format(bigger_radius),
+                             erase_features=self.station_name + '_{}m_smaller_buffer_lyr'.format(smaller_radius),
                              out_feature_class=saved_file)
+
+    def get_tweets_for_annulus(self, bigger_radius, smaller_radius):
+        # Load the select_features
+        MTR_Station.read_local_shapefile(file_path=os.path.join(read_data.longitudinal_data_path, self.station_name),
+                                         file=self.station_name+'{}_erase_{}_layer.shp'.format(bigger_radius, smaller_radius),
+                                         layer_name=self.station_name+'_selected_annulus_lyr')
+        # Load the in_layer
+        arcpy.MakeFeatureLayer_management(in_features=MTR_Station.tweets, out_layer='tweets_lyr')
+        # Select tweets using SelectLayerByLocation_management
+        selected_tweets = arcpy.SelectLayerByLocation_management(in_layer='tweets_lyr',
+                                                                 select_features=self.station_name+'_selected_annulus_lyr',
+                                                                 overlap_type='COMPLETELY_WITHIN')
+        selected_tweets_in_tpu = arcpy.SelectLayerByAttribute_management(in_layer_or_view=selected_tweets,
+                                                                         selection_type='SUBSET_SELECTION',
+                                                                         where_clause=""" "SmallTPU" <> '' """)
+        output_directory = os.path.join(read_data.longitudinal_data_path, self.station_name,
+                                        self.station_name+'_tweets_annulus',
+                                        self.station_name+'_{}_erase_{}.shp'.format(bigger_radius, smaller_radius))
+        arcpy.CopyFeatures_management(in_features=selected_tweets_in_tpu, out_feature_class=output_directory)
+        # Transform the local shapefile to csv
+        MTR_Station.transform_local_shapefile_to_csv(file_path=os.path.join(read_data.longitudinal_data_path, self.station_name,
+                                        self.station_name+'_tweets_annulus'),
+                                                     shapefile=self.station_name+'_{}_erase_{}.shp'.format(bigger_radius, smaller_radius),
+                                                     csvfile=self.station_name+'_{}_erase_{}.csv'.format(bigger_radius, smaller_radius))
 
     @staticmethod
     def intersect_analysis(TN_buffer_lyr, saving_path, saved_file_name):
@@ -126,6 +151,7 @@ if __name__ == '__main__':
     # # path = r'C:\Users\Haoliang Chang\Desktop\check\Tseung Kwan O'
     # # field_names = TransitNeighborhood.get_field_names(file_path=path, file='Tseung Kwan O_lyr.shp')
     # # print(field_names)
+    starting_time = time.clock()
 
     # Read the file which saves the location of MTR stations
     station_location = pd.read_csv(os.path.join(read_data.tweet_2017_path, 'station_location.csv'))
@@ -139,30 +165,27 @@ if __name__ == '__main__':
         except WindowsError:
             pass
 
-    # Create 0.25 mile, 0.5 mile, 0.75 mile and 1 mile buffers based on stations
-    print 'Creating the 0.25mile, 0.5mile, 0.75mile and 1mile buffer for each involved station....'
+    # Create 500m, 1000m and 1500m buffers based on stations
+    print 'Creating the 500m, 1000m, and 1500m buffers for each involved station....'
     for name in MTR_Station.before_after_stations:
         station_object = MTR_Station(station_name=name)
         try:
-            station_object.create_buffer(buffer_radius=0.25,
+            station_object.create_buffer(buffer_radius=500,
                                          saving_path=os.path.join(read_data.longitudinal_data_path, name),
-                                         saved_file_name=name+'_025mile_buffer_lyr')
-            station_object.create_buffer(buffer_radius=0.5,
+                                         saved_file_name=name+'_500m_buffer_lyr')
+            station_object.create_buffer(buffer_radius=1000,
                                          saving_path=os.path.join(read_data.longitudinal_data_path, name),
-                                         saved_file_name=name + '_05mile_buffer_lyr')
-            station_object.create_buffer(buffer_radius=0.75,
+                                         saved_file_name=name + '_1000m_buffer_lyr')
+            station_object.create_buffer(buffer_radius=1500,
                                          saving_path=os.path.join(read_data.longitudinal_data_path, name),
-                                         saved_file_name=name + '_075mile_buffer_lyr')
-            station_object.create_buffer(buffer_radius=1,
-                                         saving_path=os.path.join(read_data.longitudinal_data_path, name),
-                                         saved_file_name=name + '_1mile_buffer_lyr')
+                                         saved_file_name=name + '_1500m_buffer_lyr')
         except arcgisscripting.ExecuteError:
             pass
     print 'Done'
 
     # Use Erase_analysis to create the shapefile for the annulus
     print 'Getting the shapefile for annulus....'
-    big_small_circle_pair = [('025', '05'), ('025', '075'), ('025', '1'), ('05', '075'), ('05', '1')]
+    big_small_circle_pair = [('500', '1000'), ('500', '1500'), ('1000', '1500')]
     for name in MTR_Station.before_after_stations:
         station_object = MTR_Station(station_name=name)
         for pair in big_small_circle_pair:
@@ -171,5 +194,24 @@ if __name__ == '__main__':
             except arcgisscripting.ExecuteError:
                 pass
     print 'Done!'
+
+    # Use arcpy.SelectLayerByLocation_management to get tweets in each annulus
+    print 'Getting tweets for the annulus...'
+    for name in MTR_Station.before_after_stations:
+        print 'Copeing with {}'.format(name)
+        try:
+            os.mkdir(os.path.join(read_data.longitudinal_data_path, name, name+'_tweets_annulus'))
+        except WindowsError:
+            pass
+        station_object = MTR_Station(station_name=name)
+        # choose the radius:[('500', '1000'), ('500', '1500'), ('1000', '1500')]
+        station_object.get_tweets_for_annulus(bigger_radius='1000', smaller_radius='500')
+        print name+'is done!'
+    print 'All of them Done!'
+
+    end_time = time.clock()
+    print 'Total time for constructing the datasets for longitudinal study is {}'.format(end_time-starting_time)
+
+
 
 

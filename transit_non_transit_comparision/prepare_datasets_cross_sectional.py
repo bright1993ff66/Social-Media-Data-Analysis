@@ -42,6 +42,7 @@ class TPU(object):
     # the center of each transit neighborhood
     tn_points = 'tn_in_tpu.shp'
     # the tweets shapefile
+    # we should only use the tweets in 2017
     tweets = 'tweets_in_tpu.shp'
     # tn intersected tpus
     tn_tpus = np.load(os.path.join(read_data.transit_non_transit_comparison, 'tn_tpus.npy'))
@@ -58,7 +59,10 @@ class TPU(object):
     def get_tweets_for_one_tpu(tpu_name):
         # Load the tweets feature layer
         arcpy.MakeFeatureLayer_management(in_features=TPU.tweets, out_layer='tweets_lyr')
-        selected_tweets_layer = arcpy.SelectLayerByAttribute_management(in_layer_or_view='tweets_lyr',
+        tweets_2017 = arcpy.SelectLayerByAttribute_management(in_layer_or_view='tweets_lyr',
+                                                              selection_type='NEW_SELECTION',
+                                                              where_clause=""" "year" = {} """.format(2017))
+        selected_tweets_layer = arcpy.SelectLayerByAttribute_management(in_layer_or_view=tweets_2017,
                                                                      selection_type='NEW_SELECTION',
                                                                      where_clause=""" "SmallTPU" = '{}' """.format(
                                                                          tpu_name))

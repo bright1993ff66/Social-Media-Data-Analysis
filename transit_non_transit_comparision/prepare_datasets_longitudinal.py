@@ -10,7 +10,7 @@ import csv
 
 # Give the workspace first
 workspace_path = \
-    r'XXXXX'
+    r'F:\CityU\Datasets\Hong Kong Tweets 2017\transit_non_transit_comparision\before_and_after\compare_tn_and_nontn'
 arcpy.env.workspace = workspace_path
 arcpy.env.overwriteOutput = True
 # List all the shapefiles in the work space
@@ -89,7 +89,7 @@ class MTR_Station(object):
         MTR_Station.read_local_shapefile(file_path=os.path.join(read_data.longitudinal_data_path, self.station_name),
                                          file=self.station_name+'{}_erase_{}_layer.shp'.format(bigger_radius, smaller_radius),
                                          layer_name=self.station_name+'_selected_annulus_lyr')
-        # Load the in_layer
+        # Load the tweets layer
         arcpy.MakeFeatureLayer_management(in_features=MTR_Station.tweets, out_layer='tweets_lyr')
         # Select tweets using SelectLayerByLocation_management
         selected_tweets = arcpy.SelectLayerByLocation_management(in_layer='tweets_lyr',
@@ -107,6 +107,30 @@ class MTR_Station(object):
                                         self.station_name+'_tweets_annulus'),
                                                      shapefile=self.station_name+'_{}_erase_{}.shp'.format(bigger_radius, smaller_radius),
                                                      csvfile=self.station_name+'_{}_erase_{}.csv'.format(bigger_radius, smaller_radius))
+
+    def get_tweets_for_buffer(self, buffer_radius):
+        # Load the select_features
+        MTR_Station.read_local_shapefile(file_path=os.path.join(read_data.longitudinal_data_path, self.station_name),
+                                         file=self.station_name + '_{}m_buffer_lyr.shp'.format(buffer_radius),
+                                         layer_name=self.station_name + '_{}m_buffer_lyr'.format(buffer_radius))
+        # Load the tweets layer
+        arcpy.MakeFeatureLayer_management(in_features=MTR_Station.tweets, out_layer='tweets_lyr')
+        # Select tweets using SelectLayerByLocation_management
+        selected_tweets = arcpy.SelectLayerByLocation_management(in_layer='tweets_lyr',
+                                                                 select_features=self.station_name + '_{}m_buffer_lyr'.format(buffer_radius),
+                                                                 overlap_type='COMPLETELY_WITHIN')
+        selected_tweets_in_buffer = arcpy.SelectLayerByAttribute_management(in_layer_or_view=selected_tweets,
+                                                                         selection_type='SUBSET_SELECTION',
+                                                                         where_clause=""" "SmallTPU" <> '' """)
+        output_directory = os.path.join(read_data.longitudinal_data_path, self.station_name,
+                                        self.station_name + '_{}m_tweets.shp'.format(buffer_radius))
+        arcpy.CopyFeatures_management(in_features=selected_tweets_in_buffer, out_feature_class=output_directory)
+        # Transform the local shapefile to csv
+        MTR_Station.transform_local_shapefile_to_csv(
+            file_path=os.path.join(read_data.longitudinal_data_path, self.station_name),
+            shapefile=self.station_name + '_{}m_tweets.shp'.format(buffer_radius),
+            csvfile=self.station_name + '_{}m_tn_tweets.csv'.format(buffer_radius))
+
 
     @staticmethod
     def intersect_analysis(TN_buffer_lyr, saving_path, saved_file_name):
@@ -196,6 +220,21 @@ if __name__ == '__main__':
     print 'Done!'
 
     # Use arcpy.SelectLayerByLocation_management to get tweets in each annulus
+    print '-------------------------------------------------------'
+    print 'Getting tweets for the buffers...'
+    for name in MTR_Station.before_after_stations:
+        print 'Copeing with {}'.format(name)
+        station_object = MTR_Station(station_name=name)
+        # choose the radius:[('500', '1000'), ('500', '1500'), ('1000', '1500')]
+        radius_list = [500, 1000, 1500]
+        for radius in radius_list:
+            station_object.get_tweets_for_buffer(buffer_radius=radius)
+        print name + ' is done!'
+    print 'All of them Done!'
+    print '-------------------------------------------------------'
+
+    # Use arcpy.SelectLayerByLocation_management to get tweets in each annulus
+    print '-------------------------------------------------------'
     print 'Getting tweets for the annulus...'
     for name in MTR_Station.before_after_stations:
         print 'Copeing with {}'.format(name)
@@ -204,13 +243,15 @@ if __name__ == '__main__':
         except WindowsError:
             pass
         station_object = MTR_Station(station_name=name)
-        # choose the radius:[('500', '1000'), ('500', '1500'), ('1000', '1500')]
-        station_object.get_tweets_for_annulus(bigger_radius='1000', smaller_radius='500')
+        radius_pair_list = [(500, 1000), (500, 1500), (1000, 1500)]
+        for radius_pair in radius_pair_list:
+            station_object.get_tweets_for_annulus(bigger_radius=radius_pair[1], smaller_radius=radius_pair[0])
         print name+'is done!'
     print 'All of them Done!'
 
     end_time = time.clock()
     print 'Total time for constructing the datasets for longitudinal study is {}'.format(end_time-starting_time)
+    print '-------------------------------------------------------'
 
 
 

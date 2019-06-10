@@ -30,6 +30,9 @@ time_zone_hk = pytz.timezone('Asia/Shanghai')
 
 class TransitNeighborhood_before_after(object):
 
+    before_after_stations = ['Whampoa', 'Ho Man Tin', 'South Horizons', 'Wong Chuk Hang', 'Ocean Park',
+                             'Lei Tung']
+
     def __init__(self, tn_dataframe, non_tn_dataframe, oct_open:bool, before_and_after:bool, compute_positive:bool,
                  compute_negative:bool):
         """
@@ -91,13 +94,13 @@ class TransitNeighborhood_before_after(object):
                 if draw_sentiment:  # the ylim of sentiment and activity plots are different
                     ax.text(2.8, 0, 'Opening Date: \nOct 23, 2016', horizontalalignment='center', color='black')
                 else:
-                    ax.text(2.8, 2.8, 'Opening Date: \nOct 23, 2016', horizontalalignment='center', color='black')
+                    ax.text(2.8, 1.5, 'Opening Date: \nOct 23, 2016', horizontalalignment='center', color='black')
             else:
                 plt.axvline(5.95, color='black')
                 if draw_sentiment:  # the ylim of sentiment and activity plots are different
                     ax.text(5, 0, 'Opening Date: \nDec 28, 2016', horizontalalignment='center', color='black')
                 else:
-                    ax.text(5, 2.8, 'Opening Date: \nDec 28, 2016', horizontalalignment='center', color='black')
+                    ax.text(5, 1.5, 'Opening Date: \nDec 28, 2016', horizontalalignment='center', color='black')
         else:
             pass
 
@@ -133,17 +136,17 @@ class TransitNeighborhood_before_after(object):
         return final_time_object
 
 
-def construct_non_tn_tweet_dataset(folder_path=read_data.longitudinal_cross_sectional_datapath):
+def get_name_tn_tpu_nontn_tpu(buffer_radius, folder_path=read_data.longitudinal_data_path):
     """
     This function finds all the tweets in the TPUs which did not intersect with any one of TN buffers
     :param folder_path: path which contains folders for each TN about the location shapefile, posted tweets, etc
-    :return: a dataframe which contains all the tweets posted in the non-TN TPUs
     """
     # activity_dict = {}
     tpu_list = []
     for file in os.listdir(folder_path):
         path = os.path.join(folder_path, file)
-        dataframe = pd.read_csv(os.path.join(path, file + '_tn_tweets.csv'), encoding='latin-1')
+        dataframe = pd.read_csv(os.path.join(path, file + '_{}m_tn_tweets.csv'.format(buffer_radius)),
+                                encoding='latin-1')
         # record all the SmallTPUs recorded in the tweet file
         TPU_set = set(list(dataframe['SmallTPU']))
         for tpu in TPU_set:
@@ -152,9 +155,6 @@ def construct_non_tn_tweet_dataset(folder_path=read_data.longitudinal_cross_sect
     # load the dataset transformed from the tpu_4326.shp, which could show all the TPUs in Hong Kong
     tpu_data = pd.read_csv(os.path.join(read_data.transit_non_transit_comparison_before_after,
                                         'compare_tn_and_nontn', 'tpu_data.csv'), encoding='latin-1')
-    whole_tweets_dataset = pd.read_csv(os.path.join(read_data.transit_non_transit_comparison_before_after,
-                                        'compare_tn_and_nontn', 'all_tweets_with_tpu.csv'),
-                                       encoding='latin-1')
     whole_tpu_set = set(list(tpu_data['SmallTPU']))
     # some items in tpu_list are float. Transform them to string
     str_tpu_list = [str(tpu) for tpu in tpu_list]
@@ -165,10 +165,12 @@ def construct_non_tn_tweet_dataset(folder_path=read_data.longitudinal_cross_sect
     str_tpu_array, non_tn_tpu_array = np.array(list(set(str_tpu_list))), np.array(list(non_tn_tpu_set))
     np.save(os.path.join(read_data.transit_non_transit_comparison, 'tn_tpus.npy'), str_tpu_array)
     np.save(os.path.join(read_data.transit_non_transit_comparison, 'non_tn_tpus.npy'), non_tn_tpu_array)
-    # Save all the tweets posted in the non_TN_TPUs
-    non_tn_tpu_tweets_dataframe = whole_tweets_dataset.loc[whole_tweets_dataset['SmallTPU'].isin(non_tn_tpu_set)]
-    non_tn_tpu_tweets_dataframe.to_csv(os.path.join(read_data.transit_non_transit_comparison, 'non_tn_tweets.csv'))
-    return non_tn_tpu_tweets_dataframe
+
+
+def get_nontn_tweets(station_name, folder_path):
+    data_path = os.path.join(os.path.join(folder_path, station_name, station_name+'_tweets_annulus'))
+    non_tn_tweets = pd.read_csv(os.path.join(data_path, station_name+'_1000_erase_500.csv'), encoding='latin-1')
+    return non_tn_tweets
 
 
 # compute the percentage of positive Tweets: 2 is positive
@@ -256,7 +258,7 @@ def sentiment_by_month(df, compute_positive_percent=False, compute_negative_perc
     return tweet_month_sentiment
 
 
-def get_tweets_based_on_date(file_path:str, station_name:str, start_date, end_date):
+def get_tweets_based_on_date(file_path:str, station_name:str, start_date, end_date, buffer_radius=500):
     """
     :param file_path: path which saves the folders of each TN
     :param station_name: the name of MTR station in each TN
@@ -264,7 +266,7 @@ def get_tweets_based_on_date(file_path:str, station_name:str, start_date, end_da
     :param end_date: the end date of the time range we consider
     :return: a filtered dataframe which contains tweets in a specific time range
     """
-    combined_dataframe = pd.read_csv(os.path.join(file_path, station_name, station_name+'_tn_tweets.csv'),
+    combined_dataframe = pd.read_csv(os.path.join(file_path, station_name, station_name+'_{}m_tn_tweets.csv'.format(buffer_radius)),
                                      encoding='latin-1')
     combined_dataframe['hk_time'] = combined_dataframe.apply(
         lambda row: TransitNeighborhood_before_after.transform_string_time_to_datetime(row['hk_time']), axis=1)
@@ -365,8 +367,8 @@ def draw_word_count_histogram(df, saved_file_name):
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
     sns.distplot(text_count_list, kde=False, hist=True)
     ax.axvline(7, color='black')
-    plt.xlim((0, 200))
-    plt.ylim((0, 1000))
+    plt.xlim((0, 100))
+    plt.ylim((0, 200))
     # Check if it is appropriate to set the number of keywords as 7 in this dataframe
     plt.xticks(list(plt.xticks()[0]) + [7])
     plt.savefig(os.path.join(read_data.transit_non_transit_comparison_before_after, saved_file_name))
@@ -415,18 +417,18 @@ if __name__ == '__main__':
     start_date = datetime(2016, 5, 7, tzinfo=time_zone_hk)
     end_date = datetime(2017, 12, 31, tzinfo=time_zone_hk)
 
-    longitudinal_cross_sectional_data_path = read_data.longitudinal_cross_sectional_datapath
-    whammpoa_dataframe = get_tweets_based_on_date(longitudinal_cross_sectional_data_path, 'Whampoa', start_date,
+    longitudinal_data_path = read_data.longitudinal_data_path
+    whammpoa_dataframe = get_tweets_based_on_date(longitudinal_data_path, 'Whampoa', start_date,
                                                   end_date)
-    ho_man_tin_dataframe = get_tweets_based_on_date(longitudinal_cross_sectional_data_path,
+    ho_man_tin_dataframe = get_tweets_based_on_date(longitudinal_data_path,
                                                     'Ho Man Tin', start_date, end_date)
-    south_horizons_dataframe = get_tweets_based_on_date(longitudinal_cross_sectional_data_path,
+    south_horizons_dataframe = get_tweets_based_on_date(longitudinal_data_path,
                                                         'South Horizons', start_date, end_date)
-    lei_tung_dataframe = get_tweets_based_on_date(longitudinal_cross_sectional_data_path,
+    lei_tung_dataframe = get_tweets_based_on_date(longitudinal_data_path,
                                                   'Lei Tung', start_date, end_date)
-    wong_chuk_hang_dataframe = get_tweets_based_on_date(longitudinal_cross_sectional_data_path,
+    wong_chuk_hang_dataframe = get_tweets_based_on_date(longitudinal_data_path,
                                                         'Wong Chuk Hang', start_date, end_date)
-    ocean_park_dataframe = get_tweets_based_on_date(longitudinal_cross_sectional_data_path,
+    ocean_park_dataframe = get_tweets_based_on_date(longitudinal_data_path,
                                                     'Ocean Park', start_date, end_date)
 
     whammpoa_dataframe.to_pickle(os.path.join(read_data.transit_non_transit_comparison_before_after,
@@ -452,35 +454,38 @@ if __name__ == '__main__':
 
     # ================================='Activity and Sentiment Comparison'==========================================
 
-    non_tn_tweets = construct_non_tn_tweet_dataset()
+    # get the name of tn tpus and nontn tpus
+    get_name_tn_tpu_nontn_tpu(buffer_radius=500)
 
-    target_path = \
-        r'F:\CityU\Datasets\Hong Kong Tweets 2017\transit_non_transit_comparision\before_and_after\compare_tn_and_nontn'
-    non_tn_tweets.rename(columns = {'cleaned_te': 'cleaned_text', 'user_id_st':'user_id_str'},
-                              inplace=True)
-    non_tn_tweets['hk_time'] = non_tn_tweets.apply(
-        lambda row: TransitNeighborhood_before_after.transform_string_time_to_datetime(row['hk_time']), axis=1)
+    non_tn_dataframe_dict = {}
+    for station_name in TransitNeighborhood_before_after.before_after_stations:
+        non_tn_dataframe_dict[station_name] = get_nontn_tweets(station_name=station_name,
+                                                               folder_path=read_data.longitudinal_data_path)
 
-    whampoa_tn = TransitNeighborhood_before_after(tn_dataframe=whammpoa_dataframe, non_tn_dataframe=non_tn_tweets,
+    whampoa_tn = TransitNeighborhood_before_after(tn_dataframe=whammpoa_dataframe,
+                                                  non_tn_dataframe=non_tn_dataframe_dict['Whampoa'],
                                                   before_and_after=True, oct_open=True, compute_positive=False,
                                                   compute_negative=False)
-    ho_man_tin_tn = TransitNeighborhood_before_after(tn_dataframe=ho_man_tin_dataframe, non_tn_dataframe=non_tn_tweets,
+    ho_man_tin_tn = TransitNeighborhood_before_after(tn_dataframe=ho_man_tin_dataframe,
+                                                     non_tn_dataframe=non_tn_dataframe_dict['Ho Man Tin'],
                                                      before_and_after=True, oct_open=True, compute_positive=False,
                                                      compute_negative=False)
     south_horizons_tn = TransitNeighborhood_before_after(tn_dataframe=south_horizons_dataframe,
-                                                         non_tn_dataframe=non_tn_tweets,
+                                                         non_tn_dataframe=non_tn_dataframe_dict['South Horizons'],
                                                          before_and_after=True, oct_open=False,
                                                          compute_positive=False,
                                                          compute_negative=False)
     wong_chuk_hang_tn = TransitNeighborhood_before_after(tn_dataframe=wong_chuk_hang_dataframe,
-                                                         non_tn_dataframe=non_tn_tweets,
+                                                         non_tn_dataframe=non_tn_dataframe_dict['Wong Chuk Hang'],
                                                          before_and_after=True, oct_open=False,
                                                          compute_positive=False,
                                                          compute_negative=False)
-    ocean_park_tn = TransitNeighborhood_before_after(tn_dataframe=ocean_park_dataframe, non_tn_dataframe=non_tn_tweets,
+    ocean_park_tn = TransitNeighborhood_before_after(tn_dataframe=ocean_park_dataframe,
+                                                     non_tn_dataframe=non_tn_dataframe_dict['Ocean Park'],
                                                      before_and_after=True, oct_open=False, compute_positive=False,
                                                      compute_negative=False)
-    lei_tung_tn = TransitNeighborhood_before_after(tn_dataframe=lei_tung_dataframe, non_tn_dataframe=non_tn_tweets,
+    lei_tung_tn = TransitNeighborhood_before_after(tn_dataframe=lei_tung_dataframe,
+                                                   non_tn_dataframe=non_tn_dataframe_dict['Lei Tung'],
                                                    before_and_after=True, oct_open=False, compute_positive=False,
                                                    compute_negative=False)
 
@@ -536,9 +541,9 @@ if __name__ == '__main__':
                                     ylabel='Number of Tweets(log10)',
                                     plot_title_name='Activity Before and After Study: Lei Tung',
                                     saving_file_name='Lei_Tung_act_compare.png', draw_sentiment=False)
-
+    #
     # ===================================================================================================
-    # #
+    # # #
     # ======================================Wordcloud comparison=========================================
     before_text_whampoa, after_text_whampoa = build_text_for_wordcloud_topic_model(whammpoa_dataframe, oct_open=True)
     before_text_ho_man_tin, after_text_ho_man_tin = build_text_for_wordcloud_topic_model(ho_man_tin_dataframe,

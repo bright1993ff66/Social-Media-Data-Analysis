@@ -19,10 +19,10 @@ target_path = read_data.tweet_2016
 mashape_key = "XXXXX"
 
 twitter_app_auth = {
-    'consumer_key': 'XXXXX',
-    'consumer_secret': 'XXXXXX',
-    'access_token': 'XXXXX',
-    'access_token_secret': 'XXXXX',
+    'consumer_key': "XXXXX",
+    'consumer_secret': "XXXXX",
+    'access_token': "XXXXX",
+    'access_token_secret': "XXXXX",
   }
 
 bom = botometer.Botometer(wait_on_ratelimit=True,
@@ -60,7 +60,7 @@ def check_bot(id_str):
     return result['cap']['universal']
 
 
-def delete_bots_have_same_geoinformation(df, saving_path, file_name, prop_threshold=0.85):
+def delete_bots_have_same_geoinformation(df, saving_path, file_name, prop_threshold=0.70):
     users = set(list(df['user_id_str']))
     bot_account = []
     for user in users:

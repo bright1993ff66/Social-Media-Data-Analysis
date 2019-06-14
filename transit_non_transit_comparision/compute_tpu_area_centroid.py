@@ -65,7 +65,7 @@ if __name__ == '__main__':
     # Compute the area and the centroid of each tpu
     if 'Shape_area' not in tpu_4326_field_names:
         try:
-            area_expression = "!SHAPE.AREA@SQUAREKILOMETERS!"
+            area_expression = "!SHAPE.AREA@SQUAREKILOMETERS!"  # use square kilometers to measure area
             centroid_expression_lon = "!SHAPE.CENTROID.X!"
             centroid_expression_lat = "!SHAPE.CENTROID.Y!"
             # Load the local shapefile which contains the polygon shapes

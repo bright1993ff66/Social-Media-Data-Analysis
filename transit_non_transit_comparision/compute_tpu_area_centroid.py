@@ -8,7 +8,7 @@ import read_data
 
 # Give the workspace first
 workspace_path = \
-    r'F:\CityU\Datasets\Hong Kong Tweets 2017\transit_non_transit_comparision\before_and_after\compare_tn_and_nontn'
+    r'XXXXX'
 arcpy.env.workspace = workspace_path
 arcpy.env.overwriteOutput = True
 # List all the shapefiles in the work space

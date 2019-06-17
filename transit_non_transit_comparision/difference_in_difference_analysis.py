@@ -90,10 +90,28 @@ def add_post_variable(string, opening_start_date, opening_end_date):
 def build_regress_dataframe_one_station(station_name, buffer_radius, annulus_radius, treatment_dict, control_dict,
                                         station_open_start_date, station_open_end_date, open_year_plus_month,
                                         compute_coef_diff=False):
+    """
+    :param station_name: the name of the station
+    :param buffer_radius: the radius of the geographic buffer
+    :param annulus_radius: the radius used to draw the annulus
+    :param treatment_dict: a Python dictionary which saves the dataframe for each treatment group setting
+    :param control_dict: a Python dictionary which saves the dataframe for each control group setting
+    :param station_open_start_date: the begining time of the station opening date
+    For instance, for the opening time of Whampoa: Oct 23, it should be 00:00:00
+    :param station_open_end_date: the ending time of the station opening date
+    For instance, for the opening time of Whampoa: Oct 23, it should be 23:59:59
+    :param open_year_plus_month: year plus month, such as 2016_9 means Sep, 2016
+    :param compute_coef_diff: whether or not compute the difference between the coefficients of treatment and control
+    If True: compute the difference, return the coeff difference
+    If False: return a dataframe which contains the Time, Treatment or not indicator, POST indicator and sentiment
+    """
     # check the date
     assert open_year_plus_month in ['2016_10', '2016_12']
-    assert buffer_radius in [500, 1000]
+    # check the buffer radius, we only consider radius = 500 meter
+    assert buffer_radius in [500]
+    # check the annulus radius, we only consider radius in [1000, 1500]
     assert annulus_radius in [1000, 1500]
+
     result_dataframe = pd.DataFrame(columns=['Time', 'T_i_t', 'Post', 'Sentiment'])
     buffer_dataframe = treatment_dict[station_name+'{}_buffer'.format(buffer_radius)]
     annulus_dataframe = control_dict[station_name+'{}_erase_{}_annulus'.format(annulus_radius, buffer_radius)]
@@ -115,7 +133,8 @@ def build_regress_dataframe_one_station(station_name, buffer_radius, annulus_rad
     combined_dataframe = combined_dataframe.drop(['FID', 'FID_1', 'Field1', 'FID_2', 'FID_1_1',
                                                   'merge_Nums'], axis=1)
     # combined_dataframe['tweet_number'] = list(combined_dataframe.index)
-    combined_dataframe_without_not_considered = combined_dataframe.loc[combined_dataframe['Post'] != 'not considered']
+    combined_dataframe_without_not_considered = \
+        combined_dataframe.loc[combined_dataframe['Post'] != 'not considered']
     combined_dataframe_without_not_considered.rename(columns={'user_id_st': 'user_id_str'}, inplace=True)
     combined_dataframe_without_not_considered['month_plus_year'] = combined_dataframe_without_not_considered.apply(
         lambda row: str(int(row['year'])) + '_' + str(int(row['month'])), axis=1)
@@ -127,12 +146,13 @@ def build_regress_dataframe_one_station(station_name, buffer_radius, annulus_rad
         sentiment_dict[time + '_' + t_i_t + '_' + post] = before_and_after.pos_percent_minus_neg_percent(dataframe)
     result_dataframe_copy = result_dataframe.copy()
     # whether or not to compute the coeff_diff
-    if not compute_coef_diff:
+    if not compute_coef_diff: # output a dataframe
         time_list = []
         t_i_t_list = []
         post_list = []
         sentiment_list = []
         for key in list(sentiment_dict.keys()):
+            # don't consider the tweets posted in 2016_10(for Whampoa and Ho Man Tin) or 2016_12(for other stations)
             if key[:7] != open_year_plus_month:
                 time_list.append(key)
                 t_i_t_list.append(int(key[-3]))
@@ -266,7 +286,7 @@ if __name__ == '__main__':
                                                                    station_open_start_date=october_23_start,
                                                                    station_open_end_date=october_23_end,
                                                                    open_year_plus_month='2016_10',
-                                                                   compute_coef_diff=False, buffer_radius=1000,
+                                                                   compute_coef_diff=False, buffer_radius=500,
                                                                    annulus_radius=1500)
     reg_whampoa = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', whampoa_result_dataframe).fit()
     print(reg_whampoa.summary())
@@ -306,7 +326,7 @@ if __name__ == '__main__':
                                                                           station_open_end_date=december_28_end,
                                                                           open_year_plus_month='2016_12',
                                                                           compute_coef_diff=False,
-                                                                          buffer_radius=1000, annulus_radius=1500)
+                                                                          buffer_radius=500, annulus_radius=1500)
     reg_wong_chuk_hang = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', wong_chuk_hang_result_dataframe).fit()
     print(reg_wong_chuk_hang.summary())
     print('-------------------------------------------------------\n')
@@ -318,8 +338,21 @@ if __name__ == '__main__':
                                                                           station_open_start_date=december_28_start,
                                                                           station_open_end_date=december_28_end,
                                                                       open_year_plus_month='2016_12',
-                                                                      compute_coef_diff=False, buffer_radius=1000,
+                                                                      compute_coef_diff=False, buffer_radius=500,
                                                                       annulus_radius=1500)
     reg_ocean_park = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', ocean_park_result_dataframe).fit()
     print(reg_ocean_park.summary())
+    print('-------------------------------------------------------\n')
+
+    print('---------------------Lei Tung---------------------------')
+    lei_tung_result_dataframe = build_regress_dataframe_one_station(station_name='Lei Tung',
+                                                                      treatment_dict=before_after_dataframe_dict,
+                                                                      control_dict=control_group_dataframe_dict,
+                                                                      station_open_start_date=december_28_start,
+                                                                      station_open_end_date=december_28_end,
+                                                                      open_year_plus_month='2016_12',
+                                                                      compute_coef_diff=False, buffer_radius=500,
+                                                                      annulus_radius=1000)
+    reg_lei_tung = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', lei_tung_result_dataframe).fit()
+    print(reg_lei_tung.summary())
     print('-------------------------------------------------------\n')

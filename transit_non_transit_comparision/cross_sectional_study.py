@@ -10,6 +10,10 @@ from matplotlib import pyplot as plt
 import before_and_after
 import read_data
 
+# statistics
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+
 import pysnooper
 
 # Load the month_list and the time_list for plot
@@ -393,6 +397,18 @@ def build_social_demographic_dataframe(tpu_name_list, economic_dataframe, marry_
     return tpu_2016_social_demographic_dataframe
 
 
+def redefine_tpu_name(string):
+    if '-' in string:
+        result_string = re.sub('-', ' - ', string)
+    elif '&' in string:
+        result_string = re.sub('&', 'and', string)
+    elif ('-' in string) and ('&' in string):
+        result_string = re.sub('-', ' - ', re.sub('&', 'and', string))
+    else:
+        result_string = string
+    return result_string
+
+	
 if __name__ == '__main__':
     october_23_start = datetime(2016, 10, 23, 0, 0, 0, tzinfo=time_zone_hk)
     october_23_end = datetime(2016, 10, 23, 23, 59, 59, tzinfo=time_zone_hk)
@@ -445,12 +461,12 @@ if __name__ == '__main__':
     whole_tpu_sent_act_dataframe.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act.csv'))
     y_label = 'Percentage of Positive Tweets Minus Percentage of Negative Tweets'
     # # Draw the tpu sentiment against activity
-    figure_title_name = 'Sentiment Against Activity Across TPUs'
-    TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_tpu_sent_act_dataframe,
-                                                                    y_label_name=y_label,
-                                                                    figure_title=figure_title_name,
-                                                                    saved_file_name='tpu_sent_vs_act.png',
-                                                                    without_outlier=False)
+    # figure_title_name = 'Sentiment Against Activity Across TPUs'
+    # TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_tpu_sent_act_dataframe,
+    #                                                                 y_label_name=y_label,
+    #                                                                 figure_title=figure_title_name,
+    #                                                                 saved_file_name='tpu_sent_vs_act.png',
+    #                                                                 without_outlier=False)
 
     print('--------------------------Activity---------------------------------')
     for index, dataframe in whole_tpu_sent_act_dataframe.groupby('tn_or_not'):
@@ -464,7 +480,43 @@ if __name__ == '__main__':
         print(dataframe['Sentiment'].describe())
     print('-------------------------------------------------------------------')
 
-
+    # Build the regression model between the sentiment and social demographic variables
+    # we did not consider the following tpu conflicts(tpu 2011 and tpu 2016 are different)
+    not_considered_tpu = ['121 and 122', '123 and 124', '251, 252 and 256', '280 and 286',
+                          '294 and 295', '624 and 629', '961 and 962']
+    whole_tpu_sent_act_dataframe['tpu_name'] = \
+        whole_tpu_sent_act_dataframe.apply(lambda row: redefine_tpu_name(row['tpu_name']), axis=1)
+    tpu_sent_act_without_conflicts = \
+        whole_tpu_sent_act_dataframe.loc[~whole_tpu_sent_act_dataframe['tpu_name'].isin(not_considered_tpu)]
+    print("\nThe shape of the sentiment dataframe without conflicts is...")
+    print(tpu_sent_act_without_conflicts.shape)
+    print('-----------------------------------\n')
+    # fix the typo
+    conflict_dict = {'181 and 182': '181 - 182', '711 - 712, 721 & 728': '711 - 712, 721 and 728',
+                     '175 and 176': '175 - 176',
+                     '164 and 165': '164 - 165', '213 & 215 - 216': '213 and 215 - 216',
+                     '421 and 422': '421 - 422', '756 & 761 - 762': '756 and 761 - 762',
+                     '146 and 147': '146 - 147', '950 and 951': '950 - 951'}
+    tpu_sent_act_final = tpu_sent_act_without_conflicts.replace({'tpu_name': conflict_dict})
+    combined_dataframe = tpu_sent_act_final.merge(tpu_2016_social_demographic_dataframe, on='tpu_name')
+    combined_dataframe.to_csv(os.path.join(demographic_path, 'combined_dataframe.csv'))
+    print('The shape of the combined dataframe is : {}'.format(combined_dataframe.shape))
+    tn_or_not_dict = {'non_tn_tpu': 0, 'tn_tpu': 1}
+    combined_dataframe = combined_dataframe.replace({'tn_or_not': tn_or_not_dict})
+    tn_or_not_list = list(combined_dataframe['tn_or_not'])
+    tpu_name_list_from_combined_data = list(combined_dataframe['tpu_name'])
+    combined_dataframe = combined_dataframe[['Sentiment', 'activity', 'median_income', 'employment',
+                                             'marry', 'education']]
+    combined_dataframe['employment'] = combined_dataframe.apply(lambda row: row['employment'] / 100, axis=1)
+    normalized_combined_dataframe = (combined_dataframe - combined_dataframe.mean()) / combined_dataframe.std()
+    normalized_combined_dataframe['tn_or_not'] = tn_or_not_list
+    normalized_combined_dataframe['tpu_name'] = tpu_name_list_from_combined_data
+    reg_sent = smf.ols('Sentiment ~ median_income+employment+marry+education+tn_or_not',
+                       normalized_combined_dataframe).fit()
+    print(reg_sent.summary())
+    reg_act = smf.ols('activity ~ median_income+employment+marry+education+tn_or_not',
+                      normalized_combined_dataframe).fit()
+    print(reg_act.summary())
 
 
 

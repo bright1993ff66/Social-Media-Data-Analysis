@@ -529,6 +529,7 @@ if __name__ == '__main__':
     tpu_sent_act_final = tpu_sent_act_without_conflicts.replace({'tpu_name': conflict_dict})
     combined_dataframe = tpu_sent_act_final.merge(tpu_2016_social_demographic_dataframe, on='tpu_name')
     print('The shape of the combined dataframe is : {}'.format(combined_dataframe.shape))
+    print('----------------------------------------------------------')
     tn_or_not_dict = {'non_tn_tpu': 0, 'tn_tpu': 1}
     combined_dataframe = combined_dataframe.replace({'tn_or_not': tn_or_not_dict})
     tn_or_not_list = list(combined_dataframe['tn_or_not'])
@@ -539,6 +540,11 @@ if __name__ == '__main__':
     draw_boxplot(combined_dataframe, column_name='activity', title_name='Activity Level Comparison')
     combined_dataframe = combined_dataframe[['Sentiment', 'activity', 'median_income', 'employment',
                                              'marry', 'education']]
+    print('Social Demographic Data Description...')
+    for column_name in ['median_income', 'employment', 'marry', 'education']:
+        print('Coping with {}'.format(column_name))
+        print(combined_dataframe[column_name].describe())
+        print('-------------Done!----------------')
     normalized_combined_dataframe = (combined_dataframe - combined_dataframe.mean()) / combined_dataframe.std()
     normalized_combined_dataframe['tn_or_not'] = tn_or_not_list
     normalized_combined_dataframe['tpu_name'] = tpu_name_list_from_combined_data

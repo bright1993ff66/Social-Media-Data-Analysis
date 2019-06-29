@@ -56,10 +56,13 @@ Automatically generate response based on some comments posted in social media pl
 The following Python tools could be very useful for analyzing social media data, which covers text analysis, geographical data analysis(since social media data contains location information), temporal analysis. 
 
 - [SpaCy](<https://spacy.io/>): Build sophisticated NLP models
+- [NLTK](https://www.nltk.org/): Classic NLP tool
+- [Gensim](https://radimrehurek.com/gensim/): Very useful tools to build topic models
 - [arcpy](<http://desktop.arcgis.com/en/arcmap/10.3/analyze/arcpy/what-is-arcpy-.htm>): Spatial analysis
 - [datetime](<https://docs.python.org/3/library/datetime.html>): Cope with the time objects
 - [tweepy](<http://www.tweepy.org/>): Fetch tweets in real-time manner
 - [Google Places](<https://developers.google.com/places/web-service/intro>): Find latitude and longitude for any places
+- [Google Translate](https://cloud.google.com/translate/): Translate multiple sources languages to the target language you want
 
 Of course, packages like [Pandas](<https://pandas.pydata.org/>) and [Tensorflow](<https://www.tensorflow.org/>) are also highly recommended.
 
@@ -67,6 +70,8 @@ Moreover, the following lists some datasets for social media data analysis:
 
 - [Sentiment 140](<http://help.sentiment140.com/for-students>): 1.6 million tweets
 - [Tweets with traffic-related labels](<https://data.mendeley.com/datasets/c3xvj5snvv/1>): useful for traffic-related tweet analysis
+- [TwitterCrawl](https://wiki.illinois.edu/wiki/display/forward/Dataset-UDI-TwitterCrawl-Aug2012): This dataset is a subset of Twitter. It contains 284 million following relationships, 3 million user profiles and 50 million tweets. The dataset was collected at May 2011.
+- [Chinese NLP Corpus](https://github.com/SophonPlus/ChineseNlpCorpus): A large collection of Chinese 'Tweet' dataset, mostly from Chinese social media Platform like [sina weibo](https://www.weibo.com/login.php)
 
 ## 3. Future Research Directions
 

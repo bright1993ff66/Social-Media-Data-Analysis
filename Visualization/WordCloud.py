@@ -5,8 +5,10 @@ from collections import Counter
 import pandas as pd
 import numpy as np
 import os, re
-import read_data
 import string
+
+import read_data
+import Topic_Modelling_for_tweets
 
 import gensim
 from gensim import corpora, models
@@ -21,11 +23,7 @@ from PIL import Image
 plot_path = read_data.plot_path
 
 # gensim.corpora.MmCorpus.serialize('MmCorpusTest.mm', corpus)
-stopwords = list(set(STOPWORDS))
-strange_terms = ['allcaps', 'repeated', 'elongated', 'repeat', 'user', 'percent_c']
-
-unuseful_terms = stopwords + strange_terms
-unuseful_terms_set = set(unuseful_terms)
+unuseful_terms_set = Topic_Modelling_for_tweets.unuseful_terms_set
 
 nlp = spacy.load('en_core_web_sm', disable=['parser', 'ner'])
 
@@ -38,7 +36,7 @@ ascii_art = r"(?:[{punctuation}][{punctuation}]+)".format(punctuation=string.pun
 emoji = r"(?:[^\s])(?<![\w{ascii_printable}])".format(ascii_printable=string.printable)
 regexp = r"{normal_word}|{ascii_art}|{emoji}".format(normal_word=normal_word, ascii_art=ascii_art,
                                                      emoji=emoji)
-symbola_font_path = os.path.join(read_data.plot_path, 'symbola.ttf')
+symbola_font_path = os.path.join(read_data.plot_path, 'Symbola_Hinted.ttf')
 
 circle_mask = np.array(Image.open(r"F:\CityU\Datasets\Hong Kong Tweets 2017\circle.png"))
 

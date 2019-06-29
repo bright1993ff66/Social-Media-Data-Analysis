@@ -4,14 +4,14 @@ This folder will records some recent works about the analysis of social media da
 
 The following sections are arranged as follows. In Section 1, a list of some research subfields would be given. Each subfield is attached with some relevant  papers. In Section 2, Some popular NLP tools and useful datasets would be shown. Finally in Section 3, some interesting but unanswered research problems are listed and possible solutions are also given.
 
-The contents of this repo would be updated on a regular basis.
+The contents of this repo would be updated on a regular basis:happy:
 
 ## 1. Recent Research Progress in Social Media Data Analysis
 
 Generally speaking, the research based on social media data could be classified into two groups:
 
 - Social media text analysis
-- Combine the text in social media with other resources such as time, location, author description, demographic information, etc. to solve some real-world problems
+- Combine the text in social media with other resources such as time, location, author description, demographic information, etc.to solve some real-world problems
 
 Some hot research topics are given below:
 
@@ -27,24 +27,31 @@ This subarea tries to transform the unstructured social media data to the struct
 
 Some influential works are listed below:
 
-- [A Broad-Coverage Normalization System for Social Media Language][Liu2012]
+- [A Broad-Coverage Normalization System for Social Media Language](https://www.aclweb.org/anthology/P12-1109)
+- [ekphrasis](https://github.com/cbaziotis/ekphrasis): A Tweet normalization tool developed in this paper [DataStories at SemEval-2017 Task 4: Deep LSTM with Attention for Message-level and Topic-based Sentiment Analysis](https://www.aclweb.org/anthology/S17-2126)
 - ...
 
 ### 1.2 Sentiment Analysis of Social Media Data
 
 [Sentiment Analysis](<https://en.wikipedia.org/wiki/Sentiment_analysis>) is a traditional NLP problem which wants to study the subjective sentiment information from raw text. The following lists some recent works about the sentiment analysis of social media data:
 
-- [Sentiment Analysis of Twitter Data][Passonneau]
+- [Sentiment Analysis of Twitter Data](https://www.aclweb.org/anthology/W11-0705)
+- [emoji2vec: Learning Emoji Representations from their Description](https://arxiv.org/abs/1609.08359)
+- [DataStories at SemEval-2017 Task 4: Deep LSTM with Attention for
+  Message-level and Topic-based Sentiment Analysis](https://www.aclweb.org/anthology/S17-2126)
 
 ### 1.3 Event Detection From Social Media
 
-Traffic event detection, abusive comments detection, text style transfer
+Based on the text from social media, researchers have done a lot of work such as abusive comments detection, traffic event detection. Some works are listed here:
+
+- [Detecting Comments Showing Risk for Suicide in YouTube](https://link.springer.com/chapter/10.1007/978-3-030-02686-8_30)
+- [A deep learning approach for detecting traffic accidents from social media data](https://www.sciencedirect.com/science/article/pii/S0968090X1730356X)
 
 ### 1.4 Response Generation
 
 Automatically generate response based on some comments posted in social media platform
 
-## 2. Some Datasets and Tools
+## 2. Some Datasets and Python Tools
 
 The following Python tools could be very useful for analyzing social media data, which covers text analysis, geographical data analysis(since social media data contains location information), temporal analysis. 
 
@@ -64,11 +71,4 @@ Moreover, the following lists some datasets for social media data analysis:
 ## 3. Future Research Directions
 
 Waiting to be updated....
-
-## References
-
-[Liu2012]: <https://www.aclweb.org/anthology/P12-1109>	"A Broad-Coverage Normalization System for Social Media Language"
-[Passonneau]:  <https://www.aclweb.org/anthology/W11-0705>	"Sentiment Analysis of Twitter Data"
-
-
 

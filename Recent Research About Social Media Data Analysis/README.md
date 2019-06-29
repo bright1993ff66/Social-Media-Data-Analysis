@@ -4,7 +4,7 @@ This folder will records some recent works about the analysis of social media da
 
 The following sections are arranged as follows. In Section 1, a list of some research subfields would be given. Each subfield is attached with some relevant  papers. In Section 2, Some popular NLP tools and useful datasets would be shown. Finally in Section 3, some interesting but unanswered research problems are listed and possible solutions are also given.
 
-The contents of this repo would be updated on a regular basis:happy:
+The contents of this repo would be updated on a regular basis :happy:
 
 ## 1. Recent Research Progress in Social Media Data Analysis
 

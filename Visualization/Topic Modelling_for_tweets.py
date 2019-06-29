@@ -36,7 +36,9 @@ whole_tweets = pd.read_pickle(os.path.join(read_data.tweet_2017, 'final_2017_wit
 # gensim.corpora.MmCorpus.serialize('MmCorpusTest.mm', corpus)
 # gensim.corpora.MmCorpus.serialize('MmCorpusTest.mm', corpus)
 stopwords = list(set(STOPWORDS))
-strange_terms = ['allcaps', 'repeated', 'elongated', 'repeat', 'user', 'percent_c']
+strange_terms = ['allcaps', 'repeated', 'elongated', 'repeat', 'user', 'percent_c', 'hong kong', 'hong',
+                 'kong', 'u_u', 'u_u_number', 'u_u_u_u', 'u_number', 'elongate', 'u_number_u',
+                 'u', 'number', 'm', 'will']
 unuseful_terms = stopwords + strange_terms
 unuseful_terms_set = set(unuseful_terms)
 
@@ -90,7 +92,8 @@ def delete_bots_have_same_geoinformation(df):
     return cleaned_df
 
 
-def get_lda_model(sentiment_text_in_one_list, grid_search_params, number_of_keywords, topic_predict_file, keywords_file):
+def get_lda_model(sentiment_text_in_one_list, grid_search_params, number_of_keywords, topic_predict_file, keywords_file,
+                  saving_path = read_data.topic_modelling_path):
     """
     :param sentiment_text_in_one_list: a text list. Each item of this list is a posted tweet
     :param grid_search_params: the dictionary which contains the values of hyperparameters for gridsearch
@@ -98,7 +101,7 @@ def get_lda_model(sentiment_text_in_one_list, grid_search_params, number_of_keyw
     """
     # 1. Vectorized the data
     vectorizer = CountVectorizer(analyzer='word',
-                                 min_df=10,  # minimum reqd occurences of a word
+                                 min_df=2,  # minimum reqd occurences of a word
                                  stop_words='english',  # remove stop words
                                  lowercase=True,  # convert all words to lowercase
                                  token_pattern='[a-zA-Z0-9]{3,}',  # num chars > 3
@@ -133,7 +136,7 @@ def get_lda_model(sentiment_text_in_one_list, grid_search_params, number_of_keyw
     # Get dominant topic for each document
     dominant_topic = np.argmax(df_document_topic.values, axis=1)
     df_document_topic['dominant_topic'] = dominant_topic
-    df_document_topic.to_pickle(os.path.join(read_data.topic_modelling_path,
+    df_document_topic.to_pickle(os.path.join(saving_path,
                                              topic_predict_file))
     # Apply Style
     # df_document_topics = df_document_topic.head(15).style.applymap(color_green).applymap(make_bold)
@@ -148,8 +151,7 @@ def get_lda_model(sentiment_text_in_one_list, grid_search_params, number_of_keyw
     df_topic_keywords = pd.DataFrame(topic_keywords)
     df_topic_keywords.columns = ['Word ' + str(i) for i in range(df_topic_keywords.shape[1])]
     df_topic_keywords.index = ['Topic ' + str(i) for i in range(df_topic_keywords.shape[0])]
-    df_topic_keywords.to_pickle(os.path.join(read_data.topic_modelling_path, keywords_file))
-    return df_topic_keywords
+    df_topic_keywords.to_pickle(os.path.join(saving_path, keywords_file))
 
 
 def plot_topic_num(topic_df, filename):
@@ -189,10 +191,10 @@ if __name__ == '__main__':
     # Get the topic model for negative tweets
     whole_text_negative = list(negative_tweets['cleaned_text'])
     tokenized_whole_text_negative = [word_tokenize(text) for text in whole_text_negative]
-    bigram_negative = gensim.models.Phrases(tokenized_whole_text_negative, min_count=5,
+    bigram_negative = gensim.models.phrases.Phrases(tokenized_whole_text_negative, min_count=5,
                                    threshold=100)  # higher threshold fewer phrases.
-    trigram_negative = gensim.models.Phrases(bigram_negative[tokenized_whole_text_negative], threshold=100)
     bigram_mod_negative = gensim.models.phrases.Phraser(bigram_negative)
+    trigram_negative = gensim.models.phrases.Phrases(bigram_mod_negative[tokenized_whole_text_negative], threshold=100)
     trigram_mod_negative = gensim.models.phrases.Phraser(trigram_negative)
     negative_data_ready = process_words(tokenized_whole_text_negative, stop_words=unuseful_terms_set,
                                         bigram_mod=bigram_mod_negative, trigram_mod=trigram_mod_negative)
@@ -206,8 +208,8 @@ if __name__ == '__main__':
     tokenized_whole_text_positive = [word_tokenize(text) for text in whole_text_positive]
     bigram_positive = gensim.models.Phrases(tokenized_whole_text_positive, min_count=5,
                                    threshold=100)  # higher threshold fewer phrases.
-    trigram_positive = gensim.models.Phrases(bigram_positive[tokenized_whole_text_positive], threshold=100)
     bigram_mod_positive = gensim.models.phrases.Phraser(bigram_positive)
+    trigram_positive = gensim.models.Phrases(bigram_mod_positive[tokenized_whole_text_positive], threshold=100)
     trigram_mod_positive = gensim.models.phrases.Phraser(trigram_positive)
     positive_data_ready = process_words(tokenized_whole_text_positive, stop_words=unuseful_terms_set,
                                         bigram_mod=bigram_mod_positive, trigram_mod=trigram_mod_positive)

@@ -1,4 +1,4 @@
-# Description
+# Description :star:
 
 This folder contains a Python 3 notebook which describes how to generate the representation of each tweet.
 

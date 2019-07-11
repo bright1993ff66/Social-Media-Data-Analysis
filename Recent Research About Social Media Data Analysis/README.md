@@ -1,8 +1,10 @@
 # Recent Research About the Social Media Data Analysis
 
-This folder will records some recent works about the analysis of social media data, which will cover various topics such as [Machine Learning](<https://en.wikipedia.org/wiki/Machine_learning>), [Natural Language Processing(NLP)](<https://en.wikipedia.org/wiki/Natural_language_processing>), [Computational Linguistics](<https://en.wikipedia.org/wiki/Computational_linguistics>),  and [Intelligent Transportation Systems(ITS)](<https://en.wikipedia.org/wiki/Intelligent_transportation_system>). Social media data contains various datatypes about a specific user, ranging from raw text, time to location. Merging multi-type data structures derived from social media data could be very useful when coping with some real-world problems such as identifying risky comments, traffic event detection, etc.
+This folder will record some recent works about the analysis of social media data, which will cover various topics such as [Machine Learning](<https://en.wikipedia.org/wiki/Machine_learning>), [Natural Language Processing(NLP)](<https://en.wikipedia.org/wiki/Natural_language_processing>), [Computational Linguistics](<https://en.wikipedia.org/wiki/Computational_linguistics>),  [Computer Vision](https://en.wikipedia.org/wiki/Computer_vision) and [Intelligent Transportation Systems(ITS)](<https://en.wikipedia.org/wiki/Intelligent_transportation_system>). 
 
-The following sections are arranged as follows. In Section 1, a list of some research subfields would be given. Each subfield is attached with some relevant  papers. In Section 2, Some popular NLP tools and useful datasets would be shown. Finally in Section 3, some interesting but unanswered research problems are listed and possible solutions are also given.
+Social media data contains various datatypes about a specific user, ranging from raw text, time to location. Merging multi-type data structures derived from social media data could be very useful when coping with some real-world problems such as identifying risky comments, traffic event detection, etc.
+
+The following sections are arranged as follows. In **Section 1**, a list of some research subfields would be given. Each subfield is attached with some relevant  papers. In **Section 2**, Some popular NLP tools and useful datasets would be shown. Finally in **Section 3**, some interesting but unanswered research problems are listed and possible solutions are also given.
 
 The contents of this repo would be updated on a regular basis :happy:
 
@@ -13,7 +15,7 @@ Generally speaking, the research based on social media data could be classified 
 - Social media text analysis
 - Combine the text in social media with other resources such as time, location, author description, demographic information, etc.to solve some real-world problems
 
-Some hot research topics are given below:
+Some interesting research topics are given below:
 
 ### 1.1 Social Media Text Normalization
 
@@ -39,17 +41,27 @@ Some influential works are listed below:
 - [emoji2vec: Learning Emoji Representations from their Description](https://arxiv.org/abs/1609.08359)
 - [DataStories at SemEval-2017 Task 4: Deep LSTM with Attention for
   Message-level and Topic-based Sentiment Analysis](https://www.aclweb.org/anthology/S17-2126)
+- ...
+
+Moreover, since many social media posts contain videos, some researchers try to directory analyze the emotion of videos. Some representative works are given here:
+
+- [Context-Dependent Sentiment Analysis in User-Generated Videos](https://github.com/SenticNet/contextual-utterance-level-multimodal-sentiment-analysis)
+- ...
 
 ### 1.3 Event Detection From Social Media
 
 Based on the text from social media, researchers have done a lot of work such as abusive comments detection, traffic event detection. Some works are listed here:
 
-- [Detecting Comments Showing Risk for Suicide in YouTube](https://link.springer.com/chapter/10.1007/978-3-030-02686-8_30)
+- [Detecting Comments Showing Risk for Suicide in YouTube](https://link.springer.com/chapter/10.1007/978-3-030-02686-8_30) :kissing_heart:
 - [A deep learning approach for detecting traffic accidents from social media data](https://www.sciencedirect.com/science/article/pii/S0968090X1730356X)
+- ...
 
 ### 1.4 Response Generation
 
-Automatically generate response based on some comments posted in social media platform
+Automatically generate response based on some comments posted in social media platform. Some works are given here:
+
+- [Data-Driven Response Generation in Social Media](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/mt_chat.pdf)
+- ...
 
 ## 2. Some Datasets and Python Tools
 
@@ -75,5 +87,5 @@ Moreover, the following lists some datasets for social media data analysis:
 
 ## 3. Future Research Directions
 
-Waiting to be updated....
+Waiting to be updated soon...:blue_heart:
 

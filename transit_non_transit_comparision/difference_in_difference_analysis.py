@@ -87,272 +87,130 @@ def add_post_variable(string, opening_start_date, opening_end_date):
         return 'not considered'
 
 
-def build_regress_dataframe_one_station(station_name, buffer_radius, annulus_radius, treatment_dict, control_dict,
-                                        station_open_start_date, station_open_end_date, open_year_plus_month,
-                                        compute_coef_diff=False):
-    """
-    :param station_name: the name of the station
-    :param buffer_radius: the radius of the geographic buffer
-    :param annulus_radius: the radius used to draw the annulus
-    :param treatment_dict: a Python dictionary which saves the dataframe for each treatment group setting
-    :param control_dict: a Python dictionary which saves the dataframe for each control group setting
-    :param station_open_start_date: the begining time of the station opening date
-    For instance, for the opening time of Whampoa: Oct 23, it should be 00:00:00
-    :param station_open_end_date: the ending time of the station opening date
-    For instance, for the opening time of Whampoa: Oct 23, it should be 23:59:59
-    :param open_year_plus_month: year plus month, such as 2016_9 means Sep, 2016
-    :param compute_coef_diff: whether or not compute the difference between the coefficients of treatment and control
-    If True: compute the difference, return the coeff difference
-    If False: return a dataframe which contains the Time, Treatment or not indicator, POST indicator and sentiment
-    """
+def build_regress_datafrane_for_one_newly_built_station(station_name, treatment_dict, control_dict,
+                                                        station_open_start_date, station_open_end_date,
+                                                        open_year_plus_month):
     # check the date
     assert open_year_plus_month in ['2016_10', '2016_12']
-    # check the buffer radius, we only consider radius = 500 meter
-    assert buffer_radius in [500]
-    # check the annulus radius, we only consider radius in [1000, 1500]
-    assert annulus_radius in [1000, 1500]
-
     result_dataframe = pd.DataFrame(columns=['Time', 'T_i_t', 'Post', 'Sentiment'])
-    buffer_dataframe = treatment_dict[station_name+'{}_buffer'.format(buffer_radius)]
-    annulus_dataframe = control_dict[station_name+'{}_erase_{}_annulus'.format(annulus_radius, buffer_radius)]
+    treatment_dataframe = treatment_dict[station_name]
+    control_dataframe = control_dict['nontn_dataframe']
     # build the T_i_t variable
-    ones_list = [1] * buffer_dataframe.shape[0]
-    buffer_dataframe['T_i_t'] = ones_list
-    zeros_list = [0] * annulus_dataframe.shape[0]
-    annulus_dataframe['T_i_t'] = zeros_list
+    ones_list = [1] * treatment_dataframe.shape[0]
+    treatment_dataframe['T_i_t'] = ones_list
+    zeros_list = [0] * control_dataframe.shape[0]
+    control_dataframe['T_i_t'] = zeros_list
     # build the post variable
-    buffer_dataframe['Post'] = buffer_dataframe.apply(
-    lambda row: add_post_variable(row['hk_time'], opening_start_date=station_open_start_date,
-                                  opening_end_date=station_open_end_date), axis=1)
-    annulus_dataframe['Post'] = annulus_dataframe.apply(
+    treatment_dataframe['Post'] = treatment_dataframe.apply(
         lambda row: add_post_variable(row['hk_time'], opening_start_date=station_open_start_date,
-                                  opening_end_date=station_open_end_date), axis=1)
-    combined_dataframe = pd.concat([buffer_dataframe, annulus_dataframe])
+                                      opening_end_date=station_open_end_date), axis=1)
+    control_dataframe['Post'] = control_dataframe.apply(
+        lambda row: add_post_variable(row['hk_time'], opening_start_date=station_open_start_date,
+                                      opening_end_date=station_open_end_date), axis=1)
+    combined_dataframe = pd.concat([treatment_dataframe, control_dataframe], axis=0, sort=True)
     combined_dataframe = combined_dataframe.reset_index(drop=True)
-    # Delete some unuseful columns
-    combined_dataframe = combined_dataframe.drop(['FID', 'FID_1', 'Field1', 'FID_2', 'FID_1_1',
-                                                  'merge_Nums'], axis=1)
-    # combined_dataframe['tweet_number'] = list(combined_dataframe.index)
+    # We don't consider the tweets posted on the open date
     combined_dataframe_without_not_considered = \
         combined_dataframe.loc[combined_dataframe['Post'] != 'not considered']
-    combined_dataframe_without_not_considered.rename(columns={'user_id_st': 'user_id_str'}, inplace=True)
-    combined_dataframe_without_not_considered['month_plus_year'] = combined_dataframe_without_not_considered.apply(
+    combined_data_copy = combined_dataframe_without_not_considered.copy()
+    combined_data_copy['month_plus_year'] = combined_data_copy.apply(
         lambda row: str(int(row['year'])) + '_' + str(int(row['month'])), axis=1)
     sentiment_dict = {}
-    for _, dataframe in combined_dataframe_without_not_considered.groupby(['month_plus_year', 'T_i_t', 'Post']):
+    for _, dataframe in combined_data_copy.groupby(['month_plus_year', 'T_i_t', 'Post']):
         time = str(list(dataframe['month_plus_year'])[0])
         t_i_t = str(list(dataframe['T_i_t'])[0])
         post = str(list(dataframe['Post'])[0])
         sentiment_dict[time + '_' + t_i_t + '_' + post] = before_and_after.pos_percent_minus_neg_percent(dataframe)
     result_dataframe_copy = result_dataframe.copy()
-    # whether or not to compute the coeff_diff
-    if not compute_coef_diff: # output a dataframe
-        time_list = []
-        t_i_t_list = []
-        post_list = []
-        sentiment_list = []
-        for key in list(sentiment_dict.keys()):
-            # don't consider the tweets posted in 2016_10(for Whampoa and Ho Man Tin) or 2016_12(for other stations)
-            if key[:7] != open_year_plus_month:
-                time_list.append(key)
-                t_i_t_list.append(int(key[-3]))
-                post_list.append(int(key[-1]))
-                sentiment_list.append(sentiment_dict[key])
-            else:
-                pass
-        result_dataframe_copy['Time'] = time_list
-        result_dataframe_copy['T_i_t'] = t_i_t_list
-        result_dataframe_copy['Post'] = post_list
-        result_dataframe_copy['Sentiment'] = sentiment_list
-        return result_dataframe_copy
-    else:
-        time_list = []
-        t_i_t_list = []
-        post_list = []
-        sentiment_list = []
-        for key in list(sentiment_dict.keys()):
-            time_list.append(key)
-            #     print(key)
+    time_list = []
+    t_i_t_list = []
+    post_list = []
+    sentiment_list = []
+    for key in list(sentiment_dict.keys()):
+        # don't consider the tweets posted in 2016_10(for Whampoa and Ho Man Tin) or 2016_12(for other stations)
+        if key[:7] != open_year_plus_month:
+            time_list.append(key[:-4])
             t_i_t_list.append(int(key[-3]))
             post_list.append(int(key[-1]))
             sentiment_list.append(sentiment_dict[key])
-        result_dataframe_copy['Time'] = time_list
-        result_dataframe_copy['T_i_t'] = t_i_t_list
-        result_dataframe_copy['Post'] = post_list
-        result_dataframe_copy['Sentiment'] = sentiment_list
-        before_dataframe = result_dataframe_copy.loc[result_dataframe_copy['Post'] == 0]
-        before_dataframe_buffer = before_dataframe.loc[before_dataframe['T_i_t'] == 1]
-        before_dataframe_annulus = before_dataframe.loc[before_dataframe['T_i_t'] == 0]
-        before_buffer_data = before_dataframe_buffer.copy()
-        before_annulus_data = before_dataframe_annulus.copy()
-        if open_year_plus_month == '2016_10':
-            order_list_buffer = ['2016_7_1_0', '2016_8_1_0', '2016_9_1_0', '2016_10_1_0']
-            order_list_annulus = ['2016_7_0_0', '2016_8_0_0', '2016_9_0_0', '2016_10_0_0']
-            time_id = list(range(1, 5))
         else:
-            order_list_buffer = ['2016_7_1_0', '2016_8_1_0', '2016_9_1_0', '2016_10_1_0', '2016_11_1_0',
-                                 '2016_12_1_0']
-            order_list_annulus = ['2016_7_0_0', '2016_8_0_0', '2016_9_0_0', '2016_10_0_0', '2016_11_0_0',
-                                  '2016_12_0_0']
-            time_id = list(range(1, 7))
-        before_buffer_data = before_buffer_data.set_index('Time')
-        ordered_before_buffer_data = before_buffer_data.loc[order_list_buffer]
-        before_annulus_data = before_annulus_data.set_index('Time')
-        ordered_before_annulus_data = before_annulus_data.loc[order_list_annulus]
-        ordered_before_buffer_data['timeID'] = time_id
-        ordered_before_annulus_data['timeID'] = time_id
-        regress_buffer = smf.ols('Sentiment ~ timeID', ordered_before_buffer_data).fit()
-        regress_annulus = smf.ols('Sentiment ~ timeID', ordered_before_annulus_data).fit()
-        print('---------------{}: {} against {}----------------'.format(station_name, buffer_radius,
-                                                                        annulus_radius))
-        print('The coeffs for buffer is {}'.format(list(regress_buffer.params)[1]))
-        regress_buffer_coeffs = list(regress_buffer.params)[1]
-        print('The coeffs for annulus is {}'.format(list(regress_annulus.params)[1]))
-        regress_annulus_coeffs = list(regress_annulus.params)[1]
-        print('-------------------------------------------------')
-        return regress_buffer_coeffs, regress_annulus_coeffs
+            pass
+    result_dataframe_copy['Time'] = time_list
+    result_dataframe_copy['T_i_t'] = t_i_t_list
+    result_dataframe_copy['Post'] = post_list
+    result_dataframe_copy['Sentiment'] = sentiment_list
+    return result_dataframe_copy
 
 
 if __name__ == '__main__':
 
     # compute the sentiment difference between the treatment and control groups based on various settings
-    path = read_data.longitudinal_data_path
-    before_after_dataframe_dict = {}
+    path = os.path.join(read_data.datasets, 'station_related_frames')
+    treatment_dataframe_dict = {}
     control_group_dataframe_dict = {}
-    station_names = ['Whampoa', 'Ho Man Tin', 'South Horizons', 'Wong Chuk Hang', 'Ocean Park']
-    treatment_control_pair = [(500, (1000, 500)), (500, (1500, 500)), (1000, (1500, 1000))]
-    diff_dict = {}
+    considered_station_names = ['Whampoa', 'Ho Man Tin', 'South Horizons', 'Wong Chuk Hang', 'Ocean Park']
     for file in os.listdir(path):
-        for pair in treatment_control_pair:
-            data_path = os.path.join(path, file)
-            dataframe = pd.read_csv(os.path.join(data_path, file + '_{}m_tn_tweets.csv'.format(pair[0])),
-                                    encoding='latin-1')
-            non_tn_datapath = os.path.join(path, file, file + '_tweets_annulus')
-            non_tn_dataframe = pd.read_csv(os.path.join(
-                non_tn_datapath, file + '_{}_erase_{}.csv'.format(pair[1][0], pair[1][1])), encoding='latin-1')
-            before_after_dataframe_dict[file+'{}_buffer'.format(pair[0])] = dataframe
-            control_group_dataframe_dict[file+'{}_erase_{}_annulus'.format(pair[1][0], pair[1][1])] = \
-                non_tn_dataframe
-            if file in ['Whampoa', 'Ho Man Tin']:
-                buffer_coeffs, annulus_coeffs = build_regress_dataframe_one_station(station_name=file,
-                                                                 treatment_dict=before_after_dataframe_dict,
-                                                                 control_dict=control_group_dataframe_dict,
-                                                                 station_open_start_date=october_23_start,
-                                                                 station_open_end_date=october_23_end,
-                                                                 open_year_plus_month='2016_10',
-                                                                 compute_coef_diff=True, buffer_radius=pair[0],
-                                                                 annulus_radius=pair[1][0])
-                diff_dict[file+'{}_buffer_{}_annulus'.format(pair[0], pair[1][0])] = (file, buffer_coeffs,
-                                                                                      annulus_coeffs)
-            else:
-                buffer_coeffs, annulus_coeffs = build_regress_dataframe_one_station(station_name=file,
-                                                                 treatment_dict=before_after_dataframe_dict,
-                                                                 control_dict=control_group_dataframe_dict,
-                                                                 station_open_start_date=december_28_start,
-                                                                 station_open_end_date=december_28_end,
-                                                                 open_year_plus_month='2016_12',
-                                                                 compute_coef_diff=True, buffer_radius=pair[0],
-                                                                 annulus_radius=pair[1][0])
-                diff_dict[file + '{}_buffer_{}_annulus'.format(pair[0], pair[1][0])] = (file, buffer_coeffs,
-                                                                                        annulus_coeffs)
-
-    # Save the result to a local directory
-    settings = list(diff_dict.keys())
-    buffer_coeffs_list = [diff_dict[setting][1] for setting in settings]
-    annulus_coeffs_list = [diff_dict[setting][2] for setting in settings]
-    diff_list = [buffer_coeffs_list[i] - annulus_coeffs_list[i] for i in range(len(buffer_coeffs_list))]
-    station_names = [diff_dict[setting][0] for setting in settings]
-    result_dataframe = pd.DataFrame({'Settings': settings, 'buffer_coeffs': buffer_coeffs_list,
-                                     'annulus_coeffs': annulus_coeffs_list,
-                                     'Diff': diff_list, 'Station_name': station_names},
-                                    columns=['Settings', 'buffer_coeffs', 'annulus_coeffs', 'Diff',
-                                             'Station_name'])
-    treatment_control_select_path = os.path.join(read_data.transit_non_transit_comparison_before_after,
-                                                 'compare_tn_and_nontn',
-                                                 'treatment_control_select')
-    compare_dataframe_dict = {}
-    for station_name in before_after_stations:
-        dataframe = result_dataframe.loc[result_dataframe['Station_name'] == station_name]
-        dataframe.to_csv(os.path.join(treatment_control_select_path, station_name+'.csv'))
-        compare_dataframe_dict[station_name] = dataframe
-
-    print('\nUse the ideal treatment and control pair to do the DID analysis')
+        if file[:-4] in considered_station_names:
+            dataframe = pd.read_pickle(os.path.join(path, file))
+            treatment_dataframe_dict[file[:-4]] = dataframe
+        else:
+            pass
+    nontn_dataframe = pd.read_pickle(os.path.join(read_data.transit_non_transit_comparison_before_after,
+                                                  'nontn_dataframe.pkl'))
+    control_group_dataframe_dict['nontn_dataframe'] = nontn_dataframe
 
     print('DID Analysis Starts....')
     print('---------------------Whampoa---------------------------')
-    whampoa_result_dataframe = build_regress_dataframe_one_station(station_name='Whampoa',
-                                                                   treatment_dict=before_after_dataframe_dict,
+    whampoa_result_dataframe = build_regress_datafrane_for_one_newly_built_station(station_name='Whampoa',
+                                                                   treatment_dict=treatment_dataframe_dict,
                                                                    control_dict=control_group_dataframe_dict,
                                                                    station_open_start_date=october_23_start,
                                                                    station_open_end_date=october_23_end,
-                                                                   open_year_plus_month='2016_10',
-                                                                   compute_coef_diff=False, buffer_radius=500,
-                                                                   annulus_radius=1500)
+                                                                   open_year_plus_month='2016_10')
     reg_whampoa = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', whampoa_result_dataframe).fit()
     print(reg_whampoa.summary())
     print('-------------------------------------------------------\n')
-    #
+
     print('---------------------Ho Man Tin---------------------------')
-    ho_man_tin_result_dataframe = build_regress_dataframe_one_station(station_name='Ho Man Tin',
-                                                                   treatment_dict=before_after_dataframe_dict,
+    ho_man_tin_result_dataframe = build_regress_datafrane_for_one_newly_built_station(station_name='Ho Man Tin',
+                                                                   treatment_dict=treatment_dataframe_dict,
                                                                    control_dict=control_group_dataframe_dict,
                                                                    station_open_start_date=october_23_start,
                                                                    station_open_end_date=october_23_end,
-                                                                      open_year_plus_month='2016_10',
-                                                                      compute_coef_diff=False, buffer_radius=500,
-                                                                      annulus_radius=1500)
+                                                                      open_year_plus_month='2016_10')
     reg_ho_man_tin = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', ho_man_tin_result_dataframe).fit()
     print(reg_ho_man_tin.summary())
     print('-------------------------------------------------------\n')
     #
     print('---------------------South Horizons---------------------------')
-    south_horizons_result_dataframe = build_regress_dataframe_one_station(station_name='South Horizons',
-                                                                      treatment_dict=before_after_dataframe_dict,
+    south_horizons_result_dataframe = build_regress_datafrane_for_one_newly_built_station(station_name='South Horizons',
+                                                                      treatment_dict=treatment_dataframe_dict,
                                                                       control_dict=control_group_dataframe_dict,
                                                                       station_open_start_date=december_28_start,
                                                                       station_open_end_date=december_28_end,
-                                                                          open_year_plus_month='2016_12',
-                                                                          compute_coef_diff=False,
-                                                                          buffer_radius=500, annulus_radius=1500)
+                                                                          open_year_plus_month='2016_12')
     reg_south_horizons = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', south_horizons_result_dataframe).fit()
     print(reg_south_horizons.summary())
     print('-------------------------------------------------------\n')
     #
     print('---------------------Wong Chuk Hang---------------------------')
-    wong_chuk_hang_result_dataframe = build_regress_dataframe_one_station(station_name='Wong Chuk Hang',
-                                                                          treatment_dict=before_after_dataframe_dict,
+    wong_chuk_hang_result_dataframe = build_regress_datafrane_for_one_newly_built_station(station_name='Wong Chuk Hang',
+                                                                          treatment_dict=treatment_dataframe_dict,
                                                                           control_dict=control_group_dataframe_dict,
                                                                           station_open_start_date=december_28_start,
                                                                           station_open_end_date=december_28_end,
-                                                                          open_year_plus_month='2016_12',
-                                                                          compute_coef_diff=False,
-                                                                          buffer_radius=500, annulus_radius=1500)
+                                                                          open_year_plus_month='2016_12')
     reg_wong_chuk_hang = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', wong_chuk_hang_result_dataframe).fit()
     print(reg_wong_chuk_hang.summary())
     print('-------------------------------------------------------\n')
     #
     print('---------------------Ocean Park---------------------------')
-    ocean_park_result_dataframe = build_regress_dataframe_one_station(station_name='Ocean Park',
-                                                                          treatment_dict=before_after_dataframe_dict,
+    ocean_park_result_dataframe = build_regress_datafrane_for_one_newly_built_station(station_name='Ocean Park',
+                                                                          treatment_dict=treatment_dataframe_dict,
                                                                           control_dict=control_group_dataframe_dict,
                                                                           station_open_start_date=december_28_start,
                                                                           station_open_end_date=december_28_end,
-                                                                      open_year_plus_month='2016_12',
-                                                                      compute_coef_diff=False, buffer_radius=500,
-                                                                      annulus_radius=1500)
+                                                                      open_year_plus_month='2016_12')
     reg_ocean_park = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', ocean_park_result_dataframe).fit()
     print(reg_ocean_park.summary())
-    print('-------------------------------------------------------\n')
-
-    print('---------------------Lei Tung---------------------------')
-    lei_tung_result_dataframe = build_regress_dataframe_one_station(station_name='Lei Tung',
-                                                                      treatment_dict=before_after_dataframe_dict,
-                                                                      control_dict=control_group_dataframe_dict,
-                                                                      station_open_start_date=december_28_start,
-                                                                      station_open_end_date=december_28_end,
-                                                                      open_year_plus_month='2016_12',
-                                                                      compute_coef_diff=False, buffer_radius=500,
-                                                                      annulus_radius=1000)
-    reg_lei_tung = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', lei_tung_result_dataframe).fit()
-    print(reg_lei_tung.summary())
     print('-------------------------------------------------------\n')

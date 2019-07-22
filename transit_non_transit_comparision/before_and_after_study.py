@@ -28,6 +28,7 @@ time_list = ['2016_5', '2016_6','2016_7', '2016_8', '2016_9', '2016_10', '2016_1
 # Hence, we transform the utc time in our dataset into Shanghai time
 time_zone_hk = pytz.timezone('Asia/Shanghai')
 
+
 class TransitNeighborhood_before_after(object):
 
     before_after_stations = ['Whampoa', 'Ho Man Tin', 'South Horizons', 'Wong Chuk Hang', 'Ocean Park',
@@ -51,8 +52,10 @@ class TransitNeighborhood_before_after(object):
         self.compute_negative = compute_negative
 
     def output_sent_act_dataframe(self):
+        # Construct the monthly sentiment dictionary for TN datafrane
         result_dict_tn = sentiment_by_month(self.tn_dataframe, compute_positive_percent=self.compute_positive,
                                              compute_negative_percent=self.compute_negative)
+        # Compute the monthly sentiment dictionary for non-TN dataframe
         result_dict_non_tn = sentiment_by_month(self.non_tn_dataframe, compute_positive_percent=self.compute_positive,
                                              compute_negative_percent=self.compute_negative)
         result_dataframe_tn = pd.DataFrame(list(result_dict_tn.items()), columns=['Date', 'Value'])
@@ -71,18 +74,19 @@ class TransitNeighborhood_before_after(object):
         """
         tn_dataframe_sent_act, non_tn_dataframe_sent_act = self.output_sent_act_dataframe()
         # Set one column as the index
-        dataframe_with_sentiment_activity = tn_dataframe_sent_act.set_index('Date')
+        tn_dataframe_with_sentiment_activity = tn_dataframe_sent_act.set_index('Date')
         # So that we could reorder it based on an ordered time list
-        dataframe_for_plot = dataframe_with_sentiment_activity.loc[time_list]
-        tpu_sent_act = non_tn_dataframe_sent_act.set_index('Date')
-        tpu_dataframe_for_plot = tpu_sent_act.loc[time_list]
-        x = np.arange(0, len(list(dataframe_for_plot.index)), 1)
+        tn_dataframe_for_plot = tn_dataframe_with_sentiment_activity.loc[time_list]
+        non_tn_dataframe_with_sentiment_activity = non_tn_dataframe_sent_act.set_index('Date')
+        non_tn_dataframe_for_plot = non_tn_dataframe_with_sentiment_activity.loc[time_list]
+        # x is used in plot to record time in x axis
+        x = np.arange(0, len(list(tn_dataframe_for_plot.index)), 1)
         if draw_sentiment:  # draw the sentiment comparison plot: y1: TN-buffer; y2: non-TN-buffer
-            y1 = [value[0] for value in list(dataframe_for_plot['Value'])]
-            y2 = [value[0] for value in list(tpu_dataframe_for_plot['Value'])]
+            y1 = [value[0] for value in list(tn_dataframe_for_plot['Value'])]
+            y2 = [value[0] for value in list(non_tn_dataframe_for_plot['Value'])]
         else:  # draw the activity comparison plot. Use log10(num of tweets) instead
-            y1 = [np.log10(value[1]) for value in list(dataframe_for_plot['Value'])]
-            y2 = [np.log10(value[1]) for value in list(tpu_dataframe_for_plot['Value'])]
+            y1 = [np.log10(value[1]) for value in list(tn_dataframe_for_plot['Value'])]
+            y2 = [np.log10(value[1]) for value in list(non_tn_dataframe_for_plot['Value'])]
 
         fig, ax = plt.subplots(1, 1, figsize=(10, 8))
         lns1 = ax.plot(x, y1, 'g-', label=line_labels[0], linestyle='--', marker='o')
@@ -90,12 +94,14 @@ class TransitNeighborhood_before_after(object):
         # Whether to draw the vertical line that indicates the open date
         if self.before_and_after:
             if self.oct_open:
+                # draw a verticle showing the openning date of the station
                 plt.axvline(5.77, color='black')
                 if draw_sentiment:  # the ylim of sentiment and activity plots are different
                     ax.text(2.8, 0, 'Opening Date: \nOct 23, 2016', horizontalalignment='center', color='black')
                 else:
                     ax.text(2.8, 3.0, 'Opening Date: \nOct 23, 2016', horizontalalignment='center', color='black')
             else:
+                # draw a verticle showing the openning date of the station
                 plt.axvline(7.95, color='black')
                 if draw_sentiment:  # the ylim of sentiment and activity plots are different
                     ax.text(5, 0, 'Opening Date: \nDec 28, 2016', horizontalalignment='center', color='black')
@@ -110,9 +116,11 @@ class TransitNeighborhood_before_after(object):
         ax.legend(lns, labs)
 
         # Draw the average of the sentiment level
+        # This average sentiment level means the average sentiment of 93 500-meter TBs
         if draw_sentiment:
             ax.axhline(y=0.40, color='r', linestyle='solid')
             ax.text(3, 0.43, 'Average Sentiment Level: 0.40', horizontalalignment='center', color='r')
+            # The ylim is set as (-1, 1)
             ax.set_ylim(-1, 1)
         else:  # here I don't want to draw the horizontal activity line as the activity level varies greatly between TNs
             pass
@@ -136,13 +144,7 @@ class TransitNeighborhood_before_after(object):
         return final_time_object
 
 
-def get_nontn_tweets(station_name, buffer_radius, annulus_radius, folder_path):
-    data_path = os.path.join(os.path.join(folder_path, station_name, station_name+'_tweets_annulus'))
-    non_tn_tweets = pd.read_csv(os.path.join(
-        data_path, station_name+'_{}_erase_{}.csv'.format(annulus_radius, buffer_radius)), encoding='latin-1')
-    return non_tn_tweets
-
-
+# Get the number of tweets and the number of unique users in a tweet dataframe
 def number_of_tweet_user(df, station_name):
     user_num = len(set(df['user_id_str']))
     tweet_num = df.shape[0]
@@ -235,13 +237,13 @@ def sentiment_by_month(df, compute_positive_percent=False, compute_negative_perc
     return tweet_month_sentiment
 
 
-def get_tweets_based_on_date(file_path:str, station_name:str, start_date, end_date, buffer_radius=500):
+def get_tweets_based_on_date(file_path:str, station_name:str, start_date, end_date):
     """
     :param file_path: path which saves the folders of each TN
     :param station_name: the name of MTR station in each TN
     :param start_date: the start date of the time range we consider
     :param end_date: the end date of the time range we consider
-    :return: a filtered dataframe which contains tweets in a specific time range
+    :return: a dataframe which contains tweets in a specific time range
     """
     combined_dataframe = pd.read_pickle(os.path.join(file_path, station_name+'.pkl'))
     combined_dataframe['hk_time'] = combined_dataframe.apply(
@@ -252,10 +254,11 @@ def get_tweets_based_on_date(file_path:str, station_name:str, start_date, end_da
     # combined_dataframe['month'] = combined_dataframe.apply(
     #     lambda row: row['hk_time'].month, axis=1
     # )
-    combined_dataframe['day'] = combined_dataframe.apply(
-        lambda row: row['hk_time'].day, axis=1
-    )
+    # combined_dataframe['day'] = combined_dataframe.apply(
+    #     lambda row: row['hk_time'].day, axis=1
+    # )
     # Only consider the tweets posted in a specific time range
+    # Use the time mask to find rows in a specific time range
     time_mask = (combined_dataframe['hk_time'] >= start_date) & (combined_dataframe['hk_time'] <= end_date)
     filtered_dataframe = combined_dataframe.loc[time_mask]
     return filtered_dataframe
@@ -266,7 +269,7 @@ def build_text_for_wordcloud_topic_model(df, oct_open=True, build_wordcloud=True
     :param df: the whole dataframe for before and after study
     :param oct_open: if the station is opened in October or not
     :param build_wordcloud: whether for drawing wordcloud or for topic modelling
-    :return: text or dataframe which would be used to generate word cloud or build topic model
+    :return: text or dataframes which would be used to generate word cloud or build topic model
     """
     if oct_open:
         open_date_start = october_23_start
@@ -370,7 +373,6 @@ def build_topic_model(df, keyword_file_name, topic_predict_file_name, saving_pat
                                                           stop_words=Topic_Modelling_for_tweets.unuseful_terms_set,
                                                           bigram_mod=bigram_mod, trigram_mod=trigram_mod)
     # Draw the distribution of the length of the tweet: waiting to be changed tomorrow
-    tweet_word_count_list = [len(text) for text in data_ready]
     data_sentence_in_one_list = [' '.join(text) for text in data_ready]
     Topic_Modelling_for_tweets.get_lda_model(data_sentence_in_one_list,
                                              grid_search_params=topic_modelling_search_params,
@@ -396,52 +398,52 @@ if __name__ == '__main__':
     print('------------------------------------------------------------------------')
     print('The general information of the stations considered in the longitudinal study....')
     whampoa_dataframe = get_tweets_based_on_date(longitudinal_data_path, 'Whampoa', start_date,
-                                                  end_date, buffer_radius=500)
+                                                  end_date)
     number_of_tweet_user(whampoa_dataframe, station_name='Whampoa')
     ho_man_tin_dataframe = get_tweets_based_on_date(longitudinal_data_path,
-                                                    'Ho Man Tin', start_date, end_date, buffer_radius=500)
+                                                    'Ho Man Tin', start_date, end_date)
     number_of_tweet_user(ho_man_tin_dataframe, station_name='Ho Man Tin')
     south_horizons_dataframe = get_tweets_based_on_date(longitudinal_data_path,
-                                                        'South Horizons', start_date, end_date, buffer_radius=500)
+                                                        'South Horizons', start_date, end_date)
     number_of_tweet_user(south_horizons_dataframe, station_name='South Horizons')
     lei_tung_dataframe = get_tweets_based_on_date(longitudinal_data_path,
-                                                  'Lei Tung', start_date, end_date, buffer_radius=500)
+                                                  'Lei Tung', start_date, end_date)
     number_of_tweet_user(lei_tung_dataframe, station_name='Lei Tung')
     wong_chuk_hang_dataframe = get_tweets_based_on_date(longitudinal_data_path,
-                                                        'Wong Chuk Hang', start_date, end_date, buffer_radius=500)
+                                                        'Wong Chuk Hang', start_date, end_date)
     number_of_tweet_user(wong_chuk_hang_dataframe, station_name='Wong Chuk Hang')
     ocean_park_dataframe = get_tweets_based_on_date(longitudinal_data_path,
-                                                    'Ocean Park', start_date, end_date, buffer_radius=500)
+                                                    'Ocean Park', start_date, end_date)
     number_of_tweet_user(ocean_park_dataframe, station_name='Ocean Park')
     print('------------------------------------------------------------------------')
-    #
-    # draw_word_count_histogram(whampoa_dataframe, saved_file_name='whampoa_word_count_hist.png',
-    #                           station_name='Whampoa')
-    # draw_word_count_histogram(ho_man_tin_dataframe, saved_file_name='ho_man_tin_word_count_hist.png',
-    #                           station_name='Ho Man Tin')
-    # draw_word_count_histogram(south_horizons_dataframe, saved_file_name='south_horizons_word_count_hist.png',
-    #                           station_name='South Horizons')
-    # draw_word_count_histogram(lei_tung_dataframe, saved_file_name='lei_tung_word_count_hist.png',
-    #                           station_name='Lei Tung')
-    # draw_word_count_histogram(wong_chuk_hang_dataframe, saved_file_name='wung_chuk_hang_word_count_hist.png',
-    #                           station_name='Wong Chuk Hang')
-    # draw_word_count_histogram(ocean_park_dataframe, saved_file_name='ocean_park_word_count_hist.png',
-    #                           station_name='Ocean Park')
+    # Draw the histogram of the number of words in each TNs
+    draw_word_count_histogram(whampoa_dataframe, saved_file_name='whampoa_word_count_hist.png',
+                              station_name='Whampoa')
+    draw_word_count_histogram(ho_man_tin_dataframe, saved_file_name='ho_man_tin_word_count_hist.png',
+                              station_name='Ho Man Tin')
+    draw_word_count_histogram(south_horizons_dataframe, saved_file_name='south_horizons_word_count_hist.png',
+                              station_name='South Horizons')
+    draw_word_count_histogram(lei_tung_dataframe, saved_file_name='lei_tung_word_count_hist.png',
+                              station_name='Lei Tung')
+    draw_word_count_histogram(wong_chuk_hang_dataframe, saved_file_name='wung_chuk_hang_word_count_hist.png',
+                              station_name='Wong Chuk Hang')
+    draw_word_count_histogram(ocean_park_dataframe, saved_file_name='ocean_park_word_count_hist.png',
+                              station_name='Ocean Park')
     #
     # ================================='Activity and Sentiment Comparison'==========================================
     # Here we use the other 87 stations as the control group
     selected_columns = ['user_id_str', 'lat', 'lon', 'url', 'lang', 'hk_time', 'created_at', 'year',
                         'month','text', 'SmallTPU', 'cleaned_text', 'sentiment']
-    dataframe_list = []
+    nontn_dataframe_list = []
     for file in os.listdir(longitudinal_data_path):
         station_name = file[:-4]
         if station_name not in TransitNeighborhood_before_after.before_after_stations:
             dataframe = pd.read_pickle(os.path.join(longitudinal_data_path, station_name+'.pkl'))
             dataframe_seleted_columns = dataframe[selected_columns]
-            dataframe_list.append(dataframe_seleted_columns)
+            nontn_dataframe_list.append(dataframe_seleted_columns)
         else:
             pass
-    non_tn_dataframe = pd.concat(dataframe_list, axis=0)
+    non_tn_dataframe = pd.concat(nontn_dataframe_list, axis=0)
     non_tn_dataframe.to_pickle(os.path.join(read_data.transit_non_transit_comparison_before_after,
                                             'nontn_dataframe.pkl'))
     print('-----------------------------------------')
@@ -449,6 +451,7 @@ if __name__ == '__main__':
     print(non_tn_dataframe.shape)
     print('-----------------------------------------')
 
+    # Build the instances of TNs in the treatment group
     whampoa_tn = TransitNeighborhood_before_after(tn_dataframe=whampoa_dataframe,
                                                   non_tn_dataframe=non_tn_dataframe,
                                                   before_and_after=True, oct_open=True, compute_positive=False,
@@ -475,6 +478,7 @@ if __name__ == '__main__':
                                                    non_tn_dataframe=non_tn_dataframe,
                                                    before_and_after=True, oct_open=False, compute_positive=False,
                                                    compute_negative=False)
+    # Draw the sentiment and activity comparison plots
     whampoa_tn.line_map_comparison(line_labels=('Sentiment Level of Whampoa TN', 'Sentiment Level of Non-TN'),
                                    ylabel='Percentage of Positive Tweets Minus Percentage of Negative Tweets',
                                    plot_title_name='Sentiment Before and After Study: Whampoa',

@@ -4,6 +4,7 @@ import os
 import pytz
 import csv
 from datetime import datetime
+from collections import Counter
 
 from nltk.tokenize import word_tokenize
 from wordcloud import WordCloud
@@ -246,6 +247,8 @@ def get_tweets_based_on_date(file_path:str, station_name:str, start_date, end_da
     :return: a dataframe which contains tweets in a specific time range
     """
     combined_dataframe = pd.read_pickle(os.path.join(file_path, station_name+'.pkl'))
+    print('---------------------------------------------------------------------------------------')
+    print('The distribution of the tweet sentiment is: {}'.format(Counter(combined_dataframe['sentiment'])))
     combined_dataframe['hk_time'] = combined_dataframe.apply(
         lambda row: TransitNeighborhood_before_after.transform_string_time_to_datetime(row['hk_time']), axis=1)
     # combined_dataframe['year'] = combined_dataframe.apply(
@@ -400,22 +403,27 @@ if __name__ == '__main__':
     whampoa_dataframe = get_tweets_based_on_date(longitudinal_data_path, 'Whampoa', start_date,
                                                   end_date)
     number_of_tweet_user(whampoa_dataframe, station_name='Whampoa')
+    print('------------------------------------------------------------------------')
     ho_man_tin_dataframe = get_tweets_based_on_date(longitudinal_data_path,
                                                     'Ho Man Tin', start_date, end_date)
     number_of_tweet_user(ho_man_tin_dataframe, station_name='Ho Man Tin')
+    print('------------------------------------------------------------------------')
     south_horizons_dataframe = get_tweets_based_on_date(longitudinal_data_path,
                                                         'South Horizons', start_date, end_date)
     number_of_tweet_user(south_horizons_dataframe, station_name='South Horizons')
+    print('------------------------------------------------------------------------')
     lei_tung_dataframe = get_tweets_based_on_date(longitudinal_data_path,
                                                   'Lei Tung', start_date, end_date)
     number_of_tweet_user(lei_tung_dataframe, station_name='Lei Tung')
+    print('------------------------------------------------------------------------')
     wong_chuk_hang_dataframe = get_tweets_based_on_date(longitudinal_data_path,
                                                         'Wong Chuk Hang', start_date, end_date)
     number_of_tweet_user(wong_chuk_hang_dataframe, station_name='Wong Chuk Hang')
+    print('------------------------------------------------------------------------')
     ocean_park_dataframe = get_tweets_based_on_date(longitudinal_data_path,
                                                     'Ocean Park', start_date, end_date)
     number_of_tweet_user(ocean_park_dataframe, station_name='Ocean Park')
-    print('------------------------------------------------------------------------')
+    print('------------------------------------------------------------------------\n')
     # Draw the histogram of the number of words in each TNs
     draw_word_count_histogram(whampoa_dataframe, saved_file_name='whampoa_word_count_hist.png',
                               station_name='Whampoa')

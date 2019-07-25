@@ -10,15 +10,14 @@ import before_and_after
 import read_data
 
 # statistics
-import statsmodels.api as sm
 import statsmodels.formula.api as smf
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+from statsmodels.tools.tools import add_constant
 
 # visualization
 from matplotlib import pyplot as plt
 import seaborn as sns
 from adjustText import adjust_text
-
-import pysnooper
 
 # Load the month_list and the time_list for plot
 months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -31,6 +30,7 @@ time_list = ['2016_7', '2016_8', '2016_9', '2016_10', '2016_11', '2016_12', '201
 time_zone_hk = pytz.timezone('Asia/Shanghai')
 # Load the path for tn_dataframes
 data_path = os.path.join(read_data.transit_non_transit_comparison_cross_sectional, 'tpu_data_more')
+# Load a csv file which records the names of TPUs
 tpu_dataframe = pd.read_csv(os.path.join(read_data.transit_non_transit_comparison_before_after, 'compare_tn_and_nontn',
                                          'tpu_data.csv'), encoding='latin-1')
 
@@ -66,7 +66,8 @@ class TransitNeighborhood_TPU(object):
         result_dataframe_tn = pd.DataFrame(list(result_dict_tn.items()), columns=['Date', 'Value'])
         return result_dataframe_tn
 
-    def line_map_comparison(self, ax, line_labels:tuple, ylabel:str, draw_sentiment:bool=True):
+    def line_map(self, ax, line_labels:tuple, ylabel:str, plot_title_name: str, saving_file_name: str,
+                            draw_sentiment:bool=True):
         """
         :param ax: axis to make this plot
         :param line_labels: a tuple which records the line labels in the line graph
@@ -81,6 +82,7 @@ class TransitNeighborhood_TPU(object):
         dataframe_with_sentiment_activity = tn_dataframe_sent_act.set_index('Date')
         # So that we could reorder it based on an ordered time list
         dataframe_for_plot = dataframe_with_sentiment_activity.loc[time_list]
+        fig, ax = plt.subplots(1,1,figsize=(10,8))
         x = np.arange(0, len(list(dataframe_for_plot.index)), 1)
         if draw_sentiment:  # draw the sentiment comparison plot: y1: TN; y2: tpu
             y1 = [value[0] for value in list(dataframe_for_plot['Value'])]
@@ -115,7 +117,9 @@ class TransitNeighborhood_TPU(object):
         ax.set_ylabel(ylabel, color='k')
         ax.set_xticks(x)
         ax.set_xticklabels(time_list, rotation='vertical')
-        # figure.savefig(os.path.join(read_data.transit_non_transit_comparison_cross_sectional, saving_file_name))
+        ax.set_title(plot_title_name)
+        plt.show()
+        fig.savefig(os.path.join(read_data.transit_non_transit_comparison_cross_sectional, saving_file_name))
 
     @staticmethod
     def select_tpu_for_following_analysis(check_all_stations=False):
@@ -164,8 +168,8 @@ class TransitNeighborhood_TPU(object):
         return result
 
     @staticmethod
-    def plot_overall_sentiment_for_whole_tweets(df, y_label_name, figure_title=None, saved_file_name=None,
-                                                without_outlier=False):
+    def plot_overall_sentiment_for_whole_tweets(df, y_label_name:str, figure_title: str=None,
+                                                saved_file_name: str=None, without_outlier=False):
         fig, ax = plt.subplots(figsize=(10, 10))
         if without_outlier:
             # outliers: these transit neighborhoods have very high pos/neg
@@ -227,7 +231,7 @@ class TransitNeighborhood_TPU(object):
             adjust_text(other_stations_text, only_move={'points': 'y', 'text': 'y'},
                         arrowprops=dict(arrowstyle="->", color='k', lw=0.5))
             plt.legend()
-            fig.savefig(os.path.join(read_data.plot_path, saved_file_name), dpi=fig.dpi, bbox_inches='tight')
+            fig.savefig(os.path.join(read_data.plot_path_2017, saved_file_name), dpi=fig.dpi, bbox_inches='tight')
             plt.show()
         elif 'tn_or_not' in df.columns:
             tn_tpu_dataframe = df.loc[df['tn_or_not'] == 'tn_tpu']
@@ -260,7 +264,7 @@ class TransitNeighborhood_TPU(object):
                         arrowprops=dict(arrowstyle="->", color='g', lw=0.5))
 
             plt.legend()
-            fig.savefig(os.path.join(read_data.plot_path, saved_file_name), dpi=fig.dpi, bbox_inches='tight')
+            fig.savefig(os.path.join(read_data.plot_path_2017, saved_file_name), dpi=fig.dpi, bbox_inches='tight')
             plt.show()
         else:
             x = list(df['Activity_log10'])
@@ -280,29 +284,8 @@ class TransitNeighborhood_TPU(object):
 
             adjust_text(texts, only_move={'points': 'y', 'text': 'y'},
                         arrowprops=dict(arrowstyle="->", color='r', lw=0.5))
-            fig.savefig(os.path.join(read_data.plot_path, saved_file_name), dpi=fig.dpi, bbox_inches='tight')
+            fig.savefig(os.path.join(read_data.plot_path_2017, saved_file_name), dpi=fig.dpi, bbox_inches='tight')
             plt.show()
-
-
-def get_tweets_based_on_date(tpu_name, start_date, end_date):
-    """
-    Given a tpu name, output a tweet dataset based on the starting date and the end date
-    :param tpu_name: the name of this tpu
-    :param start_date: the starting date
-    :param end_date: the end date
-    :return: a tweet dataframe of which the tweets are posted in the given time range
-    """
-    dataframe = pd.read_csv(os.path.join(
-        read_data.longitudinal_data_path, tpu_name, tpu_name + '_tweets.csv'),
-        encoding='latin-1')
-    dataframe['hk_time'] = dataframe.apply(
-        lambda row: before_and_after.TransitNeighborhood_before_after.transform_string_time_to_datetime(row['hk_time']), axis=1)
-    time_mask = (dataframe['hk_time'] >= start_date) & (dataframe['hk_time'] <= end_date)
-    filtered_dataframe = dataframe.loc[time_mask]
-    # Fix the column name of the cleaned_text
-    filtered_dataframe.rename(columns={'cleaned_te': 'cleaned_text', 'user_id_st': 'user_id_str'},
-                              inplace=True)
-    return filtered_dataframe
 
 
 # compute the percentage of positive Tweets: 2 is positive
@@ -450,6 +433,31 @@ def build_data_for_cross_sectional_study(tweet_data_path, saving_path):
             pass
 
 
+def draw_correlation_plot(dataframe):
+    """
+    :param dataframe: a dataframe which saves the data of independent variables in the regression analysis
+    :return: the corrrelation table that would be saved in a local directory
+    """
+    fig, ax = plt.subplots(1,1,figsize=(10,8))
+    # Use heatmap embeded in seaborn to draw the correlation matrix
+    sns.heatmap(dataframe.corr(method='pearson'), annot=True, fmt='.4f',
+                cmap=plt.get_cmap('coolwarm'), cbar=False, ax=ax)
+    ax.set_yticklabels(ax.get_yticklabels(), rotation="horizontal")
+    fig.savefig(os.path.join(
+        read_data.transit_non_transit_comparison_cross_sectional, 'independent_correlation.png'))
+    plt.show()
+
+
+def compute_vif(dataframe):
+    """
+    :param dataframe: a dataframe which saves the data of independent variables in the regression analysis
+    :return: a pandas series which records the VIF value for each predictor
+    """
+    X = add_constant(dataframe)
+    result_series = pd.Series([variance_inflation_factor(X.values, i) for i in range(X.shape[1])], index=X.columns)
+    return result_series
+
+
 if __name__ == '__main__':
     october_23_start = datetime(2016, 10, 23, 0, 0, 0, tzinfo=time_zone_hk)
     october_23_end = datetime(2016, 10, 23, 23, 59, 59, tzinfo=time_zone_hk)
@@ -565,8 +573,8 @@ if __name__ == '__main__':
     tpu_name_list_from_combined_data = list(combined_dataframe['tpu_name'])
     combined_dataframe['employment'] = combined_dataframe.apply(lambda row: row['employment'] / 100, axis=1)
     combined_dataframe.to_csv(os.path.join(demographic_path, 'combined_dataframe.csv'))
-    draw_boxplot(combined_dataframe, column_name='Sentiment', title_name='Sentiment Comparison')
-    draw_boxplot(combined_dataframe, column_name='activity', title_name='Activity Level Comparison')
+    # draw_boxplot(combined_dataframe, column_name='Sentiment', title_name='Sentiment Comparison')
+    # draw_boxplot(combined_dataframe, column_name='activity', title_name='Activity Level Comparison')
     combined_dataframe = combined_dataframe[['Sentiment', 'activity', 'median_income', 'employment',
                                              'marry', 'education']]
     print('Social Demographic Data Description...')
@@ -579,6 +587,15 @@ if __name__ == '__main__':
     normalized_combined_dataframe = (combined_dataframe - combined_dataframe.mean()) / combined_dataframe.std()
     normalized_combined_dataframe['tn_or_not'] = tn_or_not_list
     normalized_combined_dataframe['tpu_name'] = tpu_name_list_from_combined_data
+    print(normalized_combined_dataframe.head(5))
+    print(normalized_combined_dataframe.columns)
+    # Check the correlation matrix of independent variables and compute VIF value for each independent variable
+    dataframe_for_correlation_matrix = normalized_combined_dataframe[['median_income', 'employment',
+                                                                      'marry', 'education', 'tn_or_not']]
+    draw_correlation_plot(dataframe_for_correlation_matrix)
+    result_vif_series = compute_vif(dataframe_for_correlation_matrix)
+    print(result_vif_series)
+    # Regression analysis
     reg_sent = smf.ols('Sentiment ~ median_income+employment+marry+education+tn_or_not',
                        normalized_combined_dataframe).fit()
     print(reg_sent.summary())

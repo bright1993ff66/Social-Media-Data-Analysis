@@ -1,0 +1,10 @@
+keras==2.2.0
+botometer
+gensim
+tweepy
+geopy
+google
+wordcloud
+sklearn
+spacy
+pandas

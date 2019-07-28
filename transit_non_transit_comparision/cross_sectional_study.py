@@ -419,8 +419,14 @@ def draw_boxplot(dataframe, column_name, title_name):
 
 
 def build_data_for_cross_sectional_study(tweet_data_path, saving_path):
-    all_tweet_data = pd.read_csv(os.path.join(tweet_data_path, 'tweet_2016_2017_more_tweets.csv'),
+    """
+    :param tweet_data_path: path which is used to save all the filtered tweets
+    :param saving_path: path which is used to save the tweets posted in each TPU
+    :return:
+    """
+    all_tweet_data = pd.read_csv(os.path.join(tweet_data_path, 'tweet_2016_2017_more_tweets_with_visitors.csv'),
                                  encoding='utf-8', dtype='str', quoting=csv.QUOTE_NONNUMERIC)
+    # Only consider tweets posted in 2017
     tweet_2017 = all_tweet_data.loc[all_tweet_data['year'] == '2017']
     tpu_set = set(tpu_dataframe['SmallTPU'])
     for tpu in tpu_set:
@@ -459,6 +465,7 @@ def compute_vif(dataframe):
 
 
 if __name__ == '__main__':
+    # Specify some important dates
     october_23_start = datetime(2016, 10, 23, 0, 0, 0, tzinfo=time_zone_hk)
     october_23_end = datetime(2016, 10, 23, 23, 59, 59, tzinfo=time_zone_hk)
     december_28_start = datetime(2016, 12, 28, 0, 0, 0, tzinfo=time_zone_hk)
@@ -466,6 +473,7 @@ if __name__ == '__main__':
     start_date = datetime(2016, 5, 7, tzinfo=time_zone_hk)
     end_date = datetime(2017, 12, 31, tzinfo=time_zone_hk)
 
+    # Build the dataframe for the social demographic variables for each TPU
     demographic_path = os.path.join(read_data.transit_non_transit_comparison_cross_sectional,
                                     'cross_sectional_independent_variables')
     income_employment_rate = pd.read_csv(os.path.join(demographic_path, 'Median Income and Employment Rate.csv'))
@@ -475,17 +483,17 @@ if __name__ == '__main__':
     tpu_2016_social_demographic_dataframe = \
         build_social_demographic_dataframe(tpu_name_list=tpu_2016_name_list, economic_dataframe=income_employment_rate,
                                        marry_dataframe=marry_status_dataframe, edu_dataframe=education)
-    # tpu_2016_social_demographic_dataframe.to_csv(os.path.join(demographic_path, 'social_demographic_combined.csv'))
+    tpu_2016_social_demographic_dataframe.to_csv(os.path.join(demographic_path, 'social_demographic_combined.csv'))
     print('The combined social demographic data(median income, marry, employment, education) is......')
     print(tpu_2016_social_demographic_dataframe)
-    # tpu_2016_social_demographic_dataframe.to_csv(os.path.join(read_data.desktop, 'tpu_data_social_demo.csv'),
-    #                                              encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC)
     print('--------------------------------------------------')
 
     # Find the tweets in each TPU
     build_data_for_cross_sectional_study(tweet_data_path=read_data.datasets,
-                                         saving_path=os.path.join(read_data.transit_non_transit_comparison_cross_sectional, 'tpu_data_more'))
-
+                                         saving_path=os.path.join(
+                                             read_data.transit_non_transit_comparison_cross_sectional, 'tpu_data_more'))
+    # We have built folder for each TPU to store tweets
+    # Based on the created folders, select tpus which have at least 100 tweets in 2017
     activity_dict = TransitNeighborhood_TPU.select_tpu_for_following_analysis(check_all_stations=False)
     print('Total number of tpus we consider...')
     print(len(activity_dict.keys()))
@@ -496,7 +504,7 @@ if __name__ == '__main__':
                                 quoting=csv.QUOTE_NONNUMERIC)
         dataframe['sentiment'] = dataframe['sentiment'].astype(np.int)
         sentiment_dict[tpu] = pos_percent_minus_neg_percent(dataframe)
-    #
+
     sentiment_activity_combined_dict = {}
     for tpu_name in sentiment_dict.keys():
         sentiment_activity_combined_dict[tpu_name] = (sentiment_dict[tpu_name], activity_dict[tpu_name])
@@ -505,7 +513,6 @@ if __name__ == '__main__':
     print('-----------------------------------------------\n')
 
     # the tn_tpus
-    # ****check this function****
     whole_tpu_sent_act_dataframe = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict,
                                                                                         activity_dict=activity_dict)
     print('--------------------------------------------------------------------')
@@ -513,14 +520,14 @@ if __name__ == '__main__':
     print(sum(list(whole_tpu_sent_act_dataframe['activity'])))
     print('--------------------------------------------------------------------')
     # whole_tpu_sent_act_dataframe.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act.csv'))
-    # y_label = 'Percentage of Positive Tweets Minus Percentage of Negative Tweets'
-    # Draw the tpu sentiment against activity
-    # figure_title_name = 'Sentiment Against Activity Across TPUs'
-    # TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_tpu_sent_act_dataframe,
-    #                                                                 y_label_name=y_label,
-    #                                                                 figure_title=figure_title_name,
-    #                                                                 saved_file_name='tpu_sent_vs_act.png',
-    #                                                                 without_outlier=False)
+    y_label = 'Percentage of Positive Tweets Minus Percentage of Negative Tweets'
+    #Draw the tpu sentiment against activity
+    figure_title_name = 'Sentiment Against Activity Across TPUs'
+    TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_tpu_sent_act_dataframe,
+                                                                    y_label_name=y_label,
+                                                                    figure_title=figure_title_name,
+                                                                    saved_file_name='tpu_sent_vs_act.png',
+                                                                    without_outlier=False)
     print('--------------------------Activity---------------------------------')
     for index, dataframe in whole_tpu_sent_act_dataframe.groupby('tn_or_not'):
         print(index)
@@ -546,9 +553,9 @@ if __name__ == '__main__':
         whole_tpu_sent_act_dataframe.loc[~whole_tpu_sent_act_dataframe['tpu_name'].isin(not_considered_tpu)]
     print("\nThe shape of the sentiment dataframe without conflicts is...")
     print(tpu_sent_act_without_conflicts.shape)
-    print('-----------------------------------\n')
-    # tpu_sent_act_without_conflicts.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act_without_conflicts.csv'),
-    #                                       encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC)
+    print('-------------------------------------------------------------------\n')
+    tpu_sent_act_without_conflicts.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act_without_conflicts.csv'),
+                                          encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC)
     # fix the typo
     conflict_dict = {'731, 733 & 754': '731, 733 and 754', '288 & 289': '288 - 289',
                      '320, 324 & 329': '320, 324 and 329', '156 & 158': '156 and 158',

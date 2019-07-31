@@ -1,11 +1,15 @@
 import re
 import os
-from sklearn.metrics import roc_curve, auc
 from matplotlib import pyplot as plt
 import pandas as pd
-import math
-import numpy as np
+import csv
+import pytz
+from datetime import datetime
 from geopy.distance import vincenty
+
+import read_data
+
+time_zone_hk = pytz.timezone('Asia/Shanghai')
 
 # The replacement patterns used in cleaning the raw text data
 replacement_patterns = [
@@ -38,19 +42,17 @@ class RegexpReplacer(object):
         return s
 
 
-# Check if there is blank list in pandas dataframe text
-def check_nan(text):
-    nan_list = []
-    if len(text) == 0:
-        nan_list.append(1)
-    else:
-        nan_list.append(0)
-    return nan_list
+def read_local_csv_file(path, filename):
+    dataframe = pd.read_csv(os.path.join(path, filename), encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC, dtype='str',
+                            index_col=0)
+    return dataframe
 
 
-def value_count(data_frame):
-    result = data_frame['text'].apply(check_nan)
-    return result.value_counts()
+def number_of_tweet_user(df):
+    user_num = len(set(df['user_id_str']))
+    tweet_num = df.shape[0]
+    print('Total number of tweet is: {}; Total number of user is {}'.format(
+        tweet_num, user_num))
 
 
 # Use this function to select the MTR-related tweets
@@ -64,23 +66,25 @@ def find_tweet(keywords, tweet):
     return result
 
 
-# Get the ROC and AUC for evaluations
-def compute_auc(y_true, y_pred):
-    fpr_keras, tpr_keras, thresholds_keras = roc_curve(y_true, y_pred)
-    auc_keras = auc(fpr_keras, tpr_keras)
-    return auc_keras
+# get the hk_time column based on the created_at column
+def get_hk_time(df):
+    changed_time_list = []
+    for _, row in df.iterrows():
+        time_to_change = datetime.strptime(row['created_at'], '%a %b %d %H:%M:%S %z %Y')
+        # get the hk time
+        changed_time = time_to_change.astimezone(time_zone_hk)
+        changed_time_list.append(changed_time)
+    df['hk_time'] = changed_time_list
+    return df
 
 
-# Plot the ROC curve
-def plot_roc(fpr_keras, tpr_keras, auc_keras, model_name: str):
-    plt.figure(1)
-    plt.plot([0, 1], [0, 1], 'k--')
-    plt.plot(fpr_keras, tpr_keras, label='Keras '+ model_name + '(area = {:.3f})'.format(auc_keras))
-    plt.xlabel('False positive rate')
-    plt.ylabel('True positive rate')
-    plt.title('ROC curve: '+model_name)
-    plt.legend(loc='best')
-    plt.show()
+# get the year, month, day information of based on any tweet dataframe
+def get_year_month_day(df):
+    df_copy = df.copy()
+    df_copy['year'] = df_copy.apply(lambda row: row['hk_time'].year, axis=1)
+    df_copy['month'] = df_copy.apply(lambda row: row['hk_time'].month, axis=1)
+    df_copy['day'] = df_copy.apply(lambda row: row['hk_time'].day, axis=1)
+    return df_copy
 
 
 # Calculate the haversine distance between two points based on latitude and longitude
@@ -111,14 +115,61 @@ def select_data_based_on_location(row, station_lat, station_lon):
     return result
 
 
-def read_file_from_multi_csvs(path):
+def read_text_from_multi_csvs(path):
     all_csv_files = os.listdir(path)
-    dataframes_list = []
+    dataframes = []
     for file in all_csv_files:
-        dataframe = pd.read_csv(os.path.join(path, file), encoding='latin-1', na_values=['nan',''])
-		dataframes_list.append(dataframe)
-    combined_dataframes = pd.concat(dataframes)
+        dataframe = pd.read_csv(os.path.join(path, file), encoding='latin-1', dtype='str',
+                                quoting=csv.QUOTE_NONNUMERIC)
+        dataframes.append(dataframe)
+    combined_dataframes = pd.concat(dataframes, sort=True)
     return combined_dataframes
+
+
+def build_dataframe_for_urban_rate(source_dataframe):
+    result_dataframe = pd.DataFrame(columns=['Year', 'US', 'China', 'World'])
+    China_dataframe = source_dataframe.loc[source_dataframe['Country Name'] == 'China']
+    us_dataframe = source_dataframe.loc[source_dataframe['Country Name'] == 'United States']
+    World_dataframe = source_dataframe.loc[source_dataframe['Country Name'] == 'World']
+    year_list = list(range(1960, 2019, 1))
+    result_dataframe['Year'] = year_list
+    result_dataframe['US'] = us_dataframe.values[0][4:]
+    result_dataframe['China'] = China_dataframe.values[0][4:]
+    result_dataframe['World'] = World_dataframe.values[0][4:]
+    return result_dataframe
+
+
+def build_line_graph_urban_rate(dataframe):
+    x = list(dataframe['Year'])
+    y_china = list(dataframe['China'])
+    y_us = list(dataframe['US'])
+    y_world = list(dataframe['World'])
+
+    figure, ax = plt.subplots(1, 1, figsize=(20, 10), dpi=300)
+    lns1 = ax.plot(x, y_world, 'k-', label='World', linestyle='--', marker='o')
+    lns2 = ax.plot(x, y_china, 'y-', label='China', linestyle='--', marker='^')
+    lns3 = ax.plot(x, y_us, 'b-', label='US', linestyle='--', marker='^')
+
+    lns = lns1 + lns2 + lns3
+    labs = [l.get_label() for l in lns]
+    ax.legend(lns, labs)
+
+    ax.set_xlabel('Time')
+    ax.set_ylabel('Urban Population Rate %')
+    ax.set_title('Urban Population Rate for US, China and World from 1960 to 2018')
+    plt.savefig(os.path.join(read_data.plot_path_2017, 'urban_rate_plot.png'))
+    plt.show()
+
+
+def draw_urban_rate_main(dataframe):
+    data_for_plot = build_dataframe_for_urban_rate(dataframe)
+    build_line_graph_urban_rate(dataframe=data_for_plot)
+
+
+if __name__ == '__main__':
+    urban_rate_dataframe = pd.read_csv(os.path.join(read_data.datasets, 'urban_rate.csv'), encoding='latin-1',
+                                       dtype=str, index_col=0)
+    draw_urban_rate_main(urban_rate_dataframe)
 
 
 

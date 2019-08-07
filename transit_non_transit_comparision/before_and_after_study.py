@@ -6,6 +6,8 @@ import csv
 from scipy.stats import linregress
 from datetime import datetime
 from collections import Counter
+import warnings
+warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
 
 from nltk.tokenize import word_tokenize
 from wordcloud import WordCloud
@@ -17,6 +19,7 @@ import wordcloud_generate
 import Topic_Modelling_for_tweets
 
 from matplotlib import pyplot as plt
+import matplotlib.ticker as mtick
 from matplotlib import rc
 rc('mathtext', default='regular')
 import seaborn as sns
@@ -147,14 +150,32 @@ class TransitNeighborhood_Before_After(object):
             y2 = [value[0] for value in list(tn_not_considered_dataframe_for_plot['Value'])]
             y3 = [value[0] for value in list(non_tn_dataframe_for_plot['Value'])]
         else:  # draw the activity comparison plot. Use log10(num of tweets) instead
-            y1 = [np.log10(value[1]) for value in list(tn_dataframe_for_plot['Value'])]
-            y2 = [np.log10(value[1]) for value in list(tn_not_considered_dataframe_for_plot['Value'])]
-            y3 = [np.log10(value[1]) for value in list(non_tn_dataframe_for_plot['Value'])]
+            if 'Kwun Tong' in plot_title_name:
+                y1 = [value[1]/1397137.377 for value in list(tn_dataframe_for_plot['Value'])]
+                y2 = [value[1]/2573440.774 for value in list(tn_not_considered_dataframe_for_plot['Value'])]
+                y3 = [value[1]/1603042.196 for value in list(non_tn_dataframe_for_plot['Value'])]
+            elif 'South Horizons' in plot_title_name:
+                y1 = [value[1]/1401496.118 for value in list(tn_dataframe_for_plot['Value'])]
+                y2 = [value[1]/1810822.755 for value in list(tn_not_considered_dataframe_for_plot['Value'])]
+                y3 = [value[1]/5303151.669 for value in list(non_tn_dataframe_for_plot['Value'])]
+            elif 'Ocean Park' in plot_title_name:
+                y1 = [value[1]/2167755.637 for value in list(tn_dataframe_for_plot['Value'])]
+                y2 = [value[1]/3807838.975 for value in list(tn_not_considered_dataframe_for_plot['Value'])]
+                y3 = [value[1]/7143243.558 for value in list(non_tn_dataframe_for_plot['Value'])]
+            else:
+                wrong_message = 'You should set a proper title name!'
+                return wrong_message
 
         fig, ax = plt.subplots(1, 1, figsize=(10, 8))
-        lns1 = ax.plot(x, y1, 'r-', label=line_labels[0], linestyle='--', marker='o')
-        lns2 = ax.plot(x, y2, 'y-', label=line_labels[1], linestyle='--', marker='o')
-        lns3 = ax.plot(x, y3, 'g-', label=line_labels[2], linestyle='--', marker='^')
+        if draw_sentiment:
+            lns1 = ax.plot(x, y1, 'r-', label=line_labels[0], linestyle='--', marker='o')
+            lns2 = ax.plot(x, y2, 'y-', label=line_labels[1], linestyle='--', marker='o')
+            lns3 = ax.plot(x, y3, 'g-', label=line_labels[2], linestyle='--', marker='^')
+        else:
+            ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2e'))
+            lns1 = ax.plot(x, y1, 'r-', label=line_labels[0], linestyle='--', marker='o')
+            lns2 = ax.plot(x, y2, 'y-', label=line_labels[1], linestyle='--', marker='o')
+            lns3 = ax.plot(x, y3, 'g-', label=line_labels[2], linestyle='--', marker='^')
 
         # Whether to draw the vertical line that indicates the open date
         if self.before_and_after:
@@ -595,6 +616,8 @@ if __name__ == '__main__':
     kwun_tong_line_treatment_selected = {'213', '236', '243', '245'}
     kwun_tong_line_treatment = {'213', '215', '217', '226', '236', '237', '241', '243', '244', '245'}
     kwun_tong_line_treatment_not_considered = kwun_tong_line_treatment - kwun_tong_line_treatment_selected
+    print('For Kwun Tong line, '
+          'the treatment not considered TPUs are: {}'.format(kwun_tong_line_treatment_not_considered))
     kwun_tong_line_control_1000 = {'212', '213', '215', '217', '226', '234', '235', '236', '237', '241', '242',
                                    '243', '244', '245', '247'} - kwun_tong_line_treatment
     kwun_tong_line_control_1500 = {'211', '212', '213', '214', '215', '217', '220', '225', '226', '227',
@@ -612,6 +635,8 @@ if __name__ == '__main__':
         {'172', '173', '174', '175', '176'} - south_horizons_lei_tung_treatment - {'175', '176'}
     south_horizons_lei_tung_control_1500 = {'172', '173', '174', '175', '176', '182'} - \
                                            south_horizons_lei_tung_treatment - {'175', '176'}
+    print('For South Horizons & Lei Tung, '
+          'the treatment not considered TPUs are: {}'.format(south_horizons_lei_tung_treatment_not_considered))
     print('----------------------------------------------------------------------------------')
     print('For Souths Horizons&Lei Tung Line Extension: the treatment group is: {}; '
           'the control group 1000-meter is: {}; the control group 1500-meter is: {}'.format(
@@ -625,6 +650,8 @@ if __name__ == '__main__':
                                              ocean_park_wong_chuk_hang_treatment - south_horizons_lei_tung_treatment
     ocean_park_wong_chuk_hang_control_1500 = {'173', '174', '175', '176', '182', '183', '184', '191'} - \
                                              ocean_park_wong_chuk_hang_treatment - south_horizons_lei_tung_treatment
+    print('Ocean Park & Wong Chuk Hang, '
+          'the treatment not considered TPUs are: {}'.format(ocean_park_wong_chuk_hang_treatment_not_considered))
     print('----------------------------------------------------------------------------------')
     print('For Wong Chuk Hang&Ocean Park Line Extension: the treatment group is: {}; '
           'the control group 1000-meter is: {}; the control group 1500-meter is: {}'.format(
@@ -746,12 +773,12 @@ if __name__ == '__main__':
         saving_file_name='kwun_tong_line_sentiment_treatment_control_comparison_1500_meter.png')
     kwun_tong_line_extension_1000_control.line_map_comparison(
         line_labels=('Treatment Group',  'Treatment Group Not Considered', 'Control Group(1000 meter)'),
-        ylabel='Number of Posted Tweets(log10)',
+        ylabel='Number of Posted Tweets Per Square Meter',
         draw_sentiment=False, plot_title_name='Kwun Tong Line Treatment Group and Control Group Comparison',
         saving_file_name='kwun_tong_line_activity_treatment_control_comparison_1000_meter.png')
     kwun_tong_line_extension_1500_control.line_map_comparison(
         line_labels=('Treatment Group', 'Treatment Group Not Considered', 'Control Group(1000 meter)'),
-        ylabel='Number of Posted Tweets(log10)',
+        ylabel='Number of Posted Tweets Per Square Meter',
         draw_sentiment=False, plot_title_name='Kwun Tong Line Treatment Group and Control Group Comparison',
         saving_file_name='kwun_tong_line_activity_treatment_control_comparison_1500_meter.png')
 
@@ -773,7 +800,7 @@ if __name__ == '__main__':
     #     saving_file_name='south_horizons_lei_tung_activity_treatment_control_comparison_1000_meter.png')
     south_horizons_lei_tung_1500_control.line_map_comparison(
         line_labels=('Treatment Group', 'Treatment Group Not Considered', 'Control Group(1500 meter)'),
-        ylabel='Number of Posted Tweets(log10)',
+        ylabel='Number of Posted Tweets Per Square Meter',
         draw_sentiment=False, plot_title_name='South Horizons & Lei Tung Treatment Group and Control Group Comparison',
         saving_file_name='south_horizons_lei_tung_activity_treatment_control_comparison_1500_meter.png')
 
@@ -798,7 +825,7 @@ if __name__ == '__main__':
     # )
     ocean_park_wong_chuk_hang_1500_control.line_map_comparison(
         line_labels=('Treatment Group', 'Treatment Group Not Considered', 'Control Group(1500 meter)'),
-        ylabel='Number of Tweets(log10)',
+        ylabel='Number of Tweets Per Square Meter',
         draw_sentiment=False, plot_title_name='Ocean Park & Wong Chuk Hang Treatment Group and Control Group Comparison',
         saving_file_name='ocean_park_wong_chuk_hang_activity_treatment_control_comparison_1500_meter.png'
     )
@@ -840,7 +867,7 @@ if __name__ == '__main__':
     print('***treatment vs 1500 control****')
     kwun_tong_line_extension_1500_control.compute_abs_coeff_difference()
 
-    # # Compare the tpus in treatment group with the control group
+    # Compare the tpus in treatment group with the control group
     kwun_tong_line_extension_1000_control.line_map_comparison_between_tpus_and_control('245', '213', '236', '243')
     kwun_tong_line_extension_1500_control.line_map_comparison_between_tpus_and_control('245', '213', '236', '243')
     south_horizons_lei_tung_1500_control.line_map_comparison_between_tpus_and_control('174')
@@ -898,4 +925,4 @@ if __name__ == '__main__':
                           topic_predict_file_name=file_name + '_tweet_topic.pkl',
                           saving_path=read_data.before_and_after_topic_modelling_compare)
         print('------------------' + file_name + ' ends-----------------------------')
-    # # =================================================================================================================
+    # =================================================================================================================

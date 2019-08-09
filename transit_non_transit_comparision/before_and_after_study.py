@@ -39,9 +39,10 @@ class TransitNeighborhood_Before_After(object):
     before_after_stations = ['Whampoa', 'Ho Man Tin', 'South Horizons', 'Wong Chuk Hang', 'Ocean Park',
                              'Lei Tung']
 
-    def __init__(self, tn_dataframe, non_tn_dataframe, treatment_not_considered_dataframe, oct_open:bool,
+    def __init__(self, name, tn_dataframe, non_tn_dataframe, treatment_not_considered_dataframe, oct_open:bool,
                  before_and_after:bool, compute_positive:bool, compute_negative:bool):
         """
+        :param name: the name of the studied area
         :param tn_dataframe: the dataframe which records all the tweets posted in the TN
         :param non_tn_dataframe: the dataframe which records all the tweets posted in corresponding non_tn
         :param treatment_not_considered_dataframe: the dataframe which records all the tweets posted in the not
@@ -51,6 +52,7 @@ class TransitNeighborhood_Before_After(object):
         :param compute_positive: True if use positive percent as the sentiment metric
         :param compute_negative: True if use negative percent as the sentiment metric
         """
+        self.name = name
         self.tn_dataframe = tn_dataframe
         self.non_tn_dataframe = non_tn_dataframe
         self.treatment_not_considered_dataframe = treatment_not_considered_dataframe
@@ -296,6 +298,114 @@ class TransitNeighborhood_Before_After(object):
             figure.savefig(
                 os.path.join(saving_path, 'Ocean_park_wong_chuk_hang_' + '_'.join(tpu_name_list) + '_control.png'))
             plt.show()
+
+    def draw_tweet_posting_time_comparison(self, saving_path):
+        treatment_dataframe_copy = self.tn_dataframe.copy()
+        treatment_not_considered_dataframe_copy = self.non_tn_dataframe.copy()
+        control_dataframe_copy = self.non_tn_dataframe.copy()
+        # Transform the string time to datetime object
+        if isinstance(list(treatment_dataframe_copy['hk_time'])[0], str) or isinstance(
+                list(treatment_not_considered_dataframe_copy['hk_time'])[0], str) or isinstance(
+                list(control_dataframe_copy['hk_time'])[0], str):
+            treatment_dataframe_copy['hk_time'] = treatment_dataframe_copy.apply(
+                lambda row: TransitNeighborhood_Before_After.transform_string_time_to_datetime(row['hk_time']), axis=1)
+            treatment_not_considered_dataframe_copy['hk_time'] = treatment_not_considered_dataframe_copy.apply(
+                lambda row: TransitNeighborhood_Before_After.transform_string_time_to_datetime(row['hk_time']), axis=1)
+            control_dataframe_copy['hk_time'] = control_dataframe_copy.apply(
+                lambda row: TransitNeighborhood_Before_After.transform_string_time_to_datetime(row['hk_time']), axis=1)
+        else:
+            pass
+        # Get the day column and hour column
+        treatment_dataframe_copy['day'] = treatment_dataframe_copy.apply(lambda row: row['hk_time'].day, axis=1)
+        treatment_dataframe_copy['hour'] = treatment_dataframe_copy.apply(lambda row: row['hk_time'].hour, axis=1)
+        treatment_not_considered_dataframe_copy['day'] = treatment_not_considered_dataframe_copy.apply(
+            lambda row: row['hk_time'].day, axis=1)
+        treatment_not_considered_dataframe_copy['hour'] = treatment_not_considered_dataframe_copy.apply(
+            lambda row: row['hk_time'].hour, axis=1)
+        control_dataframe_copy['day'] = control_dataframe_copy.apply(
+            lambda row: row['hk_time'].day, axis=1)
+        control_dataframe_copy['hour'] = control_dataframe_copy.apply(
+            lambda row: row['hk_time'].hour, axis=1)
+
+        if self.oct_open:
+            treatment_dataframe_before = treatment_dataframe_copy.loc[
+                treatment_dataframe_copy['hk_time'] < october_23_start]
+            treatment_dataframe_after = treatment_dataframe_copy.loc[
+                treatment_dataframe_copy['hk_time'] > october_23_end]
+            treatment_not_considered_dataframe_before = treatment_not_considered_dataframe_copy.loc[
+                treatment_not_considered_dataframe_copy['hk_time'] < october_23_start]
+            treatment_not_considered_dataframe_after = treatment_not_considered_dataframe_copy.loc[
+                treatment_not_considered_dataframe_copy['hk_time'] > october_23_end]
+            control_dataframe_before = control_dataframe_copy.loc[control_dataframe_copy['hk_time'] < october_23_start]
+            control_dataframe_after = control_dataframe_copy.loc[control_dataframe_copy['hk_time'] > october_23_end]
+        else:
+            treatment_dataframe_before = treatment_dataframe_copy.loc[
+                treatment_dataframe_copy['hk_time'] < december_28_start]
+            treatment_dataframe_after = treatment_dataframe_copy.loc[
+                treatment_dataframe_copy['hk_time'] > december_28_end]
+            treatment_not_considered_dataframe_before = treatment_not_considered_dataframe_copy.loc[
+                treatment_not_considered_dataframe_copy['hk_time'] < december_28_start]
+            treatment_not_considered_dataframe_after = treatment_not_considered_dataframe_copy.loc[
+                treatment_not_considered_dataframe_copy['hk_time'] > december_28_end]
+            control_dataframe_before = control_dataframe_copy.loc[control_dataframe_copy['hk_time'] < december_28_start]
+            control_dataframe_after = control_dataframe_copy.loc[control_dataframe_copy['hk_time'] > december_28_end]
+
+        fig_treatment = plt.figure(figsize=(20, 8))
+        fig_treatment_not_considered = plt.figure(figsize=(20, 8))
+        fig_control = plt.figure(figsize=(20, 8))
+        dataframe_dict = {'treatment': [treatment_dataframe_before, treatment_dataframe_after],
+                          'treatment_not_considered': [treatment_not_considered_dataframe_before,
+                                                       treatment_not_considered_dataframe_after],
+                          'control': [control_dataframe_before, control_dataframe_after]}
+        for setting in list(dataframe_dict.keys()):
+            if setting == 'treatment':
+                dataframe_list_treatment = dataframe_dict[setting]
+                ax_treatment = [None] * 2
+                for index, dataframe in enumerate(dataframe_list_treatment):
+                    ax_treatment[index] = fig_treatment.add_subplot(1,2, index+1)
+                    if index == 0:
+                        sns.distplot(treatment_dataframe_before.hour, kde=False, label='Treatment Before',
+                                     ax=ax_treatment[index], color='red', norm_hist=True)
+                    else:
+                        sns.distplot(treatment_dataframe_after.hour, kde=False, label='Treatment After',
+                                     ax=ax_treatment[index], color='green', norm_hist=True)
+                    ax_treatment[index].legend()
+                    ax_treatment[index].set_ylim(0, 0.15)
+                    ax_treatment[index].set_ylabel('Probability', color='k')
+                fig_treatment.savefig(os.path.join(saving_path, self.name+'_treatment.png'))
+            elif setting == 'treatment_not_considered':
+                dataframe_list_treatment_not_considered = dataframe_dict[setting]
+                ax_treatment_not_considered = [None] * 2
+                for index, dataframe in enumerate(dataframe_list_treatment_not_considered):
+                    ax_treatment_not_considered[index] = fig_treatment_not_considered.add_subplot(1,2, index+1)
+                    if index == 0:
+                        sns.distplot(treatment_not_considered_dataframe_before.hour, kde=False,
+                                     label='Treatment Not Considered Before',
+                                     ax=ax_treatment_not_considered[index], color='red', norm_hist=True)
+                    else:
+                        sns.distplot(treatment_not_considered_dataframe_after.hour, kde=False,
+                                     label='Treatment Not Considered After',
+                                     ax=ax_treatment_not_considered[index], color='green', norm_hist=True)
+                    ax_treatment_not_considered[index].legend()
+                    ax_treatment_not_considered[index].set_ylim(0, 0.15)
+                    ax_treatment_not_considered[index].set_ylabel('Probability', color='k')
+                    fig_treatment_not_considered.savefig(
+                        os.path.join(saving_path, self.name + '_treatment_not_considered.png'))
+            else:
+                dataframe_list_control = dataframe_dict[setting]
+                ax_control = [None] * 2
+                for index, dataframe in enumerate(dataframe_list_control):
+                    ax_control[index] = fig_control.add_subplot(1,2, index+1)
+                    if index == 0:
+                        sns.distplot(control_dataframe_before.hour, kde=False, label='Control Before',
+                                     ax=ax_control[index], color='red', norm_hist=True)
+                    else:
+                        sns.distplot(control_dataframe_after.hour, kde=False, label='Control After',
+                                     ax=ax_control[index], color='green', norm_hist=True)
+                    ax_control[index].legend()
+                    ax_control[index].set_ylim(0, 0.15)
+                    ax_control[index].set_ylabel('Probability', color='k')
+                fig_control.savefig(os.path.join(saving_path, self.name+'_control.png'))
 
     @staticmethod
     def build_data_for_longitudinal_study(tweet_data_path, saving_path):
@@ -721,57 +831,64 @@ if __name__ == '__main__':
                                                )
 
     # Draw the word count
-    draw_word_count_histogram(df=kwun_tong_line_treatment_dataframe, station_name='Kwun_Tong_Line',
-                              saved_file_name='Kwun_Tong_Line_tweet_word_count.png')
-    draw_word_count_histogram(df=south_horizons_lei_tung_treatment_dataframe,
-                              station_name='south_horizons_lei_tung',
-                              saved_file_name='South_horizons_lei_tung_line_tweet_word_count.png')
-    draw_word_count_histogram(df=ocean_park_wong_chuk_hang_treatment_dataframe,
-                              station_name='Ocean_park_wong_chuk_hang',
-                              saved_file_name='Ocean_park_wong_chuk_hang_tweet_word_count.png')
+    # draw_word_count_histogram(df=kwun_tong_line_treatment_dataframe, station_name='Kwun_Tong_Line',
+    #                           saved_file_name='Kwun_Tong_Line_tweet_word_count.png')
+    # draw_word_count_histogram(df=south_horizons_lei_tung_treatment_dataframe,
+    #                           station_name='south_horizons_lei_tung',
+    #                           saved_file_name='South_horizons_lei_tung_line_tweet_word_count.png')
+    # draw_word_count_histogram(df=ocean_park_wong_chuk_hang_treatment_dataframe,
+    #                           station_name='Ocean_park_wong_chuk_hang',
+    #                           saved_file_name='Ocean_park_wong_chuk_hang_tweet_word_count.png')
 
-    kwun_tong_line_extension_1000_control = TransitNeighborhood_Before_After(
+    kwun_tong_line_extension_1000_control = TransitNeighborhood_Before_After(name = 'Kwun_Tong_Line',
         tn_dataframe=kwun_tong_line_treatment_dataframe,
         non_tn_dataframe=kwun_tong_line_control_1000_dataframe,
         treatment_not_considered_dataframe=kwun_tong_line_treatment_not_considered_dataframe,
         oct_open=True, before_and_after=True,
         compute_positive=False,
         compute_negative=False)
-    kwun_tong_line_extension_1500_control = TransitNeighborhood_Before_After(
+    kwun_tong_line_extension_1500_control = TransitNeighborhood_Before_After(name = 'Kwun_Tong_Line',
         tn_dataframe=kwun_tong_line_treatment_dataframe,
         non_tn_dataframe=kwun_tong_line_control_1500_dataframe,
         treatment_not_considered_dataframe=kwun_tong_line_treatment_not_considered_dataframe,
         oct_open=True, before_and_after=True,
         compute_positive=False,
         compute_negative=False)
-    south_horizons_lei_tung_1000_control = TransitNeighborhood_Before_After(
+    south_horizons_lei_tung_1000_control = TransitNeighborhood_Before_After(name='South_Horizons_Lei_Tung',
         tn_dataframe=south_horizons_lei_tung_treatment_dataframe,
         non_tn_dataframe=south_horizons_lei_tung_control_1000_dataframe,
         treatment_not_considered_dataframe=south_horizons_lei_tung_treatment_not_considered_dataframe,
         oct_open=False, before_and_after=True,
         compute_positive=False,
         compute_negative=False)
-    south_horizons_lei_tung_1500_control = TransitNeighborhood_Before_After(
+    south_horizons_lei_tung_1500_control = TransitNeighborhood_Before_After(name='South_Horizons_Lei_Tung',
         tn_dataframe=south_horizons_lei_tung_treatment_dataframe,
         non_tn_dataframe=south_horizons_lei_tung_control_1500_dataframe,
         treatment_not_considered_dataframe=south_horizons_lei_tung_treatment_not_considered_dataframe,
         oct_open=False, before_and_after=True,
         compute_positive=False,
         compute_negative=False)
-    ocean_park_wong_chuk_hang_1000_control = TransitNeighborhood_Before_After(
+    ocean_park_wong_chuk_hang_1000_control = TransitNeighborhood_Before_After(name='Ocean_Park_Wong_Chuk_Hang',
         tn_dataframe=ocean_park_wong_chuk_hang_treatment_dataframe,
         non_tn_dataframe=ocean_park_wong_chuk_hang_control_1000_dataframe,
         treatment_not_considered_dataframe=ocean_park_wong_chuk_hang_treatment_not_considered_dataframe,
         oct_open=False, before_and_after=True,
         compute_positive=False,
         compute_negative=False)
-    ocean_park_wong_chuk_hang_1500_control = TransitNeighborhood_Before_After(
+    ocean_park_wong_chuk_hang_1500_control = TransitNeighborhood_Before_After(name='Ocean_Park_Wong_Chuk_Hang',
         tn_dataframe=ocean_park_wong_chuk_hang_treatment_dataframe,
         non_tn_dataframe=ocean_park_wong_chuk_hang_control_1500_dataframe,
         treatment_not_considered_dataframe=ocean_park_wong_chuk_hang_treatment_not_considered_dataframe,
         oct_open=False, before_and_after=True,
         compute_positive=False,
         compute_negative=False)
+
+    kwun_tong_line_extension_1000_control.draw_tweet_posting_time_comparison(
+        saving_path=read_data.transit_non_transit_comparison_before_after)
+    south_horizons_lei_tung_1500_control.draw_tweet_posting_time_comparison(
+        saving_path=read_data.transit_non_transit_comparison_before_after)
+    ocean_park_wong_chuk_hang_1500_control.draw_tweet_posting_time_comparison(
+        saving_path=read_data.transit_non_transit_comparison_before_after)
 
     #Kwun Tong Line - Overall Comparison between treatment and control group
     kwun_tong_line_extension_1000_control.line_map_comparison(

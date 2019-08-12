@@ -301,7 +301,7 @@ class TransitNeighborhood_Before_After(object):
 
     def draw_tweet_posting_time_comparison(self, saving_path):
         treatment_dataframe_copy = self.tn_dataframe.copy()
-        treatment_not_considered_dataframe_copy = self.non_tn_dataframe.copy()
+        treatment_not_considered_dataframe_copy = self.treatment_not_considered_dataframe.copy()
         control_dataframe_copy = self.non_tn_dataframe.copy()
         # Transform the string time to datetime object
         if isinstance(list(treatment_dataframe_copy['hk_time'])[0], str) or isinstance(
@@ -332,9 +332,11 @@ class TransitNeighborhood_Before_After(object):
                 treatment_dataframe_copy['hk_time'] < october_23_start]
             treatment_dataframe_after = treatment_dataframe_copy.loc[
                 treatment_dataframe_copy['hk_time'] > october_23_end]
-            treatment_not_considered_dataframe_before = treatment_not_considered_dataframe_copy.loc[
+            treatment_not_considered_dataframe_before = \
+                treatment_not_considered_dataframe_copy.loc[
                 treatment_not_considered_dataframe_copy['hk_time'] < october_23_start]
-            treatment_not_considered_dataframe_after = treatment_not_considered_dataframe_copy.loc[
+            treatment_not_considered_dataframe_after = \
+                treatment_not_considered_dataframe_copy.loc[
                 treatment_not_considered_dataframe_copy['hk_time'] > october_23_end]
             control_dataframe_before = control_dataframe_copy.loc[control_dataframe_copy['hk_time'] < october_23_start]
             control_dataframe_after = control_dataframe_copy.loc[control_dataframe_copy['hk_time'] > october_23_end]
@@ -833,15 +835,15 @@ if __name__ == '__main__':
                                                return_dataframe=True
                                                )
 
-    # Draw the word count
-    draw_word_count_histogram(df=kwun_tong_line_treatment_dataframe, station_name='Kwun_Tong_Line',
-                              saved_file_name='Kwun_Tong_Line_tweet_word_count.png')
-    draw_word_count_histogram(df=south_horizons_lei_tung_treatment_dataframe,
-                              station_name='south_horizons_lei_tung',
-                              saved_file_name='South_horizons_lei_tung_line_tweet_word_count.png')
-    draw_word_count_histogram(df=ocean_park_wong_chuk_hang_treatment_dataframe,
-                              station_name='Ocean_park_wong_chuk_hang',
-                              saved_file_name='Ocean_park_wong_chuk_hang_tweet_word_count.png')
+    # # Draw the word count
+    # draw_word_count_histogram(df=kwun_tong_line_treatment_dataframe, station_name='Kwun_Tong_Line',
+    #                           saved_file_name='Kwun_Tong_Line_tweet_word_count.png')
+    # draw_word_count_histogram(df=south_horizons_lei_tung_treatment_dataframe,
+    #                           station_name='south_horizons_lei_tung',
+    #                           saved_file_name='South_horizons_lei_tung_line_tweet_word_count.png')
+    # draw_word_count_histogram(df=ocean_park_wong_chuk_hang_treatment_dataframe,
+    #                           station_name='Ocean_park_wong_chuk_hang',
+    #                           saved_file_name='Ocean_park_wong_chuk_hang_tweet_word_count.png')
 
     kwun_tong_line_extension_1000_control = TransitNeighborhood_Before_After(name = 'Kwun_Tong_Line',
         tn_dataframe=kwun_tong_line_treatment_dataframe,

@@ -601,11 +601,14 @@ def draw_word_count_histogram(df, station_name, saved_file_name):
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
     sns.distplot(text_count_list, kde=False, hist=True)
     # check whether tweet count=7 is appropriate
-    ax.axvline(7, color='black')
+    ax.axvline(np.median(text_count_list), color='#EB1B52', label='50% Percentile')
+    ax.axvline(7, color='#FF9415', label='Number of Keywords in Topic Modelling')
     plt.xlim((0, 100))
     plt.ylim((0, 700))
     # Check if it is appropriate to set the number of keywords as 7 in this dataframe
+    plt.xticks(list(plt.xticks()[0]) + [np.median(text_count_list)])
     plt.xticks(list(plt.xticks()[0]) + [7])
+    plt.legend()
     plt.title(station_name+': Tweet Word Count Histogram')
     plt.savefig(os.path.join(read_data.transit_non_transit_comparison_before_after, saved_file_name))
     plt.show()
@@ -831,14 +834,14 @@ if __name__ == '__main__':
                                                )
 
     # Draw the word count
-    # draw_word_count_histogram(df=kwun_tong_line_treatment_dataframe, station_name='Kwun_Tong_Line',
-    #                           saved_file_name='Kwun_Tong_Line_tweet_word_count.png')
-    # draw_word_count_histogram(df=south_horizons_lei_tung_treatment_dataframe,
-    #                           station_name='south_horizons_lei_tung',
-    #                           saved_file_name='South_horizons_lei_tung_line_tweet_word_count.png')
-    # draw_word_count_histogram(df=ocean_park_wong_chuk_hang_treatment_dataframe,
-    #                           station_name='Ocean_park_wong_chuk_hang',
-    #                           saved_file_name='Ocean_park_wong_chuk_hang_tweet_word_count.png')
+    draw_word_count_histogram(df=kwun_tong_line_treatment_dataframe, station_name='Kwun_Tong_Line',
+                              saved_file_name='Kwun_Tong_Line_tweet_word_count.png')
+    draw_word_count_histogram(df=south_horizons_lei_tung_treatment_dataframe,
+                              station_name='south_horizons_lei_tung',
+                              saved_file_name='South_horizons_lei_tung_line_tweet_word_count.png')
+    draw_word_count_histogram(df=ocean_park_wong_chuk_hang_treatment_dataframe,
+                              station_name='Ocean_park_wong_chuk_hang',
+                              saved_file_name='Ocean_park_wong_chuk_hang_tweet_word_count.png')
 
     kwun_tong_line_extension_1000_control = TransitNeighborhood_Before_After(name = 'Kwun_Tong_Line',
         tn_dataframe=kwun_tong_line_treatment_dataframe,

@@ -619,11 +619,11 @@ def draw_word_count_histogram(df, station_name, saved_file_name):
 # Set the hyperparameter: the number of the topics
 topic_modelling_search_params = {'n_components': [5, 6, 7]}
 
-
-def build_topic_model(df, keyword_file_name, topic_predict_file_name, saving_path):
+def build_topic_model(df, keyword_file_name, topic_number, topic_predict_file_name, saving_path):
     """
     :param df: the dataframe which contains the posted tweets
     :param keyword_file_name: the name of the saved file which contains the keyword for each topic
+    :param topic_number: the number of topics we set for the topic modelling
     :param topic_predict_file_name: the name of the saved file which contains the topic prediction for each tweet
     :param saving_path: the saving path
     """
@@ -636,14 +636,19 @@ def build_topic_model(df, keyword_file_name, topic_predict_file_name, saving_pat
     data_ready = Topic_Modelling_for_tweets.process_words(tokenized_text_list,
                                                           stop_words=Topic_Modelling_for_tweets.unuseful_terms_set,
                                                           bigram_mod=bigram_mod, trigram_mod=trigram_mod)
+    # np.save(os.path.join(read_data.desktop, 'saving_path', keyword_file_name[:-12]+'_text_topic.pkl'), data_ready)
     # Draw the distribution of the length of the tweet: waiting to be changed tomorrow
     data_sentence_in_one_list = [' '.join(text) for text in data_ready]
+    # Get the median of number of phrases
+    phrases_count_list = [len(tweet) for tweet in data_ready]
+    print('The number of keywords we use is {}'.format(np.median(phrases_count_list)))
     Topic_Modelling_for_tweets.get_lda_model(data_sentence_in_one_list,
                                              grid_search_params=topic_modelling_search_params,
-                                             number_of_keywords=7,
+                                             number_of_keywords=int(np.median(phrases_count_list)),
                                              keywords_file=keyword_file_name,
                                              topic_predict_file=topic_predict_file_name,
-                                             saving_path=saving_path)
+                                             saving_path=saving_path, grid_search_or_not=False,
+                                             topic_number=topic_number)
 
 
 def build_treatment_control_tpu_compare_for_one_line(treatment_csv, control_1000_csv,
@@ -1034,15 +1039,16 @@ if __name__ == '__main__':
                        file_name_after="after_ocean_park_wong_chuk_hang_wordcloud",
                        color_func=wordcloud_generate.green_func)
     # #=========================================================================================================
-    #
+
     # #=======================================Topic Modelling===================================================
     before_dataframe_kwun_tong_line, after_dataframe_kwun_tong_line = \
         build_text_for_wordcloud_topic_model(kwun_tong_line_treatment_dataframe, oct_open=True, build_wordcloud=False)
     before_dataframe_south_horizons_lei_tung, after_dataframe_south_horizons_lei_tung = \
         build_text_for_wordcloud_topic_model(south_horizons_lei_tung_treatment_dataframe, oct_open=True,
                                              build_wordcloud=False)
-    before_dataframe_ocean_park_wong_chuk_hang, after_dataframe_ocean_park_wong_chuk_hang = build_text_for_wordcloud_topic_model(
-        ocean_park_wong_chuk_hang_treatment_dataframe, oct_open=True, build_wordcloud=False)
+    before_dataframe_ocean_park_wong_chuk_hang, after_dataframe_ocean_park_wong_chuk_hang = \
+        build_text_for_wordcloud_topic_model(ocean_park_wong_chuk_hang_treatment_dataframe, oct_open=True,
+                                             build_wordcloud=False)
 
 
     before_and_after_dataframes_list = [before_dataframe_kwun_tong_line, after_dataframe_kwun_tong_line,
@@ -1054,10 +1060,14 @@ if __name__ == '__main__':
                  'after_south_horizons_lei_tung', 'before_ocean_park_wong_chuk_hang',
                  'after_ocean_park_wong_chuk_hang']
 
+    topic_number_list = [5,6,7,8,9,10]
     for dataframe, file_name in zip(before_and_after_dataframes_list, name_list):
         print('-------------------' + file_name + ' starts--------------------------')
-        build_topic_model(df=dataframe, keyword_file_name=file_name + '_keyword.pkl',
-                          topic_predict_file_name=file_name + '_tweet_topic.pkl',
-                          saving_path=read_data.before_and_after_topic_modelling_compare)
+        for topic_number in topic_number_list:
+            print('Setting topic number equals {}'.format(topic_number))
+            build_topic_model(df=dataframe, keyword_file_name=file_name + '_' + str(topic_number) + '_' + '_keyword.pkl',
+                              topic_predict_file_name=file_name + '_' + str(topic_number) + '_' + '_tweet_topic.pkl',
+                              saving_path=read_data.before_and_after_topic_modelling_compare,
+                              topic_number=topic_number)
         print('------------------' + file_name + ' ends-----------------------------')
     # =================================================================================================================

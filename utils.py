@@ -1,11 +1,14 @@
 import re
 import os
-from matplotlib import pyplot as plt
 import pandas as pd
 import csv
 import pytz
 from datetime import datetime
 from geopy.distance import vincenty
+
+# For plots
+from matplotlib import pyplot as plt
+import seaborn as sns
 
 import read_data
 
@@ -42,10 +45,24 @@ class RegexpReplacer(object):
         return s
 
 
-def read_local_csv_file(path, filename):
-    dataframe = pd.read_csv(os.path.join(path, filename), encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC, dtype='str',
-                            index_col=0)
+def read_local_csv_file(path, filename, dtype_str=True):
+    if dtype_str:
+        dataframe = pd.read_csv(os.path.join(path, filename), encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC,
+                                dtype='str', index_col=0)
+    else:
+        dataframe = pd.read_csv(os.path.join(path, filename), encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC,
+                                index_col=0)
     return dataframe
+
+
+def transform_string_time_to_datetime(string):
+    """
+    :param string: the string which records the time of the posted tweets(this string's timezone is HK time)
+    :return: a datetime object which could get access to the year, month, day easily
+    """
+    datetime_object = datetime.strptime(string, '%Y-%m-%d %H:%M:%S+08:00')
+    final_time_object = datetime_object.replace(tzinfo=time_zone_hk)
+    return final_time_object
 
 
 def number_of_tweet_user(df):
@@ -93,6 +110,7 @@ def distance_calc(row, station_lat, station_lon):
     start = (row['lat'], row['lon'])
     stop = (station_lat, station_lon)
     return vincenty(start, stop).meters
+
 
 """
 An instance of using haversine_distance to calculate the distance of two points
@@ -145,7 +163,7 @@ def build_line_graph_urban_rate(dataframe):
     y_us = list(dataframe['US'])
     y_world = list(dataframe['World'])
 
-    figure, ax = plt.subplots(1, 1, figsize=(20, 10), dpi=300)
+    figure, ax = plt.subplots(1, 1, figsize=(20, 10))
     lns1 = ax.plot(x, y_world, 'k-', label='World', linestyle='--', marker='o')
     lns2 = ax.plot(x, y_china, 'y-', label='China', linestyle='--', marker='^')
     lns3 = ax.plot(x, y_us, 'b-', label='US', linestyle='--', marker='^')
@@ -161,6 +179,49 @@ def build_line_graph_urban_rate(dataframe):
     plt.show()
 
 
+def build_bar_plot_distribution_comparison(**key_list_dict):
+    name_list = list(key_list_dict.keys())
+    if len(name_list) ==  1:
+        value_list = key_list_dict[name_list[0]]
+    else:
+        return 'Not Worked Out'
+    sentiment_tag = ['Positive', 'Neutral', 'Negative']
+    x_values_for_plot = list(range(len(sentiment_tag)))
+    fig, ax = plt.subplots(1,1, figsize=(10, 8))
+
+    ax.bar(x_values_for_plot, value_list, color='red')
+    ax.set_xticks(x_values_for_plot)
+    ax.set_xticklabels(sentiment_tag)
+    filename = name_list[0] + '_distribution'
+    fig.savefig(os.path.join(read_data.human_review_result_path, filename))
+    plt.show()
+
+
+def classifiers_performance_compare(filename):
+    result_dataframe = pd.DataFrame(columns=['metrics', 'performance', 'Classifiers'])
+
+    accuracy_list = [0.64, 0.70, 0.70, 0.67]
+    precision_list = [0.48, 0.47, 0.51, 0.52]
+    recall_list = [0.50, 0.48, 0.51, 0.54]
+    f1_list = [0.47, 0.47, 0.51, 0.50]
+
+    performance_list = accuracy_list + precision_list + recall_list + f1_list
+    metrics_list = ['Accuracy'] * 4 + ['Precision'] * 4 + ['Recall'] * 4 + ['F1 Score'] * 4
+    classifier_list = ['Decision Tree', 'Random Forest', 'SVM', 'Neural Net'] * 4
+
+    result_dataframe['metrics'] = metrics_list
+    result_dataframe['performance'] = performance_list
+    result_dataframe['Classifiers'] = classifier_list
+
+    fig_classifier_compare, ax = plt.subplots(1, 1, figsize=(10, 8))
+    # qualitative_colors = sns.color_palette("Set1", 4)
+    # sns.set_palette(qualitative_colors)
+    sns.barplot(x="metrics", y="performance", hue="Classifiers", data=result_dataframe, ax=ax,
+                palette=["#6553FF", "#E8417D", "#FFAC42", '#A5FF47'])
+    fig_classifier_compare.savefig(os.path.join(read_data.human_review_result_path, filename))
+    plt.show()
+
+
 def draw_urban_rate_main(dataframe):
     data_for_plot = build_dataframe_for_urban_rate(dataframe)
     build_line_graph_urban_rate(dataframe=data_for_plot)
@@ -168,8 +229,19 @@ def draw_urban_rate_main(dataframe):
 
 if __name__ == '__main__':
     urban_rate_dataframe = pd.read_csv(os.path.join(read_data.datasets, 'urban_rate.csv'), encoding='latin-1',
-                                       dtype=str, index_col=0)
+                                       dtype=str)
     draw_urban_rate_main(urban_rate_dataframe)
+
+    # draw the barplot which shows the distribution of sentiment label
+    build_bar_plot_distribution_comparison(**{'total_sentiment_label_comparison': [1942, 2920, 137]})
+
+    # draw bar plot which show the performance of various algorithms
+    classifiers_performance_compare(filename= 'classifier_performance_compare.png')
+    
+
+    
+
+
 
 
 

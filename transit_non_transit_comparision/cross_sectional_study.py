@@ -7,8 +7,10 @@ from datetime import datetime
 import csv
 
 # load my own modules
-import before_and_after
+import before_and_after_final
 import read_data
+import utils
+import wordcloud_generate
 
 # packages for regression
 import statsmodels.formula.api as smf
@@ -64,9 +66,9 @@ class TransitNeighborhood_TPU(object):
         """
         :return: a dataframe which saves the activity and sentiment in each month for the tn dataframe
         """
-        result_dict_tn = before_and_after.sentiment_by_month(self.tpu_dataframe,
-                                                              compute_positive_percent=self.compute_positive,
-                                                              compute_negative_percent=self.compute_negative)
+        result_dict_tn = before_and_after_final.sentiment_by_month(self.tpu_dataframe,
+                                                                   compute_positive_percent=self.compute_positive,
+                                                                   compute_negative_percent=self.compute_negative)
         result_dataframe_tn = pd.DataFrame(list(result_dict_tn.items()), columns=['Date', 'Value'])
         return result_dataframe_tn
 
@@ -153,7 +155,7 @@ class TransitNeighborhood_TPU(object):
         for name in tpu_name_list:
             sentiment_list.append(sent_dict[name])
             acitivity_list.append(activity_dict[name])
-        activity_log10_list = [np.log10(count) for count in acitivity_list]
+        activity_log10_list = [np.log10(count) if count !=0 else 0 for count in acitivity_list]
         result_dataframe = pd.DataFrame({'tpu_name': tpu_name_list, 'Sentiment': sentiment_list,
                                          'activity':acitivity_list, 'Activity_log10': activity_log10_list})
         # print(type(list(result_dataframe['tpu_name'])[0]))
@@ -300,7 +302,11 @@ def positive_percent(df):
             positive+=1
         else:
             pass
-    return positive/df.shape[0]
+    try:
+        result = positive/df.shape[0]
+        return result
+    except ZeroDivisionError:
+        return 0
 
 
 # compute the percentage of positive Tweets: 0 is negative
@@ -311,7 +317,11 @@ def negative_percent(df):
             negative+=1
         else:
             pass
-    return negative/df.shape[0]
+    try:
+        result = negative/df.shape[0]
+        return result
+    except ZeroDivisionError:
+        return 0
 
 
 # compute positive percentage minus negative percentage: metric used to evaluate the sentiment of an area
@@ -568,6 +578,10 @@ if __name__ == '__main__':
         print(combined_dataframe[column_name].describe())
         print('-------------Done!----------------')
 
+    print('Check the correlation between sentiment and activity...')
+    correlation_value = combined_dataframe['Sentiment'].corr(combined_dataframe['activity'])
+    print('The correlation coefficient of sentiment and activity is :{}'.format(correlation_value))
+
     print('Regression analysis starts..... ')
     normalized_combined_dataframe = (combined_dataframe - combined_dataframe.mean()) / combined_dataframe.std()
     normalized_combined_dataframe['tn_or_not'] = tn_or_not_list
@@ -575,7 +589,8 @@ if __name__ == '__main__':
     print(normalized_combined_dataframe.head(5))
     print(normalized_combined_dataframe.columns)
     # Check the correlation matrix of independent variables and compute VIF value for each independent variable
-    dataframe_for_correlation_matrix = normalized_combined_dataframe[['median_income', 'employment',
+    combined_dataframe['tn_or_not'] = tn_or_not_list
+    dataframe_for_correlation_matrix = combined_dataframe[['median_income', 'employment',
                                                                       'marry', 'education', 'tn_or_not']]
     draw_correlation_plot(dataframe_for_correlation_matrix)
     result_vif_series = compute_vif(dataframe_for_correlation_matrix)
@@ -587,9 +602,3 @@ if __name__ == '__main__':
     reg_act = smf.ols('activity ~ median_income+employment+marry+education+tn_or_not',
                       normalized_combined_dataframe).fit()
     print(reg_act.summary())
-
-
-
-
-
-

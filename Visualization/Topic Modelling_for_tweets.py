@@ -31,6 +31,9 @@ from PIL import Image
 nlp = spacy.load('en_core_web_sm', disable=['parser', 'ner'])
 tokenizer = Tokenizer(nlp.vocab)
 
+# Specify the random seed
+random_seed = 777
+
 whole_tweets = pd.read_pickle(os.path.join(read_data.tweet_2017, 'final_2017_with_sentiment_smote.pkl'))
 
 # gensim.corpora.MmCorpus.serialize('MmCorpusTest.mm', corpus)
@@ -38,7 +41,7 @@ whole_tweets = pd.read_pickle(os.path.join(read_data.tweet_2017, 'final_2017_wit
 stopwords = list(set(STOPWORDS))
 strange_terms = ['allcaps', 'repeated', 'elongated', 'repeat', 'user', 'percent_c', 'hong kong', 'hong',
                  'kong', 'u_u', 'u_u_number', 'u_u_u_u', 'u_number', 'elongate', 'u_number_u',
-                 'u', 'number', 'm', 'will']
+                 'u', 'number', 'm', 'will', 'hp', 'grad', 'ed', 'boo']
 unuseful_terms = stopwords + strange_terms
 unuseful_terms_set = set(unuseful_terms)
 
@@ -92,16 +95,21 @@ def delete_bots_have_same_geoinformation(df):
     return cleaned_df
 
 
-def get_lda_model(sentiment_text_in_one_list, grid_search_params, number_of_keywords, topic_predict_file, keywords_file,
-                  saving_path = read_data.topic_modelling_path):
+def get_lda_model(sentiment_text_in_one_list, grid_search_params, number_of_keywords, topic_predict_file,
+                  keywords_file, topic_number, grid_search_or_not = True, saving_path = read_data.topic_modelling_path):
     """
     :param sentiment_text_in_one_list: a text list. Each item of this list is a posted tweet
     :param grid_search_params: the dictionary which contains the values of hyperparameters for gridsearch
-    :return: the result of lda model - the keywords of each topic
+    :param number_of_keywords: number of keywords to represent a topic
+    :param topic_predict_file: one file which contains the predicted topic for each tweet
+    :param keywords_file: one file which saves all the topics and keywords
+    :param topic_number: The number of topics we use(this argument only works if grid_search_or_not = False)
+    :param grid_search_or_not: Whether grid search to get 'best' number of topics
+    :param saving_path: path used to save the results 
     """
     # 1. Vectorized the data
     vectorizer = CountVectorizer(analyzer='word',
-                                 min_df=2,  # minimum reqd occurences of a word
+                                 min_df=1,  # minimum occurences of a word
                                  stop_words='english',  # remove stop words
                                  lowercase=True,  # convert all words to lowercase
                                  token_pattern='[a-zA-Z0-9]{3,}',  # num chars > 3
@@ -111,17 +119,28 @@ def get_lda_model(sentiment_text_in_one_list, grid_search_params, number_of_keyw
 
     # 2. Use the GridSearch to find the best hyperparameter
     # In this case, the number of topics is the hyperparameter we should tune
-    lda = LatentDirichletAllocation(learning_method='batch')
-    model = GridSearchCV(lda, param_grid=grid_search_params)
+    lda = LatentDirichletAllocation(learning_method='batch', random_state=random_seed)
+    if grid_search_or_not:
+        model = GridSearchCV(lda, param_grid=grid_search_params)
+    else:
+        model = GridSearchCV(lda, param_grid={'n_components': [topic_number]})
     model.fit(text_vectorized)
     # See the best model
     best_lda_model = model.best_estimator_
-    # Model Parameters
-    print("Best Model's Params: ", model.best_params_)
-    # Log Likelihood Score
-    print("Best Log Likelihood Score: ", model.best_score_)
-    # Perplexity
-    print("Model Perplexity: ", best_lda_model.perplexity(text_vectorized))
+    if grid_search_or_not:
+        # Model Parameters
+        print("Best Model's Params: ", model.best_params_)
+        # Log Likelihood Score
+        print("Best Log Likelihood Score: ", model.best_score_)
+        # Perplexity
+        print("Model Perplexity: ", best_lda_model.perplexity(text_vectorized))
+    else:
+        # Show the number of topics we use
+        print('The number of topics we use: {}'.format(topic_number))
+        # Log likelihood score
+        print('The loglikelihood score is {}'.format(model.best_score_))
+        # Perplexity
+        print("Model Perplexity: {}".format(best_lda_model.perplexity(text_vectorized)))
 
     # 3. Use the best model to fit the data
     # Create Document - Topic Matrix
@@ -171,73 +190,5 @@ def plot_topic_num(topic_df, filename):
     plt.yticks(y_pos, topic_list)
     plt.ylabel('Topic Number')
     plt.xlabel('Count')
-    plt.savefig(os.path.join(read_data.plot_path, filename))
+    plt.savefig(os.path.join(read_data.plot_path_2017, filename))
     plt.show()
-
-
-if __name__ == '__main__':
-    whole_tweets = whole_tweets[
-        ['user_id_str', 'cleaned_text', 'sentiment', 'url', 'lat', 'lon', 'lang', 'retweet_count',
-         'retweeted']]
-    whole_tweets_filtered = delete_bots_have_same_geoinformation(whole_tweets)
-    negative_tweets = whole_tweets_filtered.loc[whole_tweets_filtered['sentiment'] == 0]
-    print(negative_tweets.shape)
-    positive_tweets = whole_tweets_filtered.loc[whole_tweets_filtered['sentiment'] == 2]
-    print(positive_tweets.shape)
-
-    # Gridsearch params
-    search_params = {'n_components': [10, 15, 20, 25, 30]}
-
-    # Get the topic model for negative tweets
-    whole_text_negative = list(negative_tweets['cleaned_text'])
-    tokenized_whole_text_negative = [word_tokenize(text) for text in whole_text_negative]
-    bigram_negative = gensim.models.phrases.Phrases(tokenized_whole_text_negative, min_count=5,
-                                   threshold=100)  # higher threshold fewer phrases.
-    bigram_mod_negative = gensim.models.phrases.Phraser(bigram_negative)
-    trigram_negative = gensim.models.phrases.Phrases(bigram_mod_negative[tokenized_whole_text_negative], threshold=100)
-    trigram_mod_negative = gensim.models.phrases.Phraser(trigram_negative)
-    negative_data_ready = process_words(tokenized_whole_text_negative, stop_words=unuseful_terms_set,
-                                        bigram_mod=bigram_mod_negative, trigram_mod=trigram_mod_negative)
-    negative_data_sentence_in_one_list = [' '.join(text) for text in negative_data_ready]
-    get_lda_model(negative_data_sentence_in_one_list, grid_search_params=search_params, number_of_keywords=10,
-                  keywords_file='negative_tweets_topic_modelling_result.pkl',
-                  topic_predict_file='negative_tweet_topic.pkl')
-
-    # Get the topic model for positive tweets
-    whole_text_positive = list(positive_tweets['cleaned_text'])
-    tokenized_whole_text_positive = [word_tokenize(text) for text in whole_text_positive]
-    bigram_positive = gensim.models.Phrases(tokenized_whole_text_positive, min_count=5,
-                                   threshold=100)  # higher threshold fewer phrases.
-    bigram_mod_positive = gensim.models.phrases.Phraser(bigram_positive)
-    trigram_positive = gensim.models.Phrases(bigram_mod_positive[tokenized_whole_text_positive], threshold=100)
-    trigram_mod_positive = gensim.models.phrases.Phraser(trigram_positive)
-    positive_data_ready = process_words(tokenized_whole_text_positive, stop_words=unuseful_terms_set,
-                                        bigram_mod=bigram_mod_positive, trigram_mod=trigram_mod_positive)
-    positive_data_sentence_in_one_list = [' '.join(text) for text in positive_data_ready]
-    get_lda_model(positive_data_sentence_in_one_list, grid_search_params=search_params, number_of_keywords=10,
-                  keywords_file='positive_tweets_topic_modelling_result.pkl',
-                  topic_predict_file='positive_tweet_topic.pkl')
-
-    # Create a bar chart showing the topic count
-    positive_tweet_topic = pd.read_pickle(
-        os.path.join(read_data.topic_modelling_path, 'positive_tweet_topic.pkl'))
-    negative_tweet_topic = pd.read_pickle(
-        os.path.join(read_data.topic_modelling_path, 'negative_tweet_topic.pkl'))
-    plot_topic_num(positive_tweet_topic, filename='positive_tweet_bar_plot.png')
-    plot_topic_num(negative_tweet_topic, filename='negative_tweet_bar_plot.png')
-
-    # Show the keywords in each topic
-    positive_tweets_topic_modeling_result = \
-        pd.read_pickle(os.path.join(read_data.topic_modelling_path,
-                                    'positive_tweets_topic_modelling_result.pkl'))
-    negative_tweets_topic_modeling_result = \
-        pd.read_pickle(os.path.join(read_data.topic_modelling_path,
-                                    'negative_tweets_topic_modelling_result.pkl'))
-    print('The topic modeling result of positive tweets is.....')
-    print(positive_tweets_topic_modeling_result)
-    print('The topic modeling result of negative tweets is.....')
-    print(negative_tweets_topic_modeling_result)
-
-
-
-

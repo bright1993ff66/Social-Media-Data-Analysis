@@ -4,6 +4,7 @@ import pandas as pd
 import csv
 import pytz
 from datetime import datetime
+from collections import Counter
 from geopy.distance import vincenty
 
 # For plots
@@ -13,6 +14,16 @@ import seaborn as sns
 import read_data
 
 time_zone_hk = pytz.timezone('Asia/Shanghai')
+
+# For instance, if we want to compare the sentiment and activity level before and after the
+# openning date of the Whampoa MTR railway station in Hong Kong, since the station is opened on 23 Oct 2016,
+# we could specify the openning date using datatime package and output before and after dataframes
+october_23_start = datetime(2016, 10, 23, 0, 0, 0, tzinfo=time_zone_hk)
+october_23_end = datetime(2016, 10, 23, 23, 59, 59, tzinfo=time_zone_hk)
+december_28_start = datetime(2016, 12, 28, 0, 0, 0, tzinfo=time_zone_hk)
+december_28_end = datetime(2016, 12, 28, 23, 59, 59, tzinfo=time_zone_hk)
+start_date = datetime(2016, 5, 7, 0, 0, 0, tzinfo=time_zone_hk)
+end_date = datetime(2017, 12, 31,  23, 59, 59, tzinfo=time_zone_hk)
 
 # The replacement patterns used in cleaning the raw text data
 replacement_patterns = [
@@ -227,6 +238,48 @@ def draw_urban_rate_main(dataframe):
     build_line_graph_urban_rate(dataframe=data_for_plot)
 
 
+def general_info_of_tweet_dataset(df, study_area:str, show_result=True):
+    user_number = len(set(list(df['user_id_str'])))
+    tweet_number = df.shape[0]
+    starting_time = list(df['hk_time'])[0]
+    ending_time = list(df['hk_time'])[-1]
+    daily_tweet_count = df.shape[0]/(ending_time-starting_time).days
+    language_dist_dict = Counter(df['lang'])
+    sentiment_dist_dict = Counter(df['sentiment'])
+    if show_result:
+        print('For {}, number of users: {}; number of tweets: {}; average daily number of tweets: {}; '
+              'language distribution: {}; sentiment distribution: {}'.format(study_area, user_number,
+                                                                             tweet_number,
+                                                                             daily_tweet_count, language_dist_dict,
+                                                                             sentiment_dist_dict))
+    else:
+        return user_number, daily_tweet_count, language_dist_dict, sentiment_dist_dict
+
+
+def general_info_before_and_after_compare(df, oct_open:bool, study_area:str, show_result_or_not=True):
+    df_copy = df.copy()
+    if isinstance(list(df['hk_time'])[0], str):
+        df_copy['hk_time'] = df_copy.apply(
+                lambda row: transform_string_time_to_datetime(row['hk_time']), axis=1)
+    else:
+        pass
+    df_copy_sorted = df_copy.sort_values(by='hk_time')
+    if oct_open:
+        before_time_mask = (df_copy_sorted['hk_time'] < october_23_start)
+        after_time_mask = (df_copy_sorted['hk_time'] > october_23_end)
+    else:
+        before_time_mask = (df_copy_sorted['hk_time'] < december_28_start)
+        after_time_mask = (df_copy_sorted['hk_time'] > december_28_end)
+    df_before = df_copy_sorted.loc[before_time_mask]
+    df_after = df_copy_sorted.loc[after_time_mask]
+    before_study_area_name = study_area+'_before'
+    after_study_area_name = study_area+'_after'
+    print('--------------------------------------------------------------------------------')
+    general_info_of_tweet_dataset(df=df_before, study_area=before_study_area_name, show_result=show_result_or_not)
+    general_info_of_tweet_dataset(df=df_after, study_area=after_study_area_name, show_result=show_result_or_not)
+    print('--------------------------------------------------------------------------------')
+
+
 if __name__ == '__main__':
     urban_rate_dataframe = pd.read_csv(os.path.join(read_data.datasets, 'urban_rate.csv'), encoding='latin-1',
                                        dtype=str)
@@ -237,8 +290,35 @@ if __name__ == '__main__':
 
     # draw bar plot which show the performance of various algorithms
     classifiers_performance_compare(filename= 'classifier_performance_compare.png')
-    
 
+    # Output general information of the dataframes involved in the longitudinal study
+    treatment_control_saving_path = os.path.join(read_data.transit_non_transit_comparison_before_after,
+                                                 'three_areas_longitudinal_analysis')
+    kwun_tong_line_treatment_dataframe = read_local_csv_file(filename='kwun_tong_line_treatment.csv',
+                                                             path=treatment_control_saving_path, dtype_str=False)
+    kwun_tong_line_control_dataframe = read_local_csv_file(filename='kwun_tong_line_control_1000.csv',
+                                                             path=treatment_control_saving_path, dtype_str=False)
+    south_horizons_treatment_dataframe = read_local_csv_file(filename='south_horizons_lei_tung_treatment.csv',
+                                                             path=treatment_control_saving_path, dtype_str=False)
+    south_horizons_control_dataframe = read_local_csv_file(filename='south_horizons_lei_tung_control_1500.csv',
+                                                           path=treatment_control_saving_path, dtype_str=False)
+    ocean_park_treatment_dataframe = read_local_csv_file(filename='ocean_park_wong_chuk_hang_treatment.csv',
+                                                         path=treatment_control_saving_path, dtype_str=False)
+    ocean_park_control_dataframe = read_local_csv_file(filename='ocean_park_wong_chuk_hang_control_1500.csv',
+                                                       path=treatment_control_saving_path, dtype_str=False)
+
+    general_info_before_and_after_compare(df=kwun_tong_line_treatment_dataframe,
+                                          study_area='Kwun Tong Line(treatment)', oct_open=True)
+    general_info_before_and_after_compare(df=kwun_tong_line_control_dataframe,
+                                          study_area='Kwun Tong Line(control)', oct_open=True)
+    general_info_before_and_after_compare(df=south_horizons_treatment_dataframe,
+                                          study_area='South Horizons(treatment)', oct_open=False)
+    general_info_before_and_after_compare(df=south_horizons_control_dataframe,
+                                          study_area='South Horizons(control)', oct_open=False)
+    general_info_before_and_after_compare(df=ocean_park_treatment_dataframe,
+                                          study_area='Ocean Park(treatment)', oct_open=False)
+    general_info_before_and_after_compare(df=ocean_park_control_dataframe,
+                                          study_area='Ocean Park(control)', oct_open=False)
     
 
 

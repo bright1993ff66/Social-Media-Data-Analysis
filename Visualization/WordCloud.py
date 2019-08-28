@@ -20,9 +20,8 @@ from nltk.tokenize import word_tokenize
 import matplotlib.pyplot as plt
 from PIL import Image
 
-plot_path = read_data.plot_path
+plot_path = read_data.plot_path_2017
 
-# gensim.corpora.MmCorpus.serialize('MmCorpusTest.mm', corpus)
 unuseful_terms_set = Topic_Modelling_for_tweets.unuseful_terms_set
 
 nlp = spacy.load('en_core_web_sm', disable=['parser', 'ner'])
@@ -36,9 +35,10 @@ ascii_art = r"(?:[{punctuation}][{punctuation}]+)".format(punctuation=string.pun
 emoji = r"(?:[^\s])(?<![\w{ascii_printable}])".format(ascii_printable=string.printable)
 regexp = r"{normal_word}|{ascii_art}|{emoji}".format(normal_word=normal_word, ascii_art=ascii_art,
                                                      emoji=emoji)
-symbola_font_path = os.path.join(read_data.plot_path, 'Symbola_Hinted.ttf')
+symbola_font_path = os.path.join(read_data.plot_path_2017, 'Symbola_Hinted.ttf')
 
 circle_mask = np.array(Image.open(r"F:\CityU\Datasets\Hong Kong Tweets 2017\circle.png"))
+
 
 # Change the color of the wordcloud
 def green_func(word, font_size, position, orientation, random_state=None,
@@ -51,7 +51,7 @@ def red_func(word, font_size, position, orientation, random_state=None,
     return "hsl(19, 0%%, %d%%)" % np.random.randint(49, 100)
 
 
-def generate_wordcloud(words, mask, file_name, color_func):
+def generate_wordcloud(words, mask, file_name, color_func, saving_path=plot_path):
     """
     :param words: the text we use to draw the wordcloud. The datatype should be string
     :param mask: a mask we load to draw the plot
@@ -66,8 +66,8 @@ def generate_wordcloud(words, mask, file_name, color_func):
     plt.imshow(word_cloud.recolor(color_func=color_func, random_state=3), interpolation="bilinear")
     plt.axis('off')
     plt.tight_layout(pad=0)
-    plt.savefig(os.path.join(plot_path, file_name))
-    plt.show()
+    plt.savefig(os.path.join(saving_path, file_name))
+    # plt.show()
 
 
 def process_words(texts, stop_words, bigram_mod, trigram_mod, allowed_postags=['NOUN', 'ADJ', 'VERB', 'ADV']):
@@ -117,23 +117,3 @@ def delete_bots_have_same_geoinformation(df):
             pass
     cleaned_df = df.loc[~df['user_id_str'].isin(bot_account)]
     return cleaned_df
-
-
-if __name__ == '__main__':
-    # Load a mask
-    whole_tweets = pd.read_pickle(os.path.join(read_data.tweet_2017, 'final_2017_with_sentiment_smote.pkl'))
-    # Just in case: filter out the users whose tweets have exactly the same geoinformation
-    whole_tweets_filterd = delete_bots_have_same_geoinformation(whole_tweets)
-
-    negative_tweets = whole_tweets_filterd.loc[whole_tweets_filterd['sentiment'] == 0]
-    positive_tweets = whole_tweets_filterd.loc[whole_tweets_filterd['sentiment'] == 2]
-
-    negative_text = create_text_for_wordcloud(negative_tweets)
-    positive_text = create_text_for_wordcloud(positive_tweets)
-
-    # Generate word cloud for positive text
-    generate_wordcloud(positive_text, circle_mask, file_name='positive_wordcloud.png',
-                       color_func=green_func)
-    # Generate word cloud for negative text
-    generate_wordcloud(negative_text, circle_mask, file_name='negative_wordcloud.png',
-                       color_func=red_func)

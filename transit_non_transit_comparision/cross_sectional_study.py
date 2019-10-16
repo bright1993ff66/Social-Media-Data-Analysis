@@ -7,7 +7,7 @@ from datetime import datetime
 import csv
 
 # load my own modules
-import before_and_after_final
+import before_and_after_final_tpu
 import read_data
 import utils
 import wordcloud_generate
@@ -66,9 +66,9 @@ class TransitNeighborhood_TPU(object):
         """
         :return: a dataframe which saves the activity and sentiment in each month for the tn dataframe
         """
-        result_dict_tn = before_and_after_final.sentiment_by_month(self.tpu_dataframe,
-                                                                   compute_positive_percent=self.compute_positive,
-                                                                   compute_negative_percent=self.compute_negative)
+        result_dict_tn = before_and_after_final_tpu.sentiment_by_month(self.tpu_dataframe,
+                                                                       compute_positive_percent=self.compute_positive,
+                                                                       compute_negative_percent=self.compute_negative)
         result_dataframe_tn = pd.DataFrame(list(result_dict_tn.items()), columns=['Date', 'Value'])
         return result_dataframe_tn
 
@@ -148,6 +148,35 @@ class TransitNeighborhood_TPU(object):
         return selected_tpu_dict
 
     @staticmethod
+    def build_dataframe_quarterly(quarter_number:int):
+        """
+        create a activity dictionary for each TPU unit given a specified quarter number
+        :param quarter_number: a specified quarter number
+        :return: a activity dict of each TPU unit for a specified quarter
+        """
+        assert quarter_number in [1, 2, 3, 4]
+        tpu_activity_dict_for_one_quarter = {}
+        for name in TransitNeighborhood_TPU.tpu_name_list:
+            dataframe = pd.read_csv(os.path.join(data_path, name, name + '_data.csv'),
+                                    encoding='utf-8', dtype='str', quoting=csv.QUOTE_NONNUMERIC)
+            dataframe_copy = dataframe.copy()
+            if quarter_number == 1:
+                quarter_dataframe = dataframe_copy.loc[dataframe_copy['month'].isin(['1.0', '2.0', '3.0'])]
+            elif quarter_number == 2:
+                quarter_dataframe = dataframe_copy.loc[dataframe_copy['month'].isin(['4.0', '5.0', '6.0'])]
+            elif quarter_number == 3:
+                quarter_dataframe = dataframe_copy.loc[dataframe_copy['month'].isin(['7.0', '8.0', '9.0'])]
+            else:
+                quarter_dataframe = dataframe_copy.loc[dataframe_copy['month'].isin(['10.0', '11.0', '12.0'])]
+            # print('For TPU {}, the number of tweets posted in this quarter is: {}'.format(name,
+            #                                                                               quarter_dataframe.shape[0]))
+            if quarter_dataframe.shape[0] >= 30:
+                tpu_activity_dict_for_one_quarter[name] = quarter_dataframe.shape[0]
+            else:
+                pass
+        return tpu_activity_dict_for_one_quarter
+
+    @staticmethod
     def construct_sent_act_dataframe(sent_dict, activity_dict):
         tpu_name_list = list(activity_dict.keys())
         sentiment_list =[]
@@ -156,8 +185,10 @@ class TransitNeighborhood_TPU(object):
             sentiment_list.append(sent_dict[name])
             acitivity_list.append(activity_dict[name])
         activity_log10_list = [np.log10(count) if count !=0 else 0 for count in acitivity_list]
+        activity_log2_list = [np.log2(count) if count !=0 else 0 for count in acitivity_list]
         result_dataframe = pd.DataFrame({'tpu_name': tpu_name_list, 'Sentiment': sentiment_list,
-                                         'activity':acitivity_list, 'Activity_log10': activity_log10_list})
+                                         'activity':acitivity_list, 'Activity_log10': activity_log10_list,
+                                         'Activity_log2':activity_log2_list})
         # print(type(list(result_dataframe['tpu_name'])[0]))
         result_dataframe['tn_or_not'] = result_dataframe.apply(
             lambda row: TransitNeighborhood_TPU.check_tn_tpu_or_nontn_tpu(row['tpu_name']), axis=1)
@@ -436,6 +467,7 @@ def build_data_for_cross_sectional_study(tweet_data_path, saving_path, only_2017
         for tpu in tpu_set:
             try:
                 os.mkdir(os.path.join(saving_path, tpu))
+                # Use the TPU_cross_sectional column
                 dataframe = tweet_2017.loc[tweet_2017['TPU_cross_sectional'] == tpu]
                 dataframe.to_csv(os.path.join(saving_path, tpu, tpu+'_data.csv'), encoding='utf-8',
                              quoting=csv.QUOTE_NONNUMERIC)
@@ -544,6 +576,90 @@ if __name__ == '__main__':
                                                                     figure_title=figure_title_name,
                                                                     saved_file_name='tpu_sent_vs_act.png',
                                                                     without_outlier=False)
+
+    # Analyze the result quarterly
+    print('-------------------------------------------------------------------')
+    activity_dict_quarter_1 = TransitNeighborhood_TPU.build_dataframe_quarterly(quarter_number=1)
+    activity_dict_quarter_2 = TransitNeighborhood_TPU.build_dataframe_quarterly(quarter_number=2)
+    activity_dict_quarter_3 = TransitNeighborhood_TPU.build_dataframe_quarterly(quarter_number=3)
+    activity_dict_quarter_4 = TransitNeighborhood_TPU.build_dataframe_quarterly(quarter_number=4)
+
+    sentiment_dict_quarter_1 = {}
+    sentiment_dict_quarter_2 = {}
+    sentiment_dict_quarter_3 = {}
+    sentiment_dict_quarter_4 = {}
+
+    activity_dict_list = [activity_dict_quarter_1, activity_dict_quarter_2, activity_dict_quarter_3,
+                          activity_dict_quarter_4]
+    sentiment_dict_list = [sentiment_dict_quarter_1, sentiment_dict_quarter_2, sentiment_dict_quarter_3,
+                           sentiment_dict_quarter_4]
+
+    for activity_dict, sentiment_dict in zip(activity_dict_list, sentiment_dict_list):
+        index_value = activity_dict_list.index(activity_dict)
+        for tpu in list(activity_dict.keys()):
+            dataframe = pd.read_csv(
+                os.path.join(read_data.transit_non_transit_comparison_cross_sectional, 'tpu_data_more',
+                             tpu, tpu + '_data.csv'), encoding='utf-8', dtype='str',
+                quoting=csv.QUOTE_NONNUMERIC)
+            if index_value == 0:
+                quarter_dataframe = dataframe.loc[dataframe['month'].isin(['1.0', '2.0', '3.0'])]
+            elif index_value == 1:
+                quarter_dataframe = dataframe.loc[dataframe['month'].isin(['4.0', '5.0', '6.0'])]
+            elif index_value == 2:
+                quarter_dataframe = dataframe.loc[dataframe['month'].isin(['7.0', '8.0', '9.0'])]
+            else:
+                quarter_dataframe = dataframe.loc[dataframe['month'].isin(['10.0', '11.0', '12.0'])]
+            # dataframe['sentiment'] = dataframe['sentiment'].astype(np.int)
+            sentiment_dict[tpu] = pos_percent_minus_neg_percent(quarter_dataframe)
+
+    print('The sentiment dict in quarter 1 is...')
+    print(activity_dict_quarter_1['971 - 974'])
+    print(sentiment_dict_list[0]['971 - 974'], sentiment_dict_list[1]['971 - 974'], sentiment_dict_list[2]['971 - 974'],
+          sentiment_dict_list[3]['971 - 974'])
+
+    # the tn_tpus
+    whole_sent_act_quarter_1 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_list[0],
+                                                                                    activity_dict=activity_dict_quarter_1)
+    whole_sent_act_quarter_2 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_list[1],
+                                                                                    activity_dict=activity_dict_quarter_2)
+    whole_sent_act_quarter_3 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_list[2],
+                                                                                    activity_dict=activity_dict_quarter_3)
+    whole_sent_act_quarter_4 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_list[3],
+                                                                                    activity_dict=activity_dict_quarter_4)
+
+    print('--------------------------------------------------------------------')
+    print('For instance, total number of tweets we consider in the first quarter of the cross sectional study...')
+    print(sum(list(whole_sent_act_quarter_1['activity'])))
+    print('--------------------------------------------------------------------')
+    whole_sent_act_quarter_1.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act_quarter_1.csv'))
+    whole_sent_act_quarter_2.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act_quarter_2.csv'))
+    whole_sent_act_quarter_3.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act_quarter_3.csv'))
+    whole_sent_act_quarter_4.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act_quarter_4.csv'))
+    y_label = 'Percentage of Positive Tweets Minus Percentage of Negative Tweets'
+    # Draw the tpu sentiment against activity
+    figure_title_name = 'Sentiment Against Activity Across TPUs'
+    TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_quarter_1,
+                                                                    y_label_name=y_label,
+                                                                    figure_title=figure_title_name,
+                                                                    saved_file_name='tpu_sent_vs_act_quarter_1.png',
+                                                                    without_outlier=False)
+    TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_quarter_2,
+                                                                    y_label_name=y_label,
+                                                                    figure_title=figure_title_name,
+                                                                    saved_file_name='tpu_sent_vs_act_quarter_2.png',
+                                                                    without_outlier=False)
+    TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_quarter_3,
+                                                                    y_label_name=y_label,
+                                                                    figure_title=figure_title_name,
+                                                                    saved_file_name='tpu_sent_vs_act_quarter_3.png',
+                                                                    without_outlier=False)
+    TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_quarter_4,
+                                                                    y_label_name=y_label,
+                                                                    figure_title=figure_title_name,
+                                                                    saved_file_name='tpu_sent_vs_act_quarter_4.png',
+                                                                    without_outlier=False)
+    print('-------------------------------------------------------------------')
+
     print('--------------------------Activity---------------------------------')
     for index, dataframe in whole_tpu_sent_act_dataframe.groupby('tn_or_not'):
         print(index)
@@ -602,3 +718,69 @@ if __name__ == '__main__':
     reg_act = smf.ols('activity ~ median_income+employment+marry+education+tn_or_not',
                       normalized_combined_dataframe).fit()
     print(reg_act.summary())
+
+    ## Get wordcloud and topic modeling for specific TPUs
+    # Specify the data path
+    # tn_tpu_path = os.path.join(read_data.datasets, 'tpu_related_csvs', 'cross_sectional', 'tn_tpus')
+    # nontn_tpu_path = os.path.join(read_data.datasets, 'tpu_related_csvs', 'cross_sectional', 'non_tn_tpus')
+    # Load the corresponding dataframes
+    # tpu_442 = utils.read_local_csv_file(path=nontn_tpu_path, filename='442_data.csv', dtype_str=False)
+    # tpu_181_182 = utils.read_local_csv_file(path=nontn_tpu_path, filename='181 - 182_data.csv', dtype_str=False)
+    # tpu_426 = utils.read_local_csv_file(path=nontn_tpu_path, filename='426_data.csv', dtype_str=False)
+    # tpu_421_422 = utils.read_local_csv_file(path=nontn_tpu_path, filename='421 - 422_data.csv', dtype_str=False)
+
+    # tpu_950_951 = utils.read_local_csv_file(path=tn_tpu_path, filename='950 - 951_data.csv', dtype_str=False)
+    # tpu_153 = utils.read_local_csv_file(path=tn_tpu_path, filename='153_data.csv', dtype_str=False)
+    # tpu_971_974 = utils.read_local_csv_file(path=tn_tpu_path, filename='971 - 974_data.csv', dtype_str=False)
+    # tpu_135 = utils.read_local_csv_file(path=tn_tpu_path, filename='135_data.csv', dtype_str=False)
+
+    # Create text for wordcloud
+    # dataframe_list = [tpu_442, tpu_181_182, tpu_426, tpu_950_951, tpu_153, tpu_971_974, tpu_135]
+    # tpu_442_text_for_wordcloud = wordcloud_generate.create_text_for_wordcloud(tpu_442)
+    # tpu_181_182_text_for_wordcloud = wordcloud_generate.create_text_for_wordcloud(tpu_181_182)
+    # tpu_426_text_for_wordcloud = wordcloud_generate.create_text_for_wordcloud(tpu_426)
+    # tpu_421_422_text_for_wordcloud = wordcloud_generate.create_text_for_wordcloud(tpu_421_422)
+
+    # tpu_950_951_text_for_wordcloud = wordcloud_generate.create_text_for_wordcloud(tpu_950_951)
+    # tpu_153_text_for_wordcloud = wordcloud_generate.create_text_for_wordcloud(tpu_153)
+    # tpu_971_974_text_for_wordcloud = wordcloud_generate.create_text_for_wordcloud(tpu_971_974)
+    # tpu_135_text_for_wordcloud = wordcloud_generate.create_text_for_wordcloud(tpu_135)
+
+    # Generate wordcloud
+    # wordcloud_generate.generate_wordcloud(tpu_442_text_for_wordcloud, wordcloud_generate.circle_mask,
+    #                                       file_name='tpu442_wordcloud.png',
+    #                                       color_func=wordcloud_generate.green_func,
+    #                                       saving_path=read_data.transit_non_transit_comparison_cross_sectional)
+    # wordcloud_generate.generate_wordcloud(tpu_181_182_text_for_wordcloud, wordcloud_generate.circle_mask,
+    #                                       file_name='tpu181_182_wordcloud.png',
+    #                                       color_func=wordcloud_generate.green_func,
+    #                                       saving_path=read_data.transit_non_transit_comparison_cross_sectional)
+    # wordcloud_generate.generate_wordcloud(tpu_426_text_for_wordcloud, wordcloud_generate.circle_mask,
+    #                                       file_name='tpu426_wordcloud.png',
+    #                                       color_func=wordcloud_generate.green_func,
+    #                                       saving_path=read_data.transit_non_transit_comparison_cross_sectional)
+    # wordcloud_generate.generate_wordcloud(tpu_421_422_text_for_wordcloud, wordcloud_generate.circle_mask,
+    #                                       file_name='tpu421_422_wordcloud.png',
+    #                                       color_func=wordcloud_generate.green_func,
+    #                                       saving_path=read_data.transit_non_transit_comparison_cross_sectional)
+
+    # wordcloud_generate.generate_wordcloud(tpu_950_951_text_for_wordcloud, wordcloud_generate.circle_mask,
+    #                                       file_name='tpu950_951_wordcloud.png',
+    #                                       color_func=wordcloud_generate.red_func,
+    #                                       saving_path=read_data.transit_non_transit_comparison_cross_sectional)
+    # wordcloud_generate.generate_wordcloud(tpu_153_text_for_wordcloud, wordcloud_generate.circle_mask,
+    #                                       file_name='tpu153_wordcloud.png',
+    #                                       color_func=wordcloud_generate.red_func,
+    #                                       saving_path=read_data.transit_non_transit_comparison_cross_sectional)
+    # wordcloud_generate.generate_wordcloud(tpu_971_974_text_for_wordcloud, wordcloud_generate.circle_mask,
+    #                                       file_name='tpu971_974_wordcloud.png',
+    #                                       color_func=wordcloud_generate.red_func,
+    #                                       saving_path=read_data.transit_non_transit_comparison_cross_sectional)
+    # wordcloud_generate.generate_wordcloud(tpu_135_text_for_wordcloud, wordcloud_generate.circle_mask,
+    #                                       file_name='tpu135_wordcloud.png',
+    #                                       color_func=wordcloud_generate.red_func,
+    #                                       saving_path=read_data.transit_non_transit_comparison_cross_sectional)
+
+
+
+

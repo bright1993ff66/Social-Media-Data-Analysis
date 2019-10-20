@@ -48,5 +48,9 @@ The idea of selecting treatment and control groups and how to build the DID mode
 - [Transit-oriented economic development: The impact of light rail on new business starts in the Phoenix, AZ Region, USA](https://journals.sagepub.com/doi/full/10.1177/0042098017724119)
 - [Do light rail transit investments increase employment opportunities? The case of Charlotte, North Carolina](https://rsaiconnect.onlinelibrary.wiley.com/doi/full/10.1111/rsp3.12184)
 
+# 4. Other Strategy
+
+Some papers use the circle-annulus setting to define the treatment and control area. Codes to prepare the data for this setting code be found in [create_data_for_circle_annulus_setting]( https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/transit_non_transit_comparision/create_data_for_circle_annulus_setting.py ). Moreover, codes to build the DID model based on the circle-annulus setting could be found in [before_and_after_final_circle]( https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/transit_non_transit_comparision/before_and_after_final_circle.py ).
+
 ## More results would be updated in the following month...:blush:
 

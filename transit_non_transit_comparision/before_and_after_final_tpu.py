@@ -5,6 +5,7 @@ import pytz
 import csv
 from scipy.stats import linregress
 from datetime import datetime
+import time
 from collections import Counter
 import warnings
 warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
@@ -168,16 +169,16 @@ class TransitNeighborhood_Before_After(object):
                 wrong_message = 'You should set a proper title name!'
                 return wrong_message
 
-        fig, ax = plt.subplots(1, 1, figsize=(10, 8))
+        fig, ax = plt.subplots(1, 1, figsize=(10, 8), dpi=200)
         if draw_sentiment:
-            lns1 = ax.plot(x, y1, 'r-', label=line_labels[0], linestyle='--', marker='o')
-            lns2 = ax.plot(x, y2, 'y-', label=line_labels[1], linestyle='--', marker='o')
-            lns3 = ax.plot(x, y3, 'g-', label=line_labels[2], linestyle='--', marker='^')
+            lns1 = ax.plot(x, y1, '#4659FF', label=line_labels[0], linestyle='--', marker='o')
+            # lns2 = ax.plot(x, y2, 'y-', label=line_labels[1], linestyle='--', marker='o')
+            lns3 = ax.plot(x, y3, '#FFA238', label=line_labels[2], linestyle='--', marker='^')
         else:
             ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2e'))
-            lns1 = ax.plot(x, y1, 'r-', label=line_labels[0], linestyle='--', marker='o')
-            lns2 = ax.plot(x, y2, 'y-', label=line_labels[1], linestyle='--', marker='o')
-            lns3 = ax.plot(x, y3, 'g-', label=line_labels[2], linestyle='--', marker='^')
+            lns1 = ax.plot(x, y1, '#4659FF', label=line_labels[0], linestyle='--', marker='o')
+            # lns2 = ax.plot(x, y2, 'y-', label=line_labels[1], linestyle='--', marker='o')
+            lns3 = ax.plot(x, y3, '#FFA238', label=line_labels[2], linestyle='--', marker='^')
 
         # Whether to draw the vertical line that indicates the open date
         if self.before_and_after:
@@ -199,15 +200,16 @@ class TransitNeighborhood_Before_After(object):
             pass
 
         # Add the legend
-        lns = lns1 + lns2 + lns3
+        # lns = lns1 + lns2 + lns3
+        lns = lns1 + lns3
         labs = [l.get_label() for l in lns]
-        ax.legend(lns, labs)
+        ax.legend(lns, labs, prop={'size': 16})
 
         # Draw the average of the sentiment level
         # This average sentiment level means the average sentiment of 93 500-meter TBs
         if draw_sentiment:
             ax.axhline(y=0.38, color='r', linestyle='solid')
-            ax.text(3, 0.43, 'Average Sentiment Level: 0.38', horizontalalignment='center', color='r')
+            ax.text(3, 0.43, 'Average Sentiment: 0.38', horizontalalignment='center', color='r')
             # The ylim is set as (-1, 1)
             ax.set_ylim(-1, 1)
         else:  # here I don't want to draw the horizontal activity line as the activity level varies greatly between TNs
@@ -276,7 +278,7 @@ class TransitNeighborhood_Before_After(object):
             ax2.set_title('Kwun Tong Line Treatment TPUs and Control Group Comparison', fontsize=10)
             # plt.suptitle('Treatment and Control Comparison: Kwun Tong Line')
             figure.savefig(os.path.join(saving_path, 'Kwun_Tong_Line_tpus_control.png'))
-            plt.show()
+            # plt.show()
         elif '174' in tpu_name_list:
             ax1.axvline(7.7, color='black')
             ax2.axvline(7.7, color='black')
@@ -286,7 +288,7 @@ class TransitNeighborhood_Before_After(object):
             ax2.set_title('South Horizons & Lei Tung Treatment TPUs and Control Group Comparison', fontsize=8)
             # plt.suptitle('Treatment and Control Comparison: South Horizons & Lei Tung')
             figure.savefig(os.path.join(saving_path, 'Souths_horizons_lei_tung_'+'_'.join(tpu_name_list)+'_control.png'))
-            plt.show()
+            # plt.show()
         else:
             ax1.axvline(7.7, color='black')
             ax2.axvline(7.7, color='black')
@@ -297,13 +299,17 @@ class TransitNeighborhood_Before_After(object):
             # plt.suptitle('Treatment and Control Comparison: Ocean Park & Wong Chuk Hang')
             figure.savefig(
                 os.path.join(saving_path, 'Ocean_park_wong_chuk_hang_' + '_'.join(tpu_name_list) + '_control.png'))
-            plt.show()
+            # plt.show()
 
     def draw_tweet_posting_time_comparison(self, saving_path):
+        """
+        This function is used to draw the tweet posting time comparison plot
+        :param saving_path: the path being used to save the comparison plot
+        """
         treatment_dataframe_copy = self.tn_dataframe.copy()
         treatment_not_considered_dataframe_copy = self.treatment_not_considered_dataframe.copy()
         control_dataframe_copy = self.non_tn_dataframe.copy()
-        # Transform the string time to datetime object
+        # Transform the string time to datetime object(just a check)
         if isinstance(list(treatment_dataframe_copy['hk_time'])[0], str) or isinstance(
                 list(treatment_not_considered_dataframe_copy['hk_time'])[0], str) or isinstance(
                 list(control_dataframe_copy['hk_time'])[0], str):
@@ -352,6 +358,7 @@ class TransitNeighborhood_Before_After(object):
             control_dataframe_before = control_dataframe_copy.loc[control_dataframe_copy['hk_time'] < december_28_start]
             control_dataframe_after = control_dataframe_copy.loc[control_dataframe_copy['hk_time'] > december_28_end]
 
+        # Create figs
         fig_treatment = plt.figure(figsize=(20, 8))
         fig_treatment_not_considered = plt.figure(figsize=(20, 8))
         fig_control = plt.figure(figsize=(20, 8))
@@ -368,13 +375,16 @@ class TransitNeighborhood_Before_After(object):
                     if index == 0:
                         sns.distplot(treatment_dataframe_before.hour, kde=False, label='Treatment Before',
                                      ax=ax_treatment[index], color='red', norm_hist=True)
+                        ax_treatment[index].set_title(self.name+'_Treatment Before')
                     else:
                         sns.distplot(treatment_dataframe_after.hour, kde=False, label='Treatment After',
                                      ax=ax_treatment[index], color='green', norm_hist=True)
+                        ax_treatment[index].set_title(self.name + '_Treatment After')
                     ax_treatment[index].legend()
                     ax_treatment[index].set_ylim(0, 0.15)
                     ax_treatment[index].set_ylabel('Probability', color='k')
                 fig_treatment.savefig(os.path.join(saving_path, self.name+'_treatment.png'))
+                # plt.show()
             elif setting == 'treatment_not_considered':
                 dataframe_list_treatment_not_considered = dataframe_dict[setting]
                 ax_treatment_not_considered = [None] * 2
@@ -384,15 +394,20 @@ class TransitNeighborhood_Before_After(object):
                         sns.distplot(treatment_not_considered_dataframe_before.hour, kde=False,
                                      label='Treatment Not Considered Before',
                                      ax=ax_treatment_not_considered[index], color='red', norm_hist=True)
+                        ax_treatment_not_considered[index].set_title(
+                            self.name + '_Treatment Not Considered Before')
                     else:
                         sns.distplot(treatment_not_considered_dataframe_after.hour, kde=False,
                                      label='Treatment Not Considered After',
                                      ax=ax_treatment_not_considered[index], color='green', norm_hist=True)
+                        ax_treatment_not_considered[index].set_title(
+                            self.name + '_Treatment Not Considered After')
                     ax_treatment_not_considered[index].legend()
                     ax_treatment_not_considered[index].set_ylim(0, 0.15)
                     ax_treatment_not_considered[index].set_ylabel('Probability', color='k')
-                    fig_treatment_not_considered.savefig(
-                        os.path.join(saving_path, self.name + '_treatment_not_considered.png'))
+                fig_treatment_not_considered.savefig(
+                    os.path.join(saving_path, self.name + '_treatment_not_considered.png'))
+                # plt.show()
             else:
                 dataframe_list_control = dataframe_dict[setting]
                 ax_control = [None] * 2
@@ -401,13 +416,48 @@ class TransitNeighborhood_Before_After(object):
                     if index == 0:
                         sns.distplot(control_dataframe_before.hour, kde=False, label='Control Before',
                                      ax=ax_control[index], color='red', norm_hist=True)
+                        ax_control[index].set_title(
+                            self.name + '_Control Before')
                     else:
                         sns.distplot(control_dataframe_after.hour, kde=False, label='Control After',
                                      ax=ax_control[index], color='green', norm_hist=True)
+                        ax_control[index].set_title(
+                            self.name + '_Control After')
                     ax_control[index].legend()
                     ax_control[index].set_ylim(0, 0.15)
                     ax_control[index].set_ylabel('Probability', color='k')
                 fig_control.savefig(os.path.join(saving_path, self.name+'_control.png'))
+                # plt.show()
+
+    @staticmethod
+    def find_residents_of_tpu(total_dataframe, tpu_list):
+        if isinstance(list(total_dataframe['hk_time'])[0], str):
+            dataframe_copy = total_dataframe.copy()
+            dataframe_copy['hk_time'] = dataframe_copy.apply(
+                lambda row: TransitNeighborhood_Before_After.transform_string_time_to_datetime(row['hk_time']), axis=1)
+        else:
+            dataframe_copy = total_dataframe.copy()
+
+        # get the hour and minute columns
+        dataframe_copy['hour'] = dataframe_copy.apply(lambda row: row['hk_time'].hour, axis=1)
+        dataframe_copy['minutes'] = dataframe_copy.apply(lambda row: row['hk_time'].minute, axis=1)
+
+        # Select tweets which are posted between 12am and 6am
+        dataframe_copy_selected = dataframe_copy.loc[(dataframe_copy['hour'] >= 0) & (dataframe_copy['hour'] < 6)]
+        print(utils.number_of_tweet_user(dataframe_copy_selected))
+
+        # Output the users which could be thought of as residents of tpu
+        user_set_list = list(set(dataframe_copy_selected['user_id_str']))
+        tpu_resident_list = []
+        for user in user_set_list:
+            data_for_this_user = dataframe_copy_selected.loc[dataframe_copy_selected['user_id_str'] == user]
+            user_post_tpu = data_for_this_user.loc[data_for_this_user['TPU_2016'].isin(tpu_list)]
+            user_not_post_tpu = data_for_this_user.loc[~data_for_this_user['TPU_2016'].isin(tpu_list)]
+            if user_post_tpu.shape[0] > user_not_post_tpu.shape[0]:
+                tpu_resident_list.append(user)
+            else:
+                pass
+        return tpu_resident_list
 
     @staticmethod
     def build_data_for_longitudinal_study(tweet_data_path, saving_path):
@@ -568,13 +618,13 @@ def generate_wordcloud(words_before, words_after, mask, file_name_before, file_n
     plt.axis('off')
     plt.tight_layout(pad=0)
     fig_before.savefig(os.path.join(read_data.transit_non_transit_comparison_before_after, file_name_before))
-    plt.show()
+    # plt.show()
     fig_after = plt.figure(figsize=(15, 13), facecolor='white', edgecolor='black')
     plt.imshow(word_cloud_after.recolor(color_func=color_func, random_state=3), interpolation="bilinear")
     plt.axis('off')
     plt.tight_layout(pad=0)
     fig_after.savefig(os.path.join(read_data.transit_non_transit_comparison_before_after, file_name_after))
-    plt.show()
+    # plt.show()
 
 
 def draw_word_count_histogram(df, station_name, saved_file_name):
@@ -600,20 +650,18 @@ def draw_word_count_histogram(df, station_name, saved_file_name):
     np.save(os.path.join(read_data.transit_non_transit_comparison_before_after, station_name+'_text.npy'), data_ready)
     text_count_list = [len(text) for text in data_ready]
 
-    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
+    fig_word_count, ax = plt.subplots(1, 1, figsize=(10, 8))
     sns.distplot(text_count_list, kde=False, hist=True)
     # check whether tweet count=7 is appropriate
     ax.axvline(np.median(text_count_list), color='#EB1B52', label='50% Percentile')
-    ax.axvline(7, color='#FF9415', label='Number of Keywords in Topic Modelling')
-    plt.xlim((0, 100))
-    plt.ylim((0, 700))
+    ax.set_xlim((0, 100))
+    ax.set_ylim((0, 700))
     # Check if it is appropriate to set the number of keywords as 7 in this dataframe
-    plt.xticks(list(plt.xticks()[0]) + [np.median(text_count_list)])
-    plt.xticks(list(plt.xticks()[0]) + [7])
-    plt.legend()
-    plt.title(station_name+': Tweet Word Count Histogram')
-    plt.savefig(os.path.join(read_data.transit_non_transit_comparison_before_after, saved_file_name))
-    plt.show()
+    ax.set_xticks(list(plt.xticks()[0]) + [np.median(text_count_list)])
+    ax.set_title(station_name+': Tweet Word Count Histogram')
+    ax.legend()
+    fig_word_count.savefig(os.path.join(read_data.transit_non_transit_comparison_before_after, saved_file_name))
+    # plt.show()
 
 
 # Set the hyperparameter: the number of the topics
@@ -720,6 +768,9 @@ def sort_data_based_on_date(df):
 
 
 if __name__ == '__main__':
+
+    starting_time = time.time()
+
     # For instance, if we want to compare the sentiment and activity level before and after the
     # openning date of the Whampoa MTR railway station in Hong Kong, since the station is opened on 23 Oct 2016,
     # we could specify the openning date using datatime package and output before and after dataframes
@@ -840,7 +891,7 @@ if __name__ == '__main__':
                                                return_dataframe=True
                                                )
 
-    # # Draw the word count
+    # Draw the word count
     # draw_word_count_histogram(df=kwun_tong_line_treatment_dataframe, station_name='Kwun_Tong_Line',
     #                           saved_file_name='Kwun_Tong_Line_tweet_word_count.png')
     # draw_word_count_histogram(df=south_horizons_lei_tung_treatment_dataframe,
@@ -900,27 +951,31 @@ if __name__ == '__main__':
     ocean_park_wong_chuk_hang_1500_control.draw_tweet_posting_time_comparison(
         saving_path=read_data.transit_non_transit_comparison_before_after)
 
-    #Kwun Tong Line - Overall Comparison between treatment and control group
+    # Kwun Tong Line - Overall Comparison between treatment and control group
     kwun_tong_line_extension_1000_control.line_map_comparison(
         line_labels=('Treatment Group', 'Treatment Group Not Considered', 'Control Group(1000 meter)'),
         ylabel='Percentage of Positive Tweets Minus Percentage of Negative Tweets',
-        draw_sentiment=True, plot_title_name='Kwun Tong Line Treatment Group and Control Group Comparison',
+        draw_sentiment=True,
+        plot_title_name='Kwun Tong Line Treatment Group and Control Group Comparison',
         saving_file_name='kwun_tong_line_sentiment_treatment_control_comparison_1000_meter.png')
-    kwun_tong_line_extension_1500_control.line_map_comparison(
-        line_labels=('Treatment Group', 'Treatment Group Not Considered', 'Control Group(1000 meter)'),
-        ylabel='Percentage of Positive Tweets Minus Percentage of Negative Tweets',
-        draw_sentiment=True, plot_title_name='Kwun Tong Line Treatment Group and Control Group Comparison',
-        saving_file_name='kwun_tong_line_sentiment_treatment_control_comparison_1500_meter.png')
+    # kwun_tong_line_extension_1500_control.line_map_comparison(
+    #     line_labels=('Treatment Group', 'Treatment Group Not Considered', 'Control Group(1500 meter)'),
+    #     ylabel='Percentage of Positive Tweets Minus Percentage of Negative Tweets',
+    #     draw_sentiment=True,
+    #     plot_title_name='Kwun Tong Line Treatment Group and Control Group Comparison',
+    #     saving_file_name='kwun_tong_line_sentiment_treatment_control_comparison_1500_meter.png')
     kwun_tong_line_extension_1000_control.line_map_comparison(
         line_labels=('Treatment Group',  'Treatment Group Not Considered', 'Control Group(1000 meter)'),
         ylabel='Number of Posted Tweets Per Square Meter',
-        draw_sentiment=False, plot_title_name='Kwun Tong Line Treatment Group and Control Group Comparison',
+        draw_sentiment=False,
+        plot_title_name='Kwun Tong Line Treatment Group and Control Group Comparison',
         saving_file_name='kwun_tong_line_activity_treatment_control_comparison_1000_meter.png')
-    kwun_tong_line_extension_1500_control.line_map_comparison(
-        line_labels=('Treatment Group', 'Treatment Group Not Considered', 'Control Group(1000 meter)'),
-        ylabel='Number of Posted Tweets Per Square Meter',
-        draw_sentiment=False, plot_title_name='Kwun Tong Line Treatment Group and Control Group Comparison',
-        saving_file_name='kwun_tong_line_activity_treatment_control_comparison_1500_meter.png')
+    # kwun_tong_line_extension_1500_control.line_map_comparison(
+    #     line_labels=('Treatment Group', 'Treatment Group Not Considered', 'Control Group(1500 meter)'),
+    #     ylabel='Number of Posted Tweets Per Square Meter',
+    #     draw_sentiment=False,
+    #     plot_title_name='Kwun Tong Line Treatment Group and Control Group Comparison',
+    #     saving_file_name='kwun_tong_line_activity_treatment_control_comparison_1500_meter.png')
 
     # South Horizons and Lei Tung: Comparison between treatment group and control group
     # south_horizons_lei_tung_1000_control.line_map_comparison(
@@ -931,7 +986,8 @@ if __name__ == '__main__':
     south_horizons_lei_tung_1500_control.line_map_comparison(
         line_labels=('Treatment Group', 'Treatment Group Not Considered', 'Control Group(1500 meter)'),
         ylabel='Percentage of Positive Tweets Minus Percentage of Negative Tweets',
-        draw_sentiment=True, plot_title_name='South Horizons & Lei Tung Treatment Group and Control Group Comparison',
+        draw_sentiment=True,
+        plot_title_name='South Horizons & Lei Tung Treatment Group and Control Group Comparison',
         saving_file_name='south_horizons_lei_tung_sentiment_treatment_control_comparison_1500_meter.png')
     # south_horizons_lei_tung_1000_control.line_map_comparison(
     #     line_labels=('Treatment Group', 'Control Group(1000 meter)'),
@@ -941,7 +997,8 @@ if __name__ == '__main__':
     south_horizons_lei_tung_1500_control.line_map_comparison(
         line_labels=('Treatment Group', 'Treatment Group Not Considered', 'Control Group(1500 meter)'),
         ylabel='Number of Posted Tweets Per Square Meter',
-        draw_sentiment=False, plot_title_name='South Horizons & Lei Tung Treatment Group and Control Group Comparison',
+        draw_sentiment=False,
+        plot_title_name='South Horizons & Lei Tung Treatment Group and Control Group Comparison',
         saving_file_name='south_horizons_lei_tung_activity_treatment_control_comparison_1500_meter.png')
 
     # Ocean Park and Wong Chuk Hang: Comparison between treatment group and control group
@@ -954,7 +1011,8 @@ if __name__ == '__main__':
     ocean_park_wong_chuk_hang_1500_control.line_map_comparison(
         line_labels=('Treatment Group', 'Treatment Group Not Considered', 'Control Group(1500 meter)'),
         ylabel='Percentage of Positive Tweets Minus Percentage of Negative Tweets',
-        draw_sentiment=True, plot_title_name='Ocean Park & Wong Chuk Hang Treatment Group and Control Group Comparison',
+        draw_sentiment=True,
+        plot_title_name='Ocean Park & Wong Chuk Hang Treatment Group and Control Group Comparison',
         saving_file_name='ocean_park_wong_chuk_hang_sentiment_treatment_control_comparison_1500_meter.png'
     )
     # ocean_park_wong_chuk_hang_1000_control.line_map_comparison(
@@ -966,11 +1024,12 @@ if __name__ == '__main__':
     ocean_park_wong_chuk_hang_1500_control.line_map_comparison(
         line_labels=('Treatment Group', 'Treatment Group Not Considered', 'Control Group(1500 meter)'),
         ylabel='Number of Tweets Per Square Meter',
-        draw_sentiment=False, plot_title_name='Ocean Park & Wong Chuk Hang Treatment Group and Control Group Comparison',
+        draw_sentiment=False,
+        plot_title_name='Ocean Park & Wong Chuk Hang Treatment Group and Control Group Comparison',
         saving_file_name='ocean_park_wong_chuk_hang_activity_treatment_control_comparison_1500_meter.png'
     )
 
-    # Save the dataframes
+    # Save the treatment, treatment not considered and control dataframes
     treatment_control_saving_path = os.path.join(read_data.transit_non_transit_comparison_before_after,
                                                  'three_areas_longitudinal_analysis')
     kwun_tong_line_treatment_dataframe.to_csv(
@@ -1002,72 +1061,153 @@ if __name__ == '__main__':
         encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC, index=False)
 
     # Compare the coefficient difference in the kwun tong line extension
+    print('------------------------Kwun Tong Line Extension-------------------------------')
     print('***treatment vs 1000 control****')
     kwun_tong_line_extension_1000_control.compute_abs_coeff_difference()
     print('***treatment vs 1500 control****')
     kwun_tong_line_extension_1500_control.compute_abs_coeff_difference()
+    print('-------------------------------------------------------------------------------')
 
-    # Compare the tpus in treatment group with the control group
-    kwun_tong_line_extension_1000_control.line_map_comparison_between_tpus_and_control('245', '213', '236', '243')
-    kwun_tong_line_extension_1500_control.line_map_comparison_between_tpus_and_control('245', '213', '236', '243')
-    south_horizons_lei_tung_1500_control.line_map_comparison_between_tpus_and_control('174')
-    ocean_park_wong_chuk_hang_1500_control.line_map_comparison_between_tpus_and_control('175')
+    print('--------------------South Horizons & Lei Tung Line Extension-------------------')
+    print('***treatment vs 1000 control****')
+    south_horizons_lei_tung_1000_control.compute_abs_coeff_difference()
+    print('***treatment vs 1500 control****')
+    south_horizons_lei_tung_1500_control.compute_abs_coeff_difference()
+    print('-------------------------------------------------------------------------------')
 
-    # #=========================================Build the wordcloud============================================
-    before_text_kwun_tong_line, after_text_kwun_tong_line = build_text_for_wordcloud_topic_model(
-        kwun_tong_line_treatment_dataframe,
-        oct_open=True, build_wordcloud=True)
-    before_text_south_horizons_lei_tung, after_text_south_horizons_lei_tung = build_text_for_wordcloud_topic_model(
-        south_horizons_lei_tung_treatment_dataframe,
-        oct_open=False, build_wordcloud=True)
-    before_text_ocean_park_wong_chuk_hang, after_text_ocean_park_wong_chuk_hang = build_text_for_wordcloud_topic_model(
-        ocean_park_wong_chuk_hang_treatment_dataframe,
-        oct_open=False, build_wordcloud=True)
+    print('--------------------Ocean Park & Wong Chuk Hang Line Extension-------------------')
+    print('***treatment vs 1000 control****')
+    # the size of the control group is too small
+    # ocean_park_wong_chuk_hang_1000_control.compute_abs_coeff_difference()
+    print('***treatment vs 1500 control****')
+    ocean_park_wong_chuk_hang_1500_control.compute_abs_coeff_difference()
+    print('-------------------------------------------------------------------------------')
 
-    generate_wordcloud(before_text_kwun_tong_line, after_text_kwun_tong_line, mask=wordcloud_generate.circle_mask,
-                       file_name_before='before_kwun_tong_line_wordcloud',
-                       file_name_after="after_kwun_tong_line_wordcloud",
-                       color_func=wordcloud_generate.green_func)
-    generate_wordcloud(before_text_south_horizons_lei_tung, after_text_south_horizons_lei_tung,
-                       mask=wordcloud_generate.circle_mask,
-                       file_name_before='before_south_horizons_lei_tung_wordcloud',
-                       file_name_after="after_south_horizons_lei_tung_wordcloud",
-                       color_func=wordcloud_generate.green_func)
-    generate_wordcloud(before_text_ocean_park_wong_chuk_hang, after_text_ocean_park_wong_chuk_hang,
-                       mask=wordcloud_generate.circle_mask,
-                       file_name_before='before_ocean_park_wong_chuk_hang_wordcloud',
-                       file_name_after="after_ocean_park_wong_chuk_hang_wordcloud",
-                       color_func=wordcloud_generate.green_func)
+    # # Compare the tpus in treatment group with the control group
+    # kwun_tong_line_extension_1000_control.line_map_comparison_between_tpus_and_control('245', '213', '236', '243')
+    # kwun_tong_line_extension_1500_control.line_map_comparison_between_tpus_and_control('245', '213', '236', '243')
+    # south_horizons_lei_tung_1500_control.line_map_comparison_between_tpus_and_control('174')
+    # ocean_park_wong_chuk_hang_1500_control.line_map_comparison_between_tpus_and_control('175')
+    #
+    # # #=========================================Build the wordcloud============================================
+    # before_text_kwun_tong_line, after_text_kwun_tong_line = build_text_for_wordcloud_topic_model(
+    #     kwun_tong_line_treatment_dataframe,
+    #     oct_open=True, build_wordcloud=True)
+    # before_text_kwun_tong_line_control, after_text_kwun_tong_line_control = build_text_for_wordcloud_topic_model(
+    #     kwun_tong_line_control_1000_dataframe,
+    #     oct_open=True, build_wordcloud=True)
+    # before_text_south_horizons_lei_tung, after_text_south_horizons_lei_tung = build_text_for_wordcloud_topic_model(
+    #     south_horizons_lei_tung_treatment_dataframe,
+    #     oct_open=False, build_wordcloud=True)
+    # before_text_south_horizons_lei_tung_control, after_text_south_horizons_lei_tung_control = \
+    #     build_text_for_wordcloud_topic_model(south_horizons_lei_tung_control_1500_dataframe, oct_open=True,
+    #                                          build_wordcloud=True)
+    # before_text_ocean_park_wong_chuk_hang, after_text_ocean_park_wong_chuk_hang = build_text_for_wordcloud_topic_model(
+    #     ocean_park_wong_chuk_hang_treatment_dataframe,
+    #     oct_open=False, build_wordcloud=True)
+    # before_text_ocean_park_wong_chuk_hang_control, after_text_ocean_park_wong_chuk_hang_control = \
+    #     build_text_for_wordcloud_topic_model(ocean_park_wong_chuk_hang_control_1500_dataframe, oct_open=False,
+    #                                          build_wordcloud=True)
+    #
+    # generate_wordcloud(before_text_kwun_tong_line, after_text_kwun_tong_line, mask=wordcloud_generate.circle_mask,
+    #                    file_name_before='before_kwun_tong_line_wordcloud',
+    #                    file_name_after="after_kwun_tong_line_wordcloud",
+    #                    color_func=wordcloud_generate.green_func)
+    # generate_wordcloud(before_text_kwun_tong_line_control, after_text_kwun_tong_line_control,
+    #                    mask=wordcloud_generate.circle_mask,
+    #                    file_name_before='control_before_kwun_tong_line_wordcloud',
+    #                    file_name_after="control_after_kwun_tong_line_wordcloud",
+    #                    color_func=wordcloud_generate.green_func)
+    # generate_wordcloud(before_text_south_horizons_lei_tung, after_text_south_horizons_lei_tung,
+    #                    mask=wordcloud_generate.circle_mask,
+    #                    file_name_before='before_south_horizons_lei_tung_wordcloud',
+    #                    file_name_after="after_south_horizons_lei_tung_wordcloud",
+    #                    color_func=wordcloud_generate.green_func)
+    # generate_wordcloud(before_text_south_horizons_lei_tung_control, after_text_south_horizons_lei_tung_control,
+    #                    mask=wordcloud_generate.circle_mask,
+    #                    file_name_before='control_before_south_horizons_lei_tung_wordcloud',
+    #                    file_name_after="control_after_south_horizons_lei_tung_wordcloud",
+    #                    color_func=wordcloud_generate.green_func)
+    # generate_wordcloud(before_text_ocean_park_wong_chuk_hang, after_text_ocean_park_wong_chuk_hang,
+    #                    mask=wordcloud_generate.circle_mask,
+    #                    file_name_before='before_ocean_park_wong_chuk_hang_wordcloud',
+    #                    file_name_after="after_ocean_park_wong_chuk_hang_wordcloud",
+    #                    color_func=wordcloud_generate.green_func)
+    # generate_wordcloud(before_text_ocean_park_wong_chuk_hang_control, after_text_ocean_park_wong_chuk_hang_control,
+    #                    mask=wordcloud_generate.circle_mask,
+    #                    file_name_before='control_before_ocean_park_wong_chuk_hang_wordcloud',
+    #                    file_name_after="control_after_ocean_park_wong_chuk_hang_wordcloud",
+    #                    color_func=wordcloud_generate.green_func)
     # #=========================================================================================================
+    #
+    # # #=======================================Topic Modelling===================================================
+    # # build text for the treatment group
+    # before_dataframe_kwun_tong_line, after_dataframe_kwun_tong_line = \
+    #     build_text_for_wordcloud_topic_model(kwun_tong_line_treatment_dataframe, oct_open=True, build_wordcloud=False)
+    # before_dataframe_south_horizons_lei_tung, after_dataframe_south_horizons_lei_tung = \
+    #     build_text_for_wordcloud_topic_model(south_horizons_lei_tung_treatment_dataframe, oct_open=True,
+    #                                          build_wordcloud=False)
+    # before_dataframe_ocean_park_wong_chuk_hang, after_dataframe_ocean_park_wong_chuk_hang = \
+    #     build_text_for_wordcloud_topic_model(ocean_park_wong_chuk_hang_treatment_dataframe, oct_open=True,
+    #                                          build_wordcloud=False)
+    #
+    # # build the text for the control group
+    # before_dataframe_kwun_tong_line_control, after_dataframe_kwun_tong_line_control = \
+    #     build_text_for_wordcloud_topic_model(kwun_tong_line_control_1000_dataframe, oct_open=True, build_wordcloud=False)
+    # before_dataframe_south_horizons_lei_tung_control, after_dataframe_south_horizons_lei_tung_control = \
+    #     build_text_for_wordcloud_topic_model(south_horizons_lei_tung_control_1500_dataframe, oct_open=True,
+    #                                          build_wordcloud=False)
+    # before_dataframe_ocean_park_wong_chuk_hang_control, after_dataframe_ocean_park_wong_chuk_hang_control = \
+    #     build_text_for_wordcloud_topic_model(ocean_park_wong_chuk_hang_control_1500_dataframe, oct_open=True,
+    #                                          build_wordcloud=False)
+    #
+    # # Build the topic model for the treatment dataframe
+    # before_and_after_dataframes_list = [before_dataframe_kwun_tong_line, after_dataframe_kwun_tong_line,
+    #                                     before_dataframe_south_horizons_lei_tung, after_dataframe_south_horizons_lei_tung,
+    #                                     before_dataframe_ocean_park_wong_chuk_hang,
+    #                                     after_dataframe_ocean_park_wong_chuk_hang]
+    #
+    # name_list = ['before_kwun_tong_line', 'after_kwun_tong_line', 'before_south_horizons_lei_tung',
+    #              'after_south_horizons_lei_tung', 'before_ocean_park_wong_chuk_hang',
+    #              'after_ocean_park_wong_chuk_hang']
+    #
+    # topic_number_list = [5,6,7,8,9,10]
+    # for dataframe, file_name in zip(before_and_after_dataframes_list, name_list):
+    #     print('-------------------' + file_name + ' starts--------------------------')
+    #     for topic_number in topic_number_list:
+    #         print('Setting topic number equals {}'.format(topic_number))
+    #         build_topic_model(df=dataframe, keyword_file_name=file_name + '_' + str(topic_number) + '_' + '_keyword.pkl',
+    #                           topic_predict_file_name=file_name + '_' + str(topic_number) + '_' + '_tweet_topic.pkl',
+    #                           saving_path=read_data.before_and_after_topic_modelling_compare,
+    #                           topic_number=topic_number)
+    #     print('------------------' + file_name + ' ends-----------------------------')
+    #
+    # # Build the topic model for the control dataframe
+    # before_and_after_dataframes_list_control = [before_dataframe_kwun_tong_line_control,
+    #                                                 after_dataframe_kwun_tong_line_control,
+    #                                         before_dataframe_south_horizons_lei_tung_control,
+    #                                         after_dataframe_south_horizons_lei_tung_control,
+    #                                         before_dataframe_ocean_park_wong_chuk_hang_control,
+    #                                         after_dataframe_ocean_park_wong_chuk_hang_control]
+    #
+    # name_list_control = ['control_before_kwun_tong_line', 'control_after_kwun_tong_line',
+    #                  'control_before_south_horizons_lei_tung',
+    #                  'control_after_south_horizons_lei_tung', 'control_before_ocean_park_wong_chuk_hang',
+    #                  'control_after_ocean_park_wong_chuk_hang']
+    #
+    # for dataframe, file_name in zip(before_and_after_dataframes_list_control, name_list_control):
+    #     print('-------------------' + file_name + ' starts--------------------------')
+    #     for topic_number in topic_number_list:
+    #         print('Setting topic number equals {}'.format(topic_number))
+    #         build_topic_model(df=dataframe,
+    #                               keyword_file_name=file_name + '_' + str(topic_number) + '_' + '_keyword.pkl',
+    #                               topic_predict_file_name=file_name + '_' + str(
+    #                                   topic_number) + '_' + '_tweet_topic.pkl',
+    #                               saving_path=read_data.before_and_after_topic_modelling_compare,
+    #                               topic_number=topic_number)
+    #     print('------------------' + file_name + ' ends-----------------------------')
+    # # ===============================================================================================================
 
-    # #=======================================Topic Modelling===================================================
-    before_dataframe_kwun_tong_line, after_dataframe_kwun_tong_line = \
-        build_text_for_wordcloud_topic_model(kwun_tong_line_treatment_dataframe, oct_open=True, build_wordcloud=False)
-    before_dataframe_south_horizons_lei_tung, after_dataframe_south_horizons_lei_tung = \
-        build_text_for_wordcloud_topic_model(south_horizons_lei_tung_treatment_dataframe, oct_open=True,
-                                             build_wordcloud=False)
-    before_dataframe_ocean_park_wong_chuk_hang, after_dataframe_ocean_park_wong_chuk_hang = \
-        build_text_for_wordcloud_topic_model(ocean_park_wong_chuk_hang_treatment_dataframe, oct_open=True,
-                                             build_wordcloud=False)
+    ending_time = time.time()
 
-
-    before_and_after_dataframes_list = [before_dataframe_kwun_tong_line, after_dataframe_kwun_tong_line,
-                                        before_dataframe_south_horizons_lei_tung, after_dataframe_south_horizons_lei_tung,
-                                        before_dataframe_ocean_park_wong_chuk_hang,
-                                        after_dataframe_ocean_park_wong_chuk_hang]
-
-    name_list = ['before_kwun_tong_line', 'after_kwun_tong_line', 'before_south_horizons_lei_tung',
-                 'after_south_horizons_lei_tung', 'before_ocean_park_wong_chuk_hang',
-                 'after_ocean_park_wong_chuk_hang']
-
-    topic_number_list = [5,6,7,8,9,10]
-    for dataframe, file_name in zip(before_and_after_dataframes_list, name_list):
-        print('-------------------' + file_name + ' starts--------------------------')
-        for topic_number in topic_number_list:
-            print('Setting topic number equals {}'.format(topic_number))
-            build_topic_model(df=dataframe, keyword_file_name=file_name + '_' + str(topic_number) + '_' + '_keyword.pkl',
-                              topic_predict_file_name=file_name + '_' + str(topic_number) + '_' + '_tweet_topic.pkl',
-                              saving_path=read_data.before_and_after_topic_modelling_compare,
-                              topic_number=topic_number)
-        print('------------------' + file_name + ' ends-----------------------------')
-    # =================================================================================================================
+    print('Total time for running this code is: {}'.format(ending_time - starting_time))

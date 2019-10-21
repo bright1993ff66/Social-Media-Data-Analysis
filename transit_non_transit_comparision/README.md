@@ -15,7 +15,7 @@ Then, in the codes, the following three files could be prepared previously using
 - ```tn_in_tpu.shp``` is the shapefile which contains the location of each MTR station and the TPU unit that each MTR station belongs to
 - ```tweets_in_tpu.shp``` is the shapefile which contains the geoinformation of the collected tweets and the TPU unit that each tweet belongs to
 
-Based on the shapefiles above, we start preparing the datasets for the cross sectional study and longitudinal study.
+Based on the shapefiles above, we start preparing the datasets for the cross sectional study and the longitudinal study.
 
 ### 1.1 Prepare the dataset for cross sectional study
 
@@ -24,7 +24,7 @@ Based on the shapefiles above, we start preparing the datasets for the cross sec
 - The code [find_intersected_tpus.py](https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/transit_non_transit_comparision/find_tweets_in_each_tn.py) helps us to find all the TPUs which intersect with the 500-meter station buffers. 
 - The following figure shows the TN TPUs and Non-TN TPUs in the cross sectional study: ![TN TPUs and Non-TN TPUs](https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/Figures/tn_tpus_nontn_tpus.png)
 
-Then, to get all the collected tweets in each TPU,  we use the code [prepare_datasets_cross_sectional.py](https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/transit_non_transit_comparision/prepare_datasets_cross_sectional.py) to add the TPU information to each tweet.
+Then, to get all the collected tweets in each TPU,  we use the code [prepare_datasets_cross_sectional.py](https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/transit_non_transit_comparision/prepare_datasets_cross_sectional.py) to add the TPU information to each tweet. Or you could directly use the spatial join analysis in ArcMap to find tweets in each TPU unit
 
 ### 1.2 Prepare the dataset for longitudinal study
 
@@ -48,9 +48,12 @@ The idea of selecting treatment and control groups and how to build the DID mode
 - [Transit-oriented economic development: The impact of light rail on new business starts in the Phoenix, AZ Region, USA](https://journals.sagepub.com/doi/full/10.1177/0042098017724119)
 - [Do light rail transit investments increase employment opportunities? The case of Charlotte, North Carolina](https://rsaiconnect.onlinelibrary.wiley.com/doi/full/10.1111/rsp3.12184)
 
-# 4. Other Strategy
+## 4. Strategy of Defining the Treatment Area and Control Area
 
-Some papers use the circle-annulus setting to define the treatment and control area. Codes to prepare the data for this setting code be found in [create_data_for_circle_annulus_setting]( https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/transit_non_transit_comparision/create_data_for_circle_annulus_setting.py ). Moreover, codes to build the DID model based on the circle-annulus setting could be found in [before_and_after_final_circle]( https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/transit_non_transit_comparision/before_and_after_final_circle.py ).
+Generally, to check the influence of a public service(such as subway and airport) to nearby areas(such as nearby people's sentiment, nearby places' economic development), the following two strategies could be considered:
 
-## More results would be updated in the following month...:blush:
+- Some papers use the **circle-annulus setting** to define the treatment and control area, as illustrated before in subsection 1.2. Codes to prepare the data for this setting code be found in [create_data_for_circle_annulus_setting]( https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/transit_non_transit_comparision/create_data_for_circle_annulus_setting.py ). Moreover, codes to build the DID model based on the circle-annulus setting could be found in [before_and_after_final_circle]( https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/transit_non_transit_comparision/before_and_after_final_circle.py ). One representative work is: [Do light rail transit investments increase employment opportunities? The case of Charlotte, North Carolina](https://rsaiconnect.onlinelibrary.wiley.com/doi/full/10.1111/rsp3.12184)
+- Other papers use the **census tracts** as the base to define the treatment area and control area. They also draw circles around, for instance, the studied subway station. However, they use the census tracts which intersect with the buffers as the treatment area. Other census tracts which do not intersect with these buffers are considered as the control area.  One representative work is: [Transit investments and neighborhood change: On the likelihood of change]( https://www.sciencedirect.com/science/article/pii/S096669231730354X )
+
+## More results would be updated in the following months...:blush:
 

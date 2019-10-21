@@ -13,7 +13,7 @@ In this repository, I will show how to analyze the geo-coded social media data p
 
 2. Tweet text preprocessing
 
-   -  Please check the [clean the text sample notebook]([https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/clean%20the%20text%20sample.ipynb](https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/clean the text sample.ipynb))
+   -  Please check the [clean the text sample notebook](https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/clean the text sample.ipynb)
 
 3. Generate tweet representation using [FastText](https://fasttext.cc/) word embedding based on [sentiment140](http://help.sentiment140.com/for-students)
 
@@ -23,7 +23,7 @@ In this repository, I will show how to analyze the geo-coded social media data p
 
 6. Result visualization(word cloud, topic modelling, etc)
 
-7. Difference-in-difference analysis
+7. Cross sectional analysis and longitudinal analysis
 
 ## 2. Prerequisite Python Packages
 

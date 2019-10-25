@@ -363,7 +363,7 @@ def pos_percent_minus_neg_percent(df):
     return pos_percent - neg_percent
 
 
-def get_data_for_tpu(tpu_name, economic_dataframe, marry_dataframe, edu_dataframe):
+def get_data_for_tpu(tpu_name, economic_dataframe, marry_dataframe, edu_dataframe, population_dataframe):
     """
     :param tpu_name: the name of the tpu
     :param economic_dataframe: the dataframe contains median income and employment rate
@@ -385,6 +385,9 @@ def get_data_for_tpu(tpu_name, economic_dataframe, marry_dataframe, edu_datafram
     marry_dataframe.loc[marry_dataframe['Small Tertiary Planning Unit Group'] == tpu_name].index.values[0]
     selected_tpu_dataframe = marry_dataframe.iloc[start_row_index_marry:start_row_index_marry + 6, :]
     marrital_rate = int(selected_tpu_dataframe.iloc[1, 4]) / int(selected_tpu_dataframe.iloc[5, 4])
+    # average population in each tpu
+    average_population = population_dataframe.loc[population_dataframe['TPU'] == tpu_name, 'avg_population'].tolist()[0]
+    # print(average_population)
     # education
     start_row_index_edu = \
     edu_dataframe.loc[edu_dataframe['Small Tertiary Planning Unit Group'] == tpu_name].index.values[0]
@@ -408,29 +411,36 @@ def get_data_for_tpu(tpu_name, economic_dataframe, marry_dataframe, edu_datafram
     numerator = diploma_num + sub_degree_num + degree_num
     denominator = int(selected_edu_dataframe.iloc[7, 4])
     edu_rate = numerator / denominator
-    return median_income, employment_rate, marrital_rate, edu_rate
+    return median_income, employment_rate, marrital_rate, edu_rate, average_population
 
 
-def build_social_demographic_dataframe(tpu_name_list, economic_dataframe, marry_dataframe, edu_dataframe):
+def build_social_demographic_dataframe(tpu_name_list, economic_dataframe, marry_dataframe, edu_dataframe,
+                                       population_dataframe):
     median_income_list = []
     employment_rate = []
     marry_list = []
     education_list = []
+    average_population_list = []
     for name in tpu_name_list:
-        median_income, employ_rate, marry_status, edu = get_data_for_tpu(name, economic_dataframe,
-                                                                         marry_dataframe, edu_dataframe)
+        median_income, employ_rate, marry_status, edu, avg_population = get_data_for_tpu(tpu_name=name,
+                                                                         economic_dataframe=economic_dataframe,
+                                                                         marry_dataframe=marry_dataframe,
+                                                                         edu_dataframe=edu_dataframe,
+                                                                         population_dataframe=population_dataframe)
         median_income_list.append(median_income)
         employment_rate.append(employ_rate)
         marry_list.append(marry_status)
         education_list.append(edu)
+        average_population_list.append(avg_population)
 
     tpu_2016_social_demographic_dataframe = pd.DataFrame(
-        columns=['tpu_name', 'median_income', 'employment', 'marry', 'education'])
+        columns=['tpu_name', 'median_income', 'employment', 'marry', 'education', 'avg_population'])
     tpu_2016_social_demographic_dataframe['tpu_name'] = tpu_name_list
     tpu_2016_social_demographic_dataframe['median_income'] = median_income_list
     tpu_2016_social_demographic_dataframe['employment'] = employment_rate
     tpu_2016_social_demographic_dataframe['education'] = education_list
     tpu_2016_social_demographic_dataframe['marry'] = marry_list
+    tpu_2016_social_demographic_dataframe['avg_population'] = average_population_list
     return tpu_2016_social_demographic_dataframe
 
 
@@ -509,6 +519,18 @@ def compute_vif(dataframe):
     return result_series
 
 
+def describle_dataframe(dataframe, message):
+    """
+    describle a summarized dataframe for each quarter
+    :param dataframe: a summarized dataframe
+    :param message: Any message you want to output
+    :return: A descriptive statement about the activity and number of involved TPUs
+    """
+    number_of_tweets = sum(dataframe['activity'])
+    number_of_tpus = dataframe.shape[0]
+    print("{}, number of tweets: {}; number of involved TPUs: {}".format(message, number_of_tweets, number_of_tpus))
+
+
 if __name__ == '__main__':
     # Specify some important dates
     october_23_start = datetime(2016, 10, 23, 0, 0, 0, tzinfo=time_zone_hk)
@@ -524,10 +546,13 @@ if __name__ == '__main__':
     income_employment_rate = pd.read_csv(os.path.join(demographic_path, 'Median Income and Employment Rate.csv'))
     marry_status_dataframe = pd.read_csv(os.path.join(demographic_path, 'Marital Status.csv'))
     education = pd.read_csv(os.path.join(demographic_path, 'Education.csv'))
+    avg_population_dataframe = pd.read_csv(os.path.join(demographic_path, 'avg_population_in_tpu.csv'))
     tpu_2016_name_list = list(income_employment_rate['Small Tertiary Planning Unit Group'])
+    tpu_2016_name_list.remove('Land')
     tpu_2016_social_demographic_dataframe = \
         build_social_demographic_dataframe(tpu_name_list=tpu_2016_name_list, economic_dataframe=income_employment_rate,
-                                       marry_dataframe=marry_status_dataframe, edu_dataframe=education)
+                                       marry_dataframe=marry_status_dataframe, edu_dataframe=education,
+                                           population_dataframe=avg_population_dataframe)
     tpu_2016_social_demographic_dataframe.to_csv(os.path.join(demographic_path, 'social_demographic_combined.csv'))
     print('The combined social demographic data(median income, marry, employment, education) is......')
     print(tpu_2016_social_demographic_dataframe)
@@ -626,6 +651,11 @@ if __name__ == '__main__':
                                                                                     activity_dict=activity_dict_quarter_3)
     whole_sent_act_quarter_4 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_list[3],
                                                                                     activity_dict=activity_dict_quarter_4)
+    print('The general information of the quarterly based dataframe is...')
+    describle_dataframe(whole_sent_act_quarter_1, message='In Quarter 1')
+    describle_dataframe(whole_sent_act_quarter_2, message='In Quarter 2')
+    describle_dataframe(whole_sent_act_quarter_3, message='In Quarter 3')
+    describle_dataframe(whole_sent_act_quarter_4, message='In Quarter 4')
 
     print('--------------------------------------------------------------------')
     print('For instance, total number of tweets we consider in the first quarter of the cross sectional study...')
@@ -637,25 +667,28 @@ if __name__ == '__main__':
     whole_sent_act_quarter_4.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act_quarter_4.csv'))
     y_label = 'Percentage of Positive Tweets Minus Percentage of Negative Tweets'
     # Draw the tpu sentiment against activity
-    figure_title_name = 'Sentiment Against Activity Across TPUs'
+    figure_title_name_quarter1 = 'Sentiment Against Activity Across TPUs(Quarter 1)'
+    figure_title_name_quarter2 = 'Sentiment Against Activity Across TPUs(Quarter 2)'
+    figure_title_name_quarter3 = 'Sentiment Against Activity Across TPUs(Quarter 3)'
+    figure_title_name_quarter4 = 'Sentiment Against Activity Across TPUs(Quarter 4)'
     TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_quarter_1,
                                                                     y_label_name=y_label,
-                                                                    figure_title=figure_title_name,
+                                                                    figure_title=figure_title_name_quarter1,
                                                                     saved_file_name='tpu_sent_vs_act_quarter_1.png',
                                                                     without_outlier=False)
     TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_quarter_2,
                                                                     y_label_name=y_label,
-                                                                    figure_title=figure_title_name,
+                                                                    figure_title=figure_title_name_quarter2,
                                                                     saved_file_name='tpu_sent_vs_act_quarter_2.png',
                                                                     without_outlier=False)
     TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_quarter_3,
                                                                     y_label_name=y_label,
-                                                                    figure_title=figure_title_name,
+                                                                    figure_title=figure_title_name_quarter3,
                                                                     saved_file_name='tpu_sent_vs_act_quarter_3.png',
                                                                     without_outlier=False)
     TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_quarter_4,
                                                                     y_label_name=y_label,
-                                                                    figure_title=figure_title_name,
+                                                                    figure_title=figure_title_name_quarter4,
                                                                     saved_file_name='tpu_sent_vs_act_quarter_4.png',
                                                                     without_outlier=False)
     print('-------------------------------------------------------------------')
@@ -687,16 +720,20 @@ if __name__ == '__main__':
     draw_boxplot(combined_dataframe, column_name='Sentiment', title_name='Sentiment Comparison')
     draw_boxplot(combined_dataframe, column_name='Activity_log10', title_name='Activity Level Comparison')
     combined_dataframe = combined_dataframe[['Sentiment', 'activity', 'median_income', 'employment',
-                                             'marry', 'education']]
+                                             'marry', 'education', 'avg_population']]
     print('Social Demographic Data Description...')
-    for column_name in ['median_income', 'employment', 'marry', 'education']:
+    for column_name in ['median_income', 'employment', 'marry', 'education', 'avg_population']:
         print('Coping with {}'.format(column_name))
         print(combined_dataframe[column_name].describe())
         print('-------------Done!----------------')
 
     print('Check the correlation between sentiment and activity...')
-    correlation_value = combined_dataframe['Sentiment'].corr(combined_dataframe['activity'])
-    print('The correlation coefficient of sentiment and activity is :{}'.format(correlation_value))
+    correlation_value_sent_act = combined_dataframe['Sentiment'].corr(combined_dataframe['activity'])
+    print('The correlation coefficient of sentiment and activity is :{}'.format(correlation_value_sent_act))
+
+    print('Check the correlation between activity and avg_population per square meter...')
+    correlation_value_act_population = combined_dataframe['activity'].corr(combined_dataframe['avg_population'])
+    print('The correlation coefficient of activity and avg population is :{}'.format(correlation_value_act_population))
 
     print('Regression analysis starts..... ')
     normalized_combined_dataframe = (combined_dataframe - combined_dataframe.mean()) / combined_dataframe.std()
@@ -706,16 +743,16 @@ if __name__ == '__main__':
     print(normalized_combined_dataframe.columns)
     # Check the correlation matrix of independent variables and compute VIF value for each independent variable
     combined_dataframe['tn_or_not'] = tn_or_not_list
-    dataframe_for_correlation_matrix = combined_dataframe[['median_income', 'employment',
-                                                                      'marry', 'education', 'tn_or_not']]
+    dataframe_for_correlation_matrix = combined_dataframe[['median_income', 'employment', 'marry', 'education',
+                                                           'tn_or_not', 'avg_population']]
     draw_correlation_plot(dataframe_for_correlation_matrix)
     result_vif_series = compute_vif(dataframe_for_correlation_matrix)
     print(result_vif_series)
     # Regression analysis
-    reg_sent = smf.ols('Sentiment ~ median_income+employment+marry+education+tn_or_not',
+    reg_sent = smf.ols('Sentiment ~ median_income+employment+marry+education+avg_population+tn_or_not',
                        normalized_combined_dataframe).fit()
     print(reg_sent.summary())
-    reg_act = smf.ols('activity ~ median_income+employment+marry+education+tn_or_not',
+    reg_act = smf.ols('activity ~ median_income+employment+marry+education+avg_population+tn_or_not',
                       normalized_combined_dataframe).fit()
     print(reg_act.summary())
 

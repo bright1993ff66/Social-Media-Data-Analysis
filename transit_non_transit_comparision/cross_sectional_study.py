@@ -387,6 +387,7 @@ def get_data_for_tpu(tpu_name, economic_dataframe, marry_dataframe, edu_datafram
     marrital_rate = int(selected_tpu_dataframe.iloc[1, 4]) / int(selected_tpu_dataframe.iloc[5, 4])
     # average population in each tpu
     average_population = population_dataframe.loc[population_dataframe['TPU'] == tpu_name, 'avg_population'].tolist()[0]
+    tpu_area = population_dataframe.loc[population_dataframe['TPU'] == tpu_name, 'ShapeArea'].tolist()[0]
     # print(average_population)
     # education
     start_row_index_edu = \
@@ -411,7 +412,7 @@ def get_data_for_tpu(tpu_name, economic_dataframe, marry_dataframe, edu_datafram
     numerator = diploma_num + sub_degree_num + degree_num
     denominator = int(selected_edu_dataframe.iloc[7, 4])
     edu_rate = numerator / denominator
-    return median_income, employment_rate, marrital_rate, edu_rate, average_population
+    return median_income, employment_rate, marrital_rate, edu_rate, average_population, tpu_area
 
 
 def build_social_demographic_dataframe(tpu_name_list, economic_dataframe, marry_dataframe, edu_dataframe,
@@ -421,8 +422,9 @@ def build_social_demographic_dataframe(tpu_name_list, economic_dataframe, marry_
     marry_list = []
     education_list = []
     average_population_list = []
+    tpu_area_list = []
     for name in tpu_name_list:
-        median_income, employ_rate, marry_status, edu, avg_population = get_data_for_tpu(tpu_name=name,
+        median_income, employ_rate, marry_status, edu, avg_population, tpu_area = get_data_for_tpu(tpu_name=name,
                                                                          economic_dataframe=economic_dataframe,
                                                                          marry_dataframe=marry_dataframe,
                                                                          edu_dataframe=edu_dataframe,
@@ -432,15 +434,17 @@ def build_social_demographic_dataframe(tpu_name_list, economic_dataframe, marry_
         marry_list.append(marry_status)
         education_list.append(edu)
         average_population_list.append(avg_population)
+        tpu_area_list.append(tpu_area)
 
     tpu_2016_social_demographic_dataframe = pd.DataFrame(
-        columns=['tpu_name', 'median_income', 'employment', 'marry', 'education', 'avg_population'])
+        columns=['tpu_name', 'median_income', 'employment', 'marry', 'education', 'avg_population', 'ShapeArea'])
     tpu_2016_social_demographic_dataframe['tpu_name'] = tpu_name_list
     tpu_2016_social_demographic_dataframe['median_income'] = median_income_list
     tpu_2016_social_demographic_dataframe['employment'] = employment_rate
     tpu_2016_social_demographic_dataframe['education'] = education_list
     tpu_2016_social_demographic_dataframe['marry'] = marry_list
     tpu_2016_social_demographic_dataframe['avg_population'] = average_population_list
+    tpu_2016_social_demographic_dataframe['ShapeArea'] = tpu_area_list
     return tpu_2016_social_demographic_dataframe
 
 
@@ -546,7 +550,8 @@ if __name__ == '__main__':
     income_employment_rate = pd.read_csv(os.path.join(demographic_path, 'Median Income and Employment Rate.csv'))
     marry_status_dataframe = pd.read_csv(os.path.join(demographic_path, 'Marital Status.csv'))
     education = pd.read_csv(os.path.join(demographic_path, 'Education.csv'))
-    avg_population_dataframe = pd.read_csv(os.path.join(demographic_path, 'avg_population_in_tpu.csv'))
+    avg_population_dataframe = pd.read_csv(os.path.join(demographic_path, 'avg_population_in_tpu.csv'), index_col=0)
+    # print(avg_population_dataframe.head())
     tpu_2016_name_list = list(income_employment_rate['Small Tertiary Planning Unit Group'])
     tpu_2016_name_list.remove('Land')
     tpu_2016_social_demographic_dataframe = \
@@ -556,9 +561,13 @@ if __name__ == '__main__':
     tpu_2016_social_demographic_dataframe.to_csv(os.path.join(demographic_path, 'social_demographic_combined.csv'))
     print('The combined social demographic data(median income, marry, employment, education) is......')
     print(tpu_2016_social_demographic_dataframe)
+
+    # Create TPU-shape area dictionary
+    tpu_area_dict = pd.Series(avg_population_dataframe.ShapeArea.values,index=avg_population_dataframe.TPU).to_dict()
+    print(tpu_area_dict)
     print('--------------------------------------------------')
 
-    # Find the tweets in each TPU
+    # Find the tweets in each TPU and save them to a local directory
     build_data_for_cross_sectional_study(tweet_data_path=read_data.transit_non_transit_comparison_cross_sectional,
                                          saving_path=os.path.join(
                                              read_data.transit_non_transit_comparison_cross_sectional, 'tpu_data_more'))
@@ -720,9 +729,9 @@ if __name__ == '__main__':
     draw_boxplot(combined_dataframe, column_name='Sentiment', title_name='Sentiment Comparison')
     draw_boxplot(combined_dataframe, column_name='Activity_log10', title_name='Activity Level Comparison')
     combined_dataframe = combined_dataframe[['Sentiment', 'activity', 'median_income', 'employment',
-                                             'marry', 'education', 'avg_population']]
+                                             'marry', 'education', 'avg_population', 'ShapeArea']]
     print('Social Demographic Data Description...')
-    for column_name in ['median_income', 'employment', 'marry', 'education', 'avg_population']:
+    for column_name in ['median_income', 'employment', 'marry', 'education', 'avg_population', 'ShapeArea']:
         print('Coping with {}'.format(column_name))
         print(combined_dataframe[column_name].describe())
         print('-------------Done!----------------')
@@ -732,7 +741,11 @@ if __name__ == '__main__':
     print('The correlation coefficient of sentiment and activity is :{}'.format(correlation_value_sent_act))
 
     print('Check the correlation between activity and avg_population per square meter...')
-    correlation_value_act_population = combined_dataframe['activity'].corr(combined_dataframe['avg_population'])
+    # First, compute the activity level per square meter
+    combined_dataframe['avg_activity'] = combined_dataframe.apply(lambda row: row['activity']/row['ShapeArea'], axis=1)
+    print(combined_dataframe.head())
+    # Then compute the correlation coefficient...
+    correlation_value_act_population = combined_dataframe['avg_activity'].corr(combined_dataframe['avg_population'])
     print('The correlation coefficient of activity and avg population is :{}'.format(correlation_value_act_population))
 
     print('Regression analysis starts..... ')
@@ -755,69 +768,6 @@ if __name__ == '__main__':
     reg_act = smf.ols('activity ~ median_income+employment+marry+education+avg_population+tn_or_not',
                       normalized_combined_dataframe).fit()
     print(reg_act.summary())
-
-    ## Get wordcloud and topic modeling for specific TPUs
-    # Specify the data path
-    # tn_tpu_path = os.path.join(read_data.datasets, 'tpu_related_csvs', 'cross_sectional', 'tn_tpus')
-    # nontn_tpu_path = os.path.join(read_data.datasets, 'tpu_related_csvs', 'cross_sectional', 'non_tn_tpus')
-    # Load the corresponding dataframes
-    # tpu_442 = utils.read_local_csv_file(path=nontn_tpu_path, filename='442_data.csv', dtype_str=False)
-    # tpu_181_182 = utils.read_local_csv_file(path=nontn_tpu_path, filename='181 - 182_data.csv', dtype_str=False)
-    # tpu_426 = utils.read_local_csv_file(path=nontn_tpu_path, filename='426_data.csv', dtype_str=False)
-    # tpu_421_422 = utils.read_local_csv_file(path=nontn_tpu_path, filename='421 - 422_data.csv', dtype_str=False)
-
-    # tpu_950_951 = utils.read_local_csv_file(path=tn_tpu_path, filename='950 - 951_data.csv', dtype_str=False)
-    # tpu_153 = utils.read_local_csv_file(path=tn_tpu_path, filename='153_data.csv', dtype_str=False)
-    # tpu_971_974 = utils.read_local_csv_file(path=tn_tpu_path, filename='971 - 974_data.csv', dtype_str=False)
-    # tpu_135 = utils.read_local_csv_file(path=tn_tpu_path, filename='135_data.csv', dtype_str=False)
-
-    # Create text for wordcloud
-    # dataframe_list = [tpu_442, tpu_181_182, tpu_426, tpu_950_951, tpu_153, tpu_971_974, tpu_135]
-    # tpu_442_text_for_wordcloud = wordcloud_generate.create_text_for_wordcloud(tpu_442)
-    # tpu_181_182_text_for_wordcloud = wordcloud_generate.create_text_for_wordcloud(tpu_181_182)
-    # tpu_426_text_for_wordcloud = wordcloud_generate.create_text_for_wordcloud(tpu_426)
-    # tpu_421_422_text_for_wordcloud = wordcloud_generate.create_text_for_wordcloud(tpu_421_422)
-
-    # tpu_950_951_text_for_wordcloud = wordcloud_generate.create_text_for_wordcloud(tpu_950_951)
-    # tpu_153_text_for_wordcloud = wordcloud_generate.create_text_for_wordcloud(tpu_153)
-    # tpu_971_974_text_for_wordcloud = wordcloud_generate.create_text_for_wordcloud(tpu_971_974)
-    # tpu_135_text_for_wordcloud = wordcloud_generate.create_text_for_wordcloud(tpu_135)
-
-    # Generate wordcloud
-    # wordcloud_generate.generate_wordcloud(tpu_442_text_for_wordcloud, wordcloud_generate.circle_mask,
-    #                                       file_name='tpu442_wordcloud.png',
-    #                                       color_func=wordcloud_generate.green_func,
-    #                                       saving_path=read_data.transit_non_transit_comparison_cross_sectional)
-    # wordcloud_generate.generate_wordcloud(tpu_181_182_text_for_wordcloud, wordcloud_generate.circle_mask,
-    #                                       file_name='tpu181_182_wordcloud.png',
-    #                                       color_func=wordcloud_generate.green_func,
-    #                                       saving_path=read_data.transit_non_transit_comparison_cross_sectional)
-    # wordcloud_generate.generate_wordcloud(tpu_426_text_for_wordcloud, wordcloud_generate.circle_mask,
-    #                                       file_name='tpu426_wordcloud.png',
-    #                                       color_func=wordcloud_generate.green_func,
-    #                                       saving_path=read_data.transit_non_transit_comparison_cross_sectional)
-    # wordcloud_generate.generate_wordcloud(tpu_421_422_text_for_wordcloud, wordcloud_generate.circle_mask,
-    #                                       file_name='tpu421_422_wordcloud.png',
-    #                                       color_func=wordcloud_generate.green_func,
-    #                                       saving_path=read_data.transit_non_transit_comparison_cross_sectional)
-
-    # wordcloud_generate.generate_wordcloud(tpu_950_951_text_for_wordcloud, wordcloud_generate.circle_mask,
-    #                                       file_name='tpu950_951_wordcloud.png',
-    #                                       color_func=wordcloud_generate.red_func,
-    #                                       saving_path=read_data.transit_non_transit_comparison_cross_sectional)
-    # wordcloud_generate.generate_wordcloud(tpu_153_text_for_wordcloud, wordcloud_generate.circle_mask,
-    #                                       file_name='tpu153_wordcloud.png',
-    #                                       color_func=wordcloud_generate.red_func,
-    #                                       saving_path=read_data.transit_non_transit_comparison_cross_sectional)
-    # wordcloud_generate.generate_wordcloud(tpu_971_974_text_for_wordcloud, wordcloud_generate.circle_mask,
-    #                                       file_name='tpu971_974_wordcloud.png',
-    #                                       color_func=wordcloud_generate.red_func,
-    #                                       saving_path=read_data.transit_non_transit_comparison_cross_sectional)
-    # wordcloud_generate.generate_wordcloud(tpu_135_text_for_wordcloud, wordcloud_generate.circle_mask,
-    #                                       file_name='tpu135_wordcloud.png',
-    #                                       color_func=wordcloud_generate.red_func,
-    #                                       saving_path=read_data.transit_non_transit_comparison_cross_sectional)
-
 
 
 

@@ -139,7 +139,7 @@ class TransitNeighborhood_TPU(object):
         # than or equal to 100
         if not check_all_stations:
             for tpu_name in tpu_activity_dict.keys():
-                if tpu_activity_dict[tpu_name] >= 100:
+                if tpu_activity_dict[tpu_name] >= 200:
                     selected_tpu_dict[tpu_name] = tpu_activity_dict[tpu_name]
                 else:
                     pass
@@ -148,30 +148,64 @@ class TransitNeighborhood_TPU(object):
         return selected_tpu_dict
 
     @staticmethod
-    def build_dataframe_quarterly(quarter_number:int):
+    def build_dataframe_yearly(year_number: int):
+        """
+        create activity dictionary for each TPU for a specific year
+        :param year_number: a integer which specifies the year we want to look at
+        :return: an activity dict for one specified year
+        """
+        assert year_number in [2017, 2018]
+        tpu_activity_dict_for_one_year = {}
+        for name in TransitNeighborhood_TPU.tpu_name_list:
+            dataframe = pd.read_csv(os.path.join(data_path, name, name + '_data.csv'),
+                                    encoding='utf-8', dtype='str', quoting=csv.QUOTE_NONNUMERIC)
+            dataframe_copy = dataframe.copy()
+            if year_number == 2017:
+                year_dataframe = dataframe_copy.loc[dataframe_copy['year'].isin(['2017.0'])]
+            else:
+                year_dataframe = dataframe_copy.loc[dataframe_copy['year'].isin(['2018.0'])]
+            # Here, we don't consider tpus in which the number of posted tweets is less than 100 in one year
+            if year_dataframe.shape[0] >= 100:
+                tpu_activity_dict_for_one_year[name] = year_dataframe.shape[0]
+            else:
+                pass
+        return tpu_activity_dict_for_one_year
+
+    @staticmethod
+    def build_dataframe_quarterly(quarter_number: int):
         """
         create a activity dictionary for each TPU unit given a specified quarter number
         :param quarter_number: a specified quarter number
         :return: a activity dict of each TPU unit for a specified quarter
         """
-        assert quarter_number in [1, 2, 3, 4]
+        assert quarter_number in [1, 2, 3, 4, 5, 6, 7, 8]
         tpu_activity_dict_for_one_quarter = {}
         for name in TransitNeighborhood_TPU.tpu_name_list:
             dataframe = pd.read_csv(os.path.join(data_path, name, name + '_data.csv'),
                                     encoding='utf-8', dtype='str', quoting=csv.QUOTE_NONNUMERIC)
             dataframe_copy = dataframe.copy()
+            dataframe_copy['month_plus_year'] = dataframe_copy.apply(
+                lambda row: str(int(float(row['year']))) + '_' + str(int(float(row['month'][:-2]))), axis=1)
             if quarter_number == 1:
-                quarter_dataframe = dataframe_copy.loc[dataframe_copy['month'].isin(['1.0', '2.0', '3.0'])]
+                month_plus_year_list = ['2017_1', '2017_2', '2017_3']
             elif quarter_number == 2:
-                quarter_dataframe = dataframe_copy.loc[dataframe_copy['month'].isin(['4.0', '5.0', '6.0'])]
+                month_plus_year_list = ['2017_4', '2017_5', '2017_6']
             elif quarter_number == 3:
-                quarter_dataframe = dataframe_copy.loc[dataframe_copy['month'].isin(['7.0', '8.0', '9.0'])]
+                month_plus_year_list = ['2017_7', '2017_8', '2017_9']
+            elif quarter_number == 4:
+                month_plus_year_list = ['2017_10', '2017_11', '2017_12']
+            elif quarter_number == 5:
+                month_plus_year_list = ['2018_1', '2018_2', '2018_3']
+            elif quarter_number == 6:
+                month_plus_year_list = ['2018_4', '2018_5', '2018_6']
+            elif quarter_number == 7:
+                month_plus_year_list = ['2018_7', '2018_8', '2018_9']
             else:
-                quarter_dataframe = dataframe_copy.loc[dataframe_copy['month'].isin(['10.0', '11.0', '12.0'])]
-            # print('For TPU {}, the number of tweets posted in this quarter is: {}'.format(name,
-            #                                                                               quarter_dataframe.shape[0]))
-            if quarter_dataframe.shape[0] >= 30:
-                tpu_activity_dict_for_one_quarter[name] = quarter_dataframe.shape[0]
+                month_plus_year_list = ['2018_10', '2018_11', '2018_12']
+            selected_quarter_dataframe = dataframe_copy.loc[dataframe_copy['month_plus_year'].isin(
+                month_plus_year_list)]
+            if selected_quarter_dataframe.shape[0] >= 30:
+                tpu_activity_dict_for_one_quarter[name] = selected_quarter_dataframe.shape[0]
             else:
                 pass
         return tpu_activity_dict_for_one_quarter
@@ -301,8 +335,9 @@ class TransitNeighborhood_TPU(object):
                         arrowprops=dict(arrowstyle="->", color='g', lw=0.5))
 
             plt.legend()
-            fig.savefig(os.path.join(read_data.plot_path_2017, saved_file_name), dpi=fig.dpi, bbox_inches='tight')
-            plt.show()
+            plot_saving_path = os.path.join(read_data.tweet_combined_path, 'cross_sectional_plots')
+            fig.savefig(os.path.join(plot_saving_path, saved_file_name), dpi=fig.dpi, bbox_inches='tight')
+            # plt.show()
         else:
             x = list(df['Activity_log10'])
             y = list(df['Sentiment'])
@@ -465,38 +500,42 @@ def draw_boxplot(dataframe, column_name, title_name):
     plt.show()
 
 
-def build_data_for_cross_sectional_study(tweet_data_path, saving_path, only_2017=True):
+def build_data_for_cross_sectional_study(tweet_data_path, saving_path, only_2017_2018=True):
     """
+    construct tweet dataframe for each TPU unit
     :param tweet_data_path: path which is used to save all the filtered tweets
     :param saving_path: path which is used to save the tweets posted in each TPU
     :return:
     """
-    all_tweet_data = pd.read_csv(os.path.join(tweet_data_path, 'tweet_2017_cross_sectional.csv'),
+    all_tweet_data = pd.read_csv(os.path.join(tweet_data_path, 'tweet_combined_with_sentiment.csv'),
                                  encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC)
-    if only_2017:
+    if only_2017_2018:
         # Only consider tweets posted in 2017
-        tweet_2017 = all_tweet_data.loc[all_tweet_data['year'] == 2017.0]
+        assert 2017.0 in list(all_tweet_data['year'])
+        assert 2018.0 in list(all_tweet_data['year'])
+        tweet_2017_2018 = all_tweet_data.loc[all_tweet_data['year'].isin([2017.0, 2018.0])]
         # Change the name of the column
         tpu_set = set(tpu_dataframe['TPU Names'])
         for tpu in tpu_set:
             try:
                 os.mkdir(os.path.join(saving_path, tpu))
-                # Use the TPU_cross_sectional column
-                dataframe = tweet_2017.loc[tweet_2017['TPU_cross_sectional'] == tpu]
-                dataframe.to_csv(os.path.join(saving_path, tpu, tpu+'_data.csv'), encoding='utf-8',
-                             quoting=csv.QUOTE_NONNUMERIC)
             except WindowsError:
                 pass
+            # Use the TPU_cross_sectional column
+            dataframe = tweet_2017_2018.loc[tweet_2017_2018['TPU_cross_sectional'] == tpu]
+            dataframe.to_csv(os.path.join(saving_path, tpu, tpu+'_data.csv'), encoding='utf-8',
+                             quoting=csv.QUOTE_NONNUMERIC)
     else:
         tpu_set = set(tpu_dataframe['TPU Names'])
         for tpu in tpu_set:
             try:
                 os.mkdir(os.path.join(saving_path, tpu))
-                dataframe = all_tweet_data.loc[all_tweet_data['TPU_cross_sectional'] == tpu]
-                dataframe.to_csv(os.path.join(saving_path, tpu, tpu+'_data.csv'), encoding='utf-8',
-                             quoting=csv.QUOTE_NONNUMERIC)
             except WindowsError:
                 pass
+            dataframe = all_tweet_data.loc[all_tweet_data['TPU_cross_sectional'] == tpu]
+            dataframe.to_csv(os.path.join(saving_path, tpu, tpu+'_data.csv'), encoding='utf-8',
+                             quoting=csv.QUOTE_NONNUMERIC)
+
 
 def draw_correlation_plot(dataframe):
     """
@@ -550,7 +589,7 @@ if __name__ == '__main__':
     income_employment_rate = pd.read_csv(os.path.join(demographic_path, 'Median Income and Employment Rate.csv'))
     marry_status_dataframe = pd.read_csv(os.path.join(demographic_path, 'Marital Status.csv'))
     education = pd.read_csv(os.path.join(demographic_path, 'Education.csv'))
-    avg_population_dataframe = pd.read_csv(os.path.join(demographic_path, 'avg_population_in_tpu.csv'), index_col=0)
+    avg_population_dataframe = pd.read_csv(os.path.join(demographic_path, 'avg_population_in_tpu.csv'))
     # print(avg_population_dataframe.head())
     tpu_2016_name_list = list(income_employment_rate['Small Tertiary Planning Unit Group'])
     tpu_2016_name_list.remove('Land')
@@ -567,8 +606,9 @@ if __name__ == '__main__':
     print(tpu_area_dict)
     print('--------------------------------------------------')
 
+    print('-----------------------Deal with the tweet 2017 & tweet 2018 together--------------------------')
     # Find the tweets in each TPU and save them to a local directory
-    build_data_for_cross_sectional_study(tweet_data_path=read_data.transit_non_transit_comparison_cross_sectional,
+    build_data_for_cross_sectional_study(tweet_data_path=read_data.tweet_combined_path,
                                          saving_path=os.path.join(
                                              read_data.transit_non_transit_comparison_cross_sectional, 'tpu_data_more'))
     # We have built folder for each TPU to store tweets
@@ -597,10 +637,7 @@ if __name__ == '__main__':
     # the tn_tpus
     whole_tpu_sent_act_dataframe = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict,
                                                                                         activity_dict=activity_dict)
-    print('--------------------------------------------------------------------')
-    print('Total number of tweets we consider in cross sectional study...')
-    print(sum(list(whole_tpu_sent_act_dataframe['activity'])))
-    print('--------------------------------------------------------------------')
+
     whole_tpu_sent_act_dataframe.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act.csv'))
     y_label = 'Percentage of Positive Tweets Minus Percentage of Negative Tweets'
     # Draw the tpu sentiment against activity
@@ -610,97 +647,210 @@ if __name__ == '__main__':
                                                                     figure_title=figure_title_name,
                                                                     saved_file_name='tpu_sent_vs_act.png',
                                                                     without_outlier=False)
+    print('------------------------------------Done!---------------------------------------------')
 
-    # Analyze the result quarterly
-    print('-------------------------------------------------------------------')
-    activity_dict_quarter_1 = TransitNeighborhood_TPU.build_dataframe_quarterly(quarter_number=1)
-    activity_dict_quarter_2 = TransitNeighborhood_TPU.build_dataframe_quarterly(quarter_number=2)
-    activity_dict_quarter_3 = TransitNeighborhood_TPU.build_dataframe_quarterly(quarter_number=3)
-    activity_dict_quarter_4 = TransitNeighborhood_TPU.build_dataframe_quarterly(quarter_number=4)
+    print('-----------------------Deal with the tweet 2017 & tweet 2018 respectively--------------------------')
+    activity_dict_2017 = TransitNeighborhood_TPU.build_dataframe_yearly(year_number=2017)
+    activity_dict_2018 = TransitNeighborhood_TPU.build_dataframe_yearly(year_number=2018)
 
-    sentiment_dict_quarter_1 = {}
-    sentiment_dict_quarter_2 = {}
-    sentiment_dict_quarter_3 = {}
-    sentiment_dict_quarter_4 = {}
+    sentiment_dict_2017 = {}
+    sentiment_dict_2018 = {}
 
-    activity_dict_list = [activity_dict_quarter_1, activity_dict_quarter_2, activity_dict_quarter_3,
-                          activity_dict_quarter_4]
-    sentiment_dict_list = [sentiment_dict_quarter_1, sentiment_dict_quarter_2, sentiment_dict_quarter_3,
-                           sentiment_dict_quarter_4]
+    activity_list_yearly = [activity_dict_2017, activity_dict_2018]
+    sentiment_list_yearly = [sentiment_dict_2017, sentiment_dict_2018]
 
-    for activity_dict, sentiment_dict in zip(activity_dict_list, sentiment_dict_list):
-        index_value = activity_dict_list.index(activity_dict)
+    for activity_dict, sentiment_dict in zip(activity_list_yearly, sentiment_list_yearly):
+        index_value = activity_list_yearly.index(activity_dict)
         for tpu in list(activity_dict.keys()):
             dataframe = pd.read_csv(
                 os.path.join(read_data.transit_non_transit_comparison_cross_sectional, 'tpu_data_more',
                              tpu, tpu + '_data.csv'), encoding='utf-8', dtype='str',
                 quoting=csv.QUOTE_NONNUMERIC)
             if index_value == 0:
-                quarter_dataframe = dataframe.loc[dataframe['month'].isin(['1.0', '2.0', '3.0'])]
-            elif index_value == 1:
-                quarter_dataframe = dataframe.loc[dataframe['month'].isin(['4.0', '5.0', '6.0'])]
-            elif index_value == 2:
-                quarter_dataframe = dataframe.loc[dataframe['month'].isin(['7.0', '8.0', '9.0'])]
+                year_dataframe = dataframe.loc[dataframe['year'].isin(['2017.0'])]
             else:
-                quarter_dataframe = dataframe.loc[dataframe['month'].isin(['10.0', '11.0', '12.0'])]
-            # dataframe['sentiment'] = dataframe['sentiment'].astype(np.int)
-            sentiment_dict[tpu] = pos_percent_minus_neg_percent(quarter_dataframe)
+                year_dataframe = dataframe.loc[dataframe['year'].isin(['2018.0'])]
+            sentiment_dict[tpu] = pos_percent_minus_neg_percent(year_dataframe)
 
-    print('The sentiment dict in quarter 1 is...')
-    print(activity_dict_quarter_1['971 - 974'])
-    print(sentiment_dict_list[0]['971 - 974'], sentiment_dict_list[1]['971 - 974'], sentiment_dict_list[2]['971 - 974'],
-          sentiment_dict_list[3]['971 - 974'])
+    whole_sent_act_year_2017 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_2017,
+                                                                                    activity_dict=activity_dict_2017)
+    whole_sent_act_year_2018 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_2018,
+                                                                                    activity_dict=activity_dict_2018)
 
-    # the tn_tpus
-    whole_sent_act_quarter_1 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_list[0],
-                                                                                    activity_dict=activity_dict_quarter_1)
-    whole_sent_act_quarter_2 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_list[1],
-                                                                                    activity_dict=activity_dict_quarter_2)
-    whole_sent_act_quarter_3 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_list[2],
-                                                                                    activity_dict=activity_dict_quarter_3)
-    whole_sent_act_quarter_4 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_list[3],
-                                                                                    activity_dict=activity_dict_quarter_4)
-    print('The general information of the quarterly based dataframe is...')
-    describle_dataframe(whole_sent_act_quarter_1, message='In Quarter 1')
-    describle_dataframe(whole_sent_act_quarter_2, message='In Quarter 2')
-    describle_dataframe(whole_sent_act_quarter_3, message='In Quarter 3')
-    describle_dataframe(whole_sent_act_quarter_4, message='In Quarter 4')
+    print('The general information of the yearly based dataframe is...')
+    describle_dataframe(whole_sent_act_year_2017, message='In 2017')
+    describle_dataframe(whole_sent_act_year_2018, message='In 2018')
 
     print('--------------------------------------------------------------------')
-    print('For instance, total number of tweets we consider in the first quarter of the cross sectional study...')
-    print(sum(list(whole_sent_act_quarter_1['activity'])))
+    print('For instance, total number of tweets we consider in 2017 of the cross sectional study...')
+    print(sum(list(whole_sent_act_year_2017['activity'])))
     print('--------------------------------------------------------------------')
-    whole_sent_act_quarter_1.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act_quarter_1.csv'))
-    whole_sent_act_quarter_2.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act_quarter_2.csv'))
-    whole_sent_act_quarter_3.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act_quarter_3.csv'))
-    whole_sent_act_quarter_4.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act_quarter_4.csv'))
+
+    whole_sent_act_year_2017.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act_year_2017.csv'))
+    whole_sent_act_year_2018.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act_year_2018.csv'))
     y_label = 'Percentage of Positive Tweets Minus Percentage of Negative Tweets'
     # Draw the tpu sentiment against activity
-    figure_title_name_quarter1 = 'Sentiment Against Activity Across TPUs(Quarter 1)'
-    figure_title_name_quarter2 = 'Sentiment Against Activity Across TPUs(Quarter 2)'
-    figure_title_name_quarter3 = 'Sentiment Against Activity Across TPUs(Quarter 3)'
-    figure_title_name_quarter4 = 'Sentiment Against Activity Across TPUs(Quarter 4)'
+    figure_title_name_year_2017 = 'Sentiment Against Activity Across TPUs(Year 2017)'
+    figure_title_name_year_2018 = 'Sentiment Against Activity Across TPUs(Year 2018)'
+
+    TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_year_2017,
+                                                                    y_label_name=y_label,
+                                                                    figure_title=figure_title_name_year_2017,
+                                                                    saved_file_name='tpu_sent_vs_act_year_2017.png',
+                                                                    without_outlier=False)
+    TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_year_2018,
+                                                                    y_label_name=y_label,
+                                                                    figure_title=figure_title_name_year_2018,
+                                                                    saved_file_name='tpu_sent_vs_act_year_2018.png',
+                                                                    without_outlier=False)
+    print('------------------------------------Done!---------------------------------------------')
+
+    # Analyze the result quarterly
+    print('----------------Deal with each quarter of tweet 2017 & tweet 2018 respectively---------------------')
+    print('-------------------------------------------------------------------')
+    activity_dict_quarter_1 = TransitNeighborhood_TPU.build_dataframe_quarterly(quarter_number=1)
+    activity_dict_quarter_2 = TransitNeighborhood_TPU.build_dataframe_quarterly(quarter_number=2)
+    activity_dict_quarter_3 = TransitNeighborhood_TPU.build_dataframe_quarterly(quarter_number=3)
+    activity_dict_quarter_4 = TransitNeighborhood_TPU.build_dataframe_quarterly(quarter_number=4)
+    activity_dict_quarter_5 = TransitNeighborhood_TPU.build_dataframe_quarterly(quarter_number=5)
+    activity_dict_quarter_6 = TransitNeighborhood_TPU.build_dataframe_quarterly(quarter_number=6)
+    activity_dict_quarter_7 = TransitNeighborhood_TPU.build_dataframe_quarterly(quarter_number=7)
+    activity_dict_quarter_8 = TransitNeighborhood_TPU.build_dataframe_quarterly(quarter_number=8)
+
+    sentiment_dict_quarter_1 = {}
+    sentiment_dict_quarter_2 = {}
+    sentiment_dict_quarter_3 = {}
+    sentiment_dict_quarter_4 = {}
+    sentiment_dict_quarter_5 = {}
+    sentiment_dict_quarter_6 = {}
+    sentiment_dict_quarter_7 = {}
+    sentiment_dict_quarter_8 = {}
+
+    activity_dict_list = [activity_dict_quarter_1, activity_dict_quarter_2, activity_dict_quarter_3,
+                          activity_dict_quarter_4, activity_dict_quarter_5, activity_dict_quarter_6,
+                          activity_dict_quarter_7, activity_dict_quarter_8]
+    sentiment_dict_list = [sentiment_dict_quarter_1, sentiment_dict_quarter_2, sentiment_dict_quarter_3,
+                           sentiment_dict_quarter_4, sentiment_dict_quarter_5, sentiment_dict_quarter_6,
+                           sentiment_dict_quarter_7, sentiment_dict_quarter_8]
+    index_value_list = list(range(1, 9))
+
+    for index_value, activity_dict, sentiment_dict in zip(index_value_list, activity_dict_list, sentiment_dict_list):
+        print('Coping with the {} sent activity pair'.format(index_value))
+        for tpu in list(activity_dict.keys()):
+            dataframe = pd.read_csv(
+                os.path.join(read_data.transit_non_transit_comparison_cross_sectional, 'tpu_data_more',
+                             tpu, tpu + '_data.csv'), encoding='utf-8', dtype='str', quoting=csv.QUOTE_NONNUMERIC)
+            if index_value == 0:
+                month_plus_year_list = ['2017_1', '2017_2', '2017_3']
+            elif index_value == 1:
+                month_plus_year_list = ['2017_4', '2017_5', '2017_6']
+            elif index_value == 2:
+                month_plus_year_list = ['2017_7', '2017_8', '2017_9']
+            elif index_value == 3:
+                month_plus_year_list = ['2017_10', '2017_11', '2017_12']
+            elif index_value == 4:
+                month_plus_year_list = ['2018_1', '2018_2', '2018_3']
+            elif index_value == 5:
+                month_plus_year_list = ['2018_4', '2018_5', '2018_6']
+            elif index_value == 6:
+                month_plus_year_list = ['2018_7', '2018_8', '2018_9']
+            else:
+                month_plus_year_list = ['2018_10', '2018_11', '2018_12']
+            # dataframe['sentiment'] = dataframe['sentiment'].astype(np.int)
+            quarter_dataframe = dataframe.loc[dataframe['month_plus_year'].isin(month_plus_year_list)]
+            sentiment_dict[tpu] = pos_percent_minus_neg_percent(quarter_dataframe)
+
+    whole_sent_act_quarter_1 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_quarter_1,
+                                                                                    activity_dict=activity_dict_quarter_1)
+    whole_sent_act_quarter_2 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_quarter_2,
+                                                                                    activity_dict=activity_dict_quarter_2)
+    whole_sent_act_quarter_3 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_quarter_3,
+                                                                                    activity_dict=activity_dict_quarter_3)
+    whole_sent_act_quarter_4 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_quarter_4,
+                                                                                    activity_dict=activity_dict_quarter_4)
+    whole_sent_act_quarter_5 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_quarter_5,
+                                                                                    activity_dict=activity_dict_quarter_5)
+    whole_sent_act_quarter_6 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_quarter_6,
+                                                                                    activity_dict=activity_dict_quarter_6)
+    whole_sent_act_quarter_7 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_quarter_7,
+                                                                                    activity_dict=activity_dict_quarter_7)
+    whole_sent_act_quarter_8 = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict_quarter_8,
+                                                                                    activity_dict=activity_dict_quarter_8)
+
+    print('The general information of the quarterly based dataframe is...')
+    describle_dataframe(whole_sent_act_quarter_1, message='In 2017, Quarter 1')
+    describle_dataframe(whole_sent_act_quarter_2, message='In 2017, Quarter 2')
+    describle_dataframe(whole_sent_act_quarter_3, message='In 2017, Quarter 3')
+    describle_dataframe(whole_sent_act_quarter_4, message='In 2017, Quarter 4')
+    describle_dataframe(whole_sent_act_quarter_5, message='In 2018, Quarter 1')
+    describle_dataframe(whole_sent_act_quarter_6, message='In 2018, Quarter 2')
+    describle_dataframe(whole_sent_act_quarter_7, message='In 2018, Quarter 3')
+    describle_dataframe(whole_sent_act_quarter_8, message='In 2018, Quarter 4')
+
+    print('--------------------------------------------------------------------')
+    print('For instance, total number of tweets we consider in the second quarter of 2018 in the cross sectional study...')
+    print(sum(list(whole_sent_act_quarter_6['activity'])))
+    print('--------------------------------------------------------------------')
+    whole_sent_act_quarter_1.to_csv(os.path.join(read_data.desktop, '2017_tpu_sent_act_quarter_1.csv'))
+    whole_sent_act_quarter_2.to_csv(os.path.join(read_data.desktop, '2017_tpu_sent_act_quarter_2.csv'))
+    whole_sent_act_quarter_3.to_csv(os.path.join(read_data.desktop, '2017_tpu_sent_act_quarter_3.csv'))
+    whole_sent_act_quarter_4.to_csv(os.path.join(read_data.desktop, '2017_tpu_sent_act_quarter_4.csv'))
+    whole_sent_act_quarter_5.to_csv(os.path.join(read_data.desktop, '2018_tpu_sent_act_quarter_1.csv'))
+    whole_sent_act_quarter_6.to_csv(os.path.join(read_data.desktop, '2018_tpu_sent_act_quarter_2.csv'))
+    whole_sent_act_quarter_7.to_csv(os.path.join(read_data.desktop, '2018_tpu_sent_act_quarter_3.csv'))
+    whole_sent_act_quarter_8.to_csv(os.path.join(read_data.desktop, '2018_tpu_sent_act_quarter_4.csv'))
+    y_label = 'Percentage of Positive Tweets Minus Percentage of Negative Tweets'
+    # Draw the tpu sentiment against activity
+    figure_title_name_quarter1 = 'Sentiment Against Activity Across TPUs(2017 Quarter 1)'
+    figure_title_name_quarter2 = 'Sentiment Against Activity Across TPUs(2017 Quarter 2)'
+    figure_title_name_quarter3 = 'Sentiment Against Activity Across TPUs(2017 Quarter 3)'
+    figure_title_name_quarter4 = 'Sentiment Against Activity Across TPUs(2017 Quarter 4)'
+    figure_title_name_quarter5 = 'Sentiment Against Activity Across TPUs(2018 Quarter 1)'
+    figure_title_name_quarter6 = 'Sentiment Against Activity Across TPUs(2018 Quarter 2)'
+    figure_title_name_quarter7 = 'Sentiment Against Activity Across TPUs(2018 Quarter 3)'
+    figure_title_name_quarter8 = 'Sentiment Against Activity Across TPUs(2018 Quarter 4)'
+
     TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_quarter_1,
                                                                     y_label_name=y_label,
                                                                     figure_title=figure_title_name_quarter1,
-                                                                    saved_file_name='tpu_sent_vs_act_quarter_1.png',
+                                                                    saved_file_name='2017_tpu_sent_vs_act_quarter_1.png',
                                                                     without_outlier=False)
     TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_quarter_2,
                                                                     y_label_name=y_label,
                                                                     figure_title=figure_title_name_quarter2,
-                                                                    saved_file_name='tpu_sent_vs_act_quarter_2.png',
+                                                                    saved_file_name='2017_tpu_sent_vs_act_quarter_2.png',
                                                                     without_outlier=False)
     TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_quarter_3,
                                                                     y_label_name=y_label,
                                                                     figure_title=figure_title_name_quarter3,
-                                                                    saved_file_name='tpu_sent_vs_act_quarter_3.png',
+                                                                    saved_file_name='2017_tpu_sent_vs_act_quarter_3.png',
                                                                     without_outlier=False)
     TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_quarter_4,
                                                                     y_label_name=y_label,
                                                                     figure_title=figure_title_name_quarter4,
-                                                                    saved_file_name='tpu_sent_vs_act_quarter_4.png',
+                                                                    saved_file_name='2017_tpu_sent_vs_act_quarter_4.png',
                                                                     without_outlier=False)
-    print('-------------------------------------------------------------------')
+    TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_quarter_5,
+                                                                    y_label_name=y_label,
+                                                                    figure_title=figure_title_name_quarter5,
+                                                                    saved_file_name='2018_tpu_sent_vs_act_quarter_1.png',
+                                                                    without_outlier=False)
+    TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_quarter_6,
+                                                                    y_label_name=y_label,
+                                                                    figure_title=figure_title_name_quarter6,
+                                                                    saved_file_name='2018_tpu_sent_vs_act_quarter_2.png',
+                                                                    without_outlier=False)
+    TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_quarter_7,
+                                                                    y_label_name=y_label,
+                                                                    figure_title=figure_title_name_quarter7,
+                                                                    saved_file_name='2018_tpu_sent_vs_act_quarter_3.png',
+                                                                    without_outlier=False)
+    TransitNeighborhood_TPU.plot_overall_sentiment_for_whole_tweets(df=whole_sent_act_quarter_8,
+                                                                    y_label_name=y_label,
+                                                                    figure_title=figure_title_name_quarter8,
+                                                                    saved_file_name='2018_tpu_sent_vs_act_quarter_4.png',
+                                                                    without_outlier=False)
+    print('------------------------------------Done!---------------------------------------------')
 
     print('--------------------------Activity---------------------------------')
     for index, dataframe in whole_tpu_sent_act_dataframe.groupby('tn_or_not'):
@@ -768,6 +918,7 @@ if __name__ == '__main__':
     reg_act = smf.ols('activity ~ median_income+employment+marry+education+avg_population+tn_or_not',
                       normalized_combined_dataframe).fit()
     print(reg_act.summary())
+
 
 
 

@@ -13,6 +13,8 @@ import pandas as pd
 from collections import Counter
 import time
 import read_data
+import utils
+import csv
 
 # Classifiers
 from sklearn.model_selection import cross_validate
@@ -39,6 +41,7 @@ from keras import models
 from keras import layers
 from keras.wrappers.scikit_learn import KerasClassifier
 from tensorflow.keras import backend
+from tensorflow import set_random_seed
 
 # tokenization
 import nltk.tokenize as tk
@@ -169,7 +172,7 @@ def get_ffnn_model(dropout_rate=0.2):
     model.add(layers.Dense(1000, activation='relu',name='dense_3'))
     model.add(layers.Dropout(dropout_rate, name='dropout_3'))
     model.add(layers.Dense(3, activation='softmax', name='output_layer'))
-    #loss = weighted_categorical_crossentropy(label_weights)
+    # loss = weighted_categorical_crossentropy(label_weights)
     model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
                   metrics=[precision, recall, f1])
@@ -254,18 +257,11 @@ def kfold_with_smote(clf, train_valid_data_X, train_valid_label_y, tuned_paramet
         print(Counter(whole_predictions_review))
         np.save(os.path.join(save_path, 'whole_predictions_by_' + clf_name +'_review'), whole_predictions_review)
 
-        # Make predictions on the 2016 data compare with yao
-        whole_predictions_2016_compare_with_yao = Grid_clf.predict(tweets_representations_2016_array_compare_with_yao)
-        np.save(os.path.join(save_path, 'whole_predictions_2016_by_' + clf_name + '_compare_with_yao'),
-                whole_predictions_2016_compare_with_yao)
-
-        # Make predictions on the whole 2016 data
-        whole_predictions_2016 = Grid_clf.predict(tweets_representations_2016_array)
-        np.save(os.path.join(save_path, 'whole_predictions_2016_by_' + clf_name), whole_predictions_2016)
-
         # Make predictions on the whole 2017 data
-        whole_predictions_2017 = Grid_clf.predict(whole_tweets_array)
-        np.save(os.path.join(save_path, 'whole_predictions_2017_by_' + clf_name), whole_predictions_2017)
+        whole_predictions_combined = Grid_clf.predict(whole_tweets_array)
+        print('The sentiment distribution of the combined tweet dataframe is:')
+        print(Counter(whole_predictions_combined))
+        np.save(os.path.join(save_path, 'whole_predictions_tweet_combined_by_' + clf_name), whole_predictions_combined)
 
     return params_dict, performance_dict
 
@@ -280,19 +276,18 @@ if __name__ == '__main__':
                                                                      'whole_sample_array.npy'))
     whole_review_result_scheme2 = np.load(os.path.join(read_data.tweet_representation_path,
                                                        'whole_samply_label.npy'))
-    tweets_representations_2016_array_compare_with_yao = \
-        np.load(os.path.join(read_data.tweet_representation_path, 'tweet_array_2016_compare_with_yao.npy'))
-    tweets_representations_2016_array = np.load(os.path.join(read_data.tweet_representation_path,
-                                                             'tweet_array_2016.npy'))
-    tweets_representation_whole_2017_tweets_array = \
-        np.load(os.path.join(read_data.tweet_representation_path, 'tweet_array_2017.npy'))
+    # Load the data and label for train and validation
     X_train_valid = np.load(os.path.join(read_data.tweet_representation_path,
                                          'train_valid_cross_validation_data.npy'))
     y_train_valid = np.load(os.path.join(read_data.tweet_representation_path,
                                          'train_valid_cross_validation_label.npy'))
+    # Load the data and label for test
     X_test = np.load(os.path.join(read_data.tweet_representation_path, 'test_data_for_model_compare.npy'))
     y_test = np.load(os.path.join(read_data.tweet_representation_path, 'test_label_for_model_compare.npy'))
-    #
+    # Load the data for the whole tweet combined array
+    whole_combined_array = np.load(os.path.join(read_data.tweet_combined_path, 'tweet_representations',
+                                                'tweet_combined_repre.npy'))
+
     # Use SMOTE to do the oversampling
     smt = SMOTE(random_state=random_seed, k_neighbors=1)
     oversampled_train_validate_data, oversampled_train_validate_y = smt.fit_sample(X_train_valid,
@@ -328,12 +323,12 @@ if __name__ == '__main__':
                                                              train_valid_label_y=oversampled_train_validate_y,
                                                              tuned_parameters=tuned_parameters_tree, X_test=X_test,
                                                            y_test=y_test,
-                                                           whole_tweets_array=tweets_representation_whole_2017_tweets_array,
+                                                           whole_tweets_array=whole_combined_array,
                                                            save_path=read_data.model_selection_path_oversampling,
                                                                clf_name='DT')
+    print('The best hyperparameter setting is....')
     print(params_dict_tree)
     print()
-    print(performance_dict_tree)
 
     print('Random Forest...')
 
@@ -343,12 +338,12 @@ if __name__ == '__main__':
                                                            train_valid_label_y=oversampled_train_validate_y,
                                                              tuned_parameters=tuned_parameters_rf, X_test=X_test,
                                                            y_test=y_test,
-                                                           whole_tweets_array=tweets_representation_whole_2017_tweets_array,
+                                                           whole_tweets_array=whole_combined_array,
                                                            save_path=read_data.model_selection_path_oversampling,
                                                            clf_name='RF')
+    print('The best hyperparameter setting is....')
     print(params_dict_rf)
     print()
-    print(performance_dict_rf)
 
     print('SVM......')
     tuned_parameters_svm = {'kernel': ['rbf', 'poly', 'sigmoid'], 'C': [1, 10, 100, 1000]}
@@ -357,12 +352,12 @@ if __name__ == '__main__':
                                                              train_valid_label_y=oversampled_train_validate_y,
                                                            tuned_parameters=tuned_parameters_svm, X_test=X_test,
                                                            y_test=y_test,
-                                                           whole_tweets_array=tweets_representation_whole_2017_tweets_array,
+                                                           whole_tweets_array=whole_combined_array,
                                                            save_path=read_data.model_selection_path_oversampling,
                                                              clf_name='SVM')
+    print('The best hyperparameter setting is....')
     print(params_dict_svm)
     print()
-    print(performance_dict_svm)
 
     print('Neural Net...')
 
@@ -374,42 +369,15 @@ if __name__ == '__main__':
                                                                train_valid_data_X=oversampled_train_validate_data,
                                                                train_valid_label_y=oversampled_train_validate_y,
                                                                X_test = X_test, y_test = y_test,
-                                                               whole_tweets_array = tweets_representation_whole_2017_tweets_array,
+                                                               whole_tweets_array = whole_combined_array,
                                                                save_path = read_data.model_selection_path_oversampling,
                                                                clf_name='ffnn')
+    print('The best hyperparameter setting is....')
     print(params_dict_ffnn)
     print()
-    print(performance_dict_ffnn)
 
     end_time = time.time()
     print('Total time for training is: ', end_time-starting_time)
-
-    # Then check each classifier's performance on the test set from the output
-    # Load the predictions
-    whole_predictions_2016 = \
-        np.load(os.path.join(read_data.model_selection_path_oversampling, 'whole_predictions_2016_by_SVM.npy'))
-    whole_predictions_2017 = \
-        np.load(os.path.join(read_data.model_selection_path_oversampling, 'whole_predictions_2017_by_SVM.npy'))
-    print('The shape of the prediction files are....')
-    print(np.shape(whole_predictions_2016), np.shape(whole_predictions_2017))
-    # Load the datasets
-    tweets_in_2016_dataframe = pd.read_pickle(os.path.join(read_data.tweet_2016,
-                                                           'final_zh_en_for_paper_hk_time_2016.pkl'))
-    tweets_in_2016_dataframe = tweets_in_2016_dataframe.loc[tweets_in_2016_dataframe['cleaned_text'] != '']
-    tweets_in_2017_dataframe = pd.read_pickle(os.path.join(read_data.tweet_2017,
-                                                           'final_zh_en_for_paper_hk_time_2017.pkl'))
-    tweets_in_2017_dataframe = tweets_in_2017_dataframe.loc[tweets_in_2017_dataframe['cleaned_text'] != '']
-    print("The shape of the 2017 dataframe is: ", tweets_in_2017_dataframe.shape)
-    print("The shape of the 2016 dataframe is: ", tweets_in_2016_dataframe.shape)
-
-    tweets_in_2016_dataframe['sentiment'] = list(whole_predictions_2016)
-    tweets_in_2017_dataframe['sentiment'] = list(whole_predictions_2017)
-
-    tweets_in_2016_dataframe.to_pickle(os.path.join(read_data.tweet_2016,
-                                                    'final_2016_with_sentiment_smote.pkl'))
-    tweets_in_2017_dataframe.to_pickle(os.path.join(read_data.tweet_2017,
-                                                    'final_2017_with_sentiment_smote.pkl'))
-
 
 
 

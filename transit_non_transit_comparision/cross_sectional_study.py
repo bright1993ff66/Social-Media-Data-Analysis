@@ -303,7 +303,7 @@ class TransitNeighborhood_TPU(object):
                         arrowprops=dict(arrowstyle="->", color='k', lw=0.5))
             plt.legend()
             fig.savefig(os.path.join(read_data.plot_path_2017, saved_file_name), dpi=fig.dpi, bbox_inches='tight')
-            plt.show()
+            # plt.show()
         elif 'tn_or_not' in df.columns:
             tn_tpu_dataframe = df.loc[df['tn_or_not'] == 'tn_tpu']
             non_tn_tpu_dataframe = df.loc[df['tn_or_not'] == 'non_tn_tpu']
@@ -357,7 +357,7 @@ class TransitNeighborhood_TPU(object):
             adjust_text(texts, only_move={'points': 'y', 'text': 'y'},
                         arrowprops=dict(arrowstyle="->", color='r', lw=0.5))
             fig.savefig(os.path.join(read_data.plot_path_2017, saved_file_name), dpi=fig.dpi, bbox_inches='tight')
-            plt.show()
+            # plt.show()
 
 
 # compute the percentage of positive Tweets: 2 is positive
@@ -507,7 +507,7 @@ def build_data_for_cross_sectional_study(tweet_data_path, saving_path, only_2017
     :param saving_path: path which is used to save the tweets posted in each TPU
     :return:
     """
-    all_tweet_data = pd.read_csv(os.path.join(tweet_data_path, 'tweet_combined_with_sentiment.csv'),
+    all_tweet_data = pd.read_csv(os.path.join(tweet_data_path, 'tweet_combined_sentiment_without_bots.csv'),
                                  encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC)
     if only_2017_2018:
         # Only consider tweets posted in 2017
@@ -574,6 +574,82 @@ def describle_dataframe(dataframe, message):
     print("{}, number of tweets: {}; number of involved TPUs: {}".format(message, number_of_tweets, number_of_tpus))
 
 
+def regres_analysis(sent_act_dataframe, social_demographic_merged_filenanme):
+    """
+    Build a regression analysis model based on the tweet dataframe and social demographic data
+    :param sent_act_dataframe: the tweet considered dataframe
+    :param social_demographic_merged_filenanme: the filename that used to save the sentiment, activity and
+    social demographic variables for each TPU
+    :return: the regression analysis for sentiment and activity respectively
+    """
+    print('--------------------------Activity---------------------------------')
+    for index, dataframe in sent_act_dataframe.groupby('tn_or_not'):
+        print(index)
+        print(dataframe['activity'].describe())
+    print('-------------------------------------------------------------------')
+
+    print('--------------------------Sentiment---------------------------------')
+    for index, dataframe in sent_act_dataframe.groupby('tn_or_not'):
+        print(index)
+        print(dataframe['Sentiment'].describe())
+    print('-------------------------------------------------------------------')
+    #
+    print('Building the regressiong model between sentiment/activity and social demographic variables...')
+    combined_dataframe = sent_act_dataframe.merge(tpu_2016_social_demographic_dataframe, on='tpu_name')
+    print('The shape of the combined dataframe is : {}'.format(combined_dataframe.shape))
+    combined_dataframe.to_csv(os.path.join(read_data.desktop, social_demographic_merged_filenanme), encoding='utf-8',
+                              quoting=csv.QUOTE_NONNUMERIC)
+    print('----------------------------------------------------------')
+    tn_or_not_dict = {'non_tn_tpu': 0, 'tn_tpu': 1}
+    combined_dataframe = combined_dataframe.replace({'tn_or_not': tn_or_not_dict})
+    tn_or_not_list = list(combined_dataframe['tn_or_not'])
+    tpu_name_list_from_combined_data = list(combined_dataframe['tpu_name'])
+    combined_dataframe['employment'] = combined_dataframe.apply(lambda row: row['employment'] / 100, axis=1)
+    draw_boxplot(combined_dataframe, column_name='Sentiment', title_name='Sentiment Comparison')
+    draw_boxplot(combined_dataframe, column_name='Activity_log10', title_name='Activity Level Comparison')
+    combined_dataframe = combined_dataframe[['Sentiment', 'activity', 'median_income', 'employment',
+                                             'marry', 'education', 'avg_population', 'ShapeArea']]
+    print('Social Demographic Data Description...')
+    for column_name in ['median_income', 'employment', 'marry', 'education', 'avg_population', 'ShapeArea']:
+        print('Coping with {}'.format(column_name))
+        print(combined_dataframe[column_name].describe())
+        print('-------------Done!----------------')
+
+    print('Check the correlation between sentiment and activity...')
+    correlation_value_sent_act = combined_dataframe['Sentiment'].corr(combined_dataframe['activity'])
+    print('The correlation coefficient of sentiment and activity is :{}'.format(correlation_value_sent_act))
+
+    print('Check the correlation between activity and avg_population per square meter...')
+    # First, compute the activity level per square meter
+    combined_dataframe['avg_activity'] = combined_dataframe.apply(lambda row: row['activity'] / row['ShapeArea'],
+                                                                  axis=1)
+    print(combined_dataframe.head())
+    # Then compute the correlation coefficient...
+    correlation_value_act_population = combined_dataframe['avg_activity'].corr(combined_dataframe['avg_population'])
+    print('The correlation coefficient of activity and avg population is :{}'.format(correlation_value_act_population))
+
+    print('Regression analysis starts..... ')
+    normalized_combined_dataframe = (combined_dataframe - combined_dataframe.mean()) / combined_dataframe.std()
+    normalized_combined_dataframe['tn_or_not'] = tn_or_not_list
+    normalized_combined_dataframe['tpu_name'] = tpu_name_list_from_combined_data
+    print(normalized_combined_dataframe.head(5))
+    print(normalized_combined_dataframe.columns)
+    # Check the correlation matrix of independent variables and compute VIF value for each independent variable
+    combined_dataframe['tn_or_not'] = tn_or_not_list
+    dataframe_for_correlation_matrix = combined_dataframe[['median_income', 'employment', 'marry', 'education',
+                                                           'tn_or_not', 'avg_population', 'avg_activity']]
+    draw_correlation_plot(dataframe_for_correlation_matrix)
+    result_vif_series = compute_vif(dataframe_for_correlation_matrix)
+    print(result_vif_series)
+    # Regression analysis
+    reg_sent = smf.ols('Sentiment ~ median_income+employment+marry+education+avg_population+tn_or_not',
+                       normalized_combined_dataframe).fit()
+    print(reg_sent.summary())
+    reg_act = smf.ols('avg_activity ~ median_income+employment+marry+education+avg_population+tn_or_not',
+                      normalized_combined_dataframe).fit()
+    print(reg_act.summary())
+
+
 if __name__ == '__main__':
     # Specify some important dates
     october_23_start = datetime(2016, 10, 23, 0, 0, 0, tzinfo=time_zone_hk)
@@ -614,6 +690,7 @@ if __name__ == '__main__':
     # We have built folder for each TPU to store tweets
     # Based on the created folders, select tpus which have at least 100 tweets in 2017
     activity_dict = TransitNeighborhood_TPU.select_tpu_for_following_analysis(check_all_stations=False)
+    activity_dict_whole = TransitNeighborhood_TPU.select_tpu_for_following_analysis(check_all_stations=True)
     print('Total number of tpus we consider...')
     print(len(activity_dict.keys()))
     print('Total number of tweets we consider...')
@@ -627,6 +704,14 @@ if __name__ == '__main__':
         # dataframe['sentiment'] = dataframe['sentiment'].astype(np.int)
         sentiment_dict[tpu] = pos_percent_minus_neg_percent(dataframe)
 
+    sentiment_dict_whole = {}
+    for tpu in activity_dict_whole.keys():
+        dataframe = pd.read_csv(os.path.join(read_data.transit_non_transit_comparison_cross_sectional, 'tpu_data_more',
+                                             tpu, tpu + '_data.csv'), encoding='utf-8', dtype='str',
+                                quoting=csv.QUOTE_NONNUMERIC)
+        # dataframe['sentiment'] = dataframe['sentiment'].astype(np.int)
+        sentiment_dict_whole[tpu] = pos_percent_minus_neg_percent(dataframe)
+
     sentiment_activity_combined_dict = {}
     for tpu_name in sentiment_dict.keys():
         sentiment_activity_combined_dict[tpu_name] = (sentiment_dict[tpu_name], activity_dict[tpu_name])
@@ -637,8 +722,12 @@ if __name__ == '__main__':
     # the tn_tpus
     whole_tpu_sent_act_dataframe = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict,
                                                                                         activity_dict=activity_dict)
+    whole_tpu_sent_act_dataframe_all_considered = TransitNeighborhood_TPU.construct_sent_act_dataframe(
+        sent_dict=sentiment_dict_whole, activity_dict=activity_dict_whole)
 
     whole_tpu_sent_act_dataframe.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act.csv'))
+    whole_tpu_sent_act_dataframe_all_considered.to_csv(os.path.join(read_data.desktop,
+                                                                    'tpu_sent_act_all_considered.csv'))
     y_label = 'Percentage of Positive Tweets Minus Percentage of Negative Tweets'
     # Draw the tpu sentiment against activity
     figure_title_name = 'Sentiment Against Activity Across TPUs'
@@ -851,73 +940,18 @@ if __name__ == '__main__':
                                                                     saved_file_name='2018_tpu_sent_vs_act_quarter_4.png',
                                                                     without_outlier=False)
     print('------------------------------------Done!---------------------------------------------')
-
-    print('--------------------------Activity---------------------------------')
-    for index, dataframe in whole_tpu_sent_act_dataframe.groupby('tn_or_not'):
-        print(index)
-        print(dataframe['activity'].describe())
-    print('-------------------------------------------------------------------')
-
-    print('--------------------------Sentiment---------------------------------')
-    for index, dataframe in whole_tpu_sent_act_dataframe.groupby('tn_or_not'):
-        print(index)
-        print(dataframe['Sentiment'].describe())
-    print('-------------------------------------------------------------------')
-    #
-    print('Building the regressiong model between sentiment/activity and social demographic variables...')
-    combined_dataframe = whole_tpu_sent_act_dataframe.merge(tpu_2016_social_demographic_dataframe, on='tpu_name')
-    print('The shape of the combined dataframe is : {}'.format(combined_dataframe.shape))
-    combined_dataframe.to_csv(os.path.join(read_data.desktop, 'combined.csv'), encoding='utf-8',
-                              quoting=csv.QUOTE_NONNUMERIC)
-    print('----------------------------------------------------------')
-    tn_or_not_dict = {'non_tn_tpu': 0, 'tn_tpu': 1}
-    combined_dataframe = combined_dataframe.replace({'tn_or_not': tn_or_not_dict})
-    tn_or_not_list = list(combined_dataframe['tn_or_not'])
-    tpu_name_list_from_combined_data = list(combined_dataframe['tpu_name'])
-    combined_dataframe['employment'] = combined_dataframe.apply(lambda row: row['employment'] / 100, axis=1)
-    combined_dataframe.to_csv(os.path.join(demographic_path, 'combined_dataframe.csv'))
-    draw_boxplot(combined_dataframe, column_name='Sentiment', title_name='Sentiment Comparison')
-    draw_boxplot(combined_dataframe, column_name='Activity_log10', title_name='Activity Level Comparison')
-    combined_dataframe = combined_dataframe[['Sentiment', 'activity', 'median_income', 'employment',
-                                             'marry', 'education', 'avg_population', 'ShapeArea']]
-    print('Social Demographic Data Description...')
-    for column_name in ['median_income', 'employment', 'marry', 'education', 'avg_population', 'ShapeArea']:
-        print('Coping with {}'.format(column_name))
-        print(combined_dataframe[column_name].describe())
-        print('-------------Done!----------------')
-
-    print('Check the correlation between sentiment and activity...')
-    correlation_value_sent_act = combined_dataframe['Sentiment'].corr(combined_dataframe['activity'])
-    print('The correlation coefficient of sentiment and activity is :{}'.format(correlation_value_sent_act))
-
-    print('Check the correlation between activity and avg_population per square meter...')
-    # First, compute the activity level per square meter
-    combined_dataframe['avg_activity'] = combined_dataframe.apply(lambda row: row['activity']/row['ShapeArea'], axis=1)
-    print(combined_dataframe.head())
-    # Then compute the correlation coefficient...
-    correlation_value_act_population = combined_dataframe['avg_activity'].corr(combined_dataframe['avg_population'])
-    print('The correlation coefficient of activity and avg population is :{}'.format(correlation_value_act_population))
-
-    print('Regression analysis starts..... ')
-    normalized_combined_dataframe = (combined_dataframe - combined_dataframe.mean()) / combined_dataframe.std()
-    normalized_combined_dataframe['tn_or_not'] = tn_or_not_list
-    normalized_combined_dataframe['tpu_name'] = tpu_name_list_from_combined_data
-    print(normalized_combined_dataframe.head(5))
-    print(normalized_combined_dataframe.columns)
-    # Check the correlation matrix of independent variables and compute VIF value for each independent variable
-    combined_dataframe['tn_or_not'] = tn_or_not_list
-    dataframe_for_correlation_matrix = combined_dataframe[['median_income', 'employment', 'marry', 'education',
-                                                           'tn_or_not', 'avg_population']]
-    draw_correlation_plot(dataframe_for_correlation_matrix)
-    result_vif_series = compute_vif(dataframe_for_correlation_matrix)
-    print(result_vif_series)
-    # Regression analysis
-    reg_sent = smf.ols('Sentiment ~ median_income+employment+marry+education+avg_population+tn_or_not',
-                       normalized_combined_dataframe).fit()
-    print(reg_sent.summary())
-    reg_act = smf.ols('activity ~ median_income+employment+marry+education+avg_population+tn_or_not',
-                      normalized_combined_dataframe).fit()
-    print(reg_act.summary())
+    # regression analysis overall
+    print('For 2017 and 2018...')
+    regres_analysis(sent_act_dataframe=whole_tpu_sent_act_dataframe,
+                    social_demographic_merged_filenanme='combined.csv')
+    print('For 2017...')
+    # regression analysis in 2017
+    regres_analysis(sent_act_dataframe=whole_sent_act_year_2017,
+                    social_demographic_merged_filenanme='combined_2017.csv')
+    print('For 2018...')
+    # regression analysis in 2018
+    regres_analysis(sent_act_dataframe=whole_sent_act_year_2018,
+                    social_demographic_merged_filenanme='combined_2018.csv')
 
 
 

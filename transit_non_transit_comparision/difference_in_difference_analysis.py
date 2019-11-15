@@ -2,12 +2,14 @@ import pandas as pd
 import numpy as np
 import csv
 import os
-import pytz
-from datetime import datetime
 from collections import Counter
 
+import pytz
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
 import read_data
-import before_and_after_final
+import before_and_after_final_tpu
 
 # statistics
 import statsmodels.api as sm
@@ -21,7 +23,7 @@ rc('mathtext', default='regular')
 # Hong Kong and Shanghai share the same time zone.
 # Hence, we transform the utc time in our dataset into Shanghai time
 time_zone_hk = pytz.timezone('Asia/Shanghai')
-studied_stations = before_and_after_final.TransitNeighborhood_Before_After.before_after_stations
+studied_stations = before_and_after_final_tpu.TransitNeighborhood_Before_After.before_after_stations
 october_23_start = datetime(2016, 10, 23, 0, 0, 0, tzinfo=time_zone_hk)
 october_23_end = datetime(2016, 10, 23, 23, 59, 59, tzinfo=time_zone_hk)
 december_28_start = datetime(2016, 12, 28, 0, 0, 0, tzinfo=time_zone_hk)
@@ -79,19 +81,121 @@ def get_nontn_tweets(station_name, folder_path):
     return non_tn_tweets
 
 
-def add_post_variable(string, opening_start_date, opening_end_date):
+def add_post_variable(string, opening_start_date, opening_end_date, check_window=0):
+    """
+    Add the value of the POST variable in the DID analysis
+    :param string: the time string
+    :param opening_start_date: the opening date of the studied station
+    :param opening_end_date: the closing date of the studied station
+    :param check_window: the month window size used to check the temporal effect of the studied station
+    :return: the post variable based on the time of one tweet
+    """
     time_object = transform_string_time_to_datetime(string)
-    if time_object > opening_end_date:
-        return 1
-    elif time_object < opening_start_date:
-        return 0
+    if check_window == 0:
+        if time_object > opening_end_date:
+            return 1
+        elif time_object < opening_start_date:
+            return 0
+        else:
+            return 'not considered'
     else:
-        return 'not considered'
+        left_time_range = opening_start_date - relativedelta(months=check_window)
+        right_time_range = opening_start_date + relativedelta(months=check_window)
+        if left_time_range < time_object < opening_start_date:
+            return 0
+        elif opening_end_date < time_object < right_time_range:
+            return 1
+        else:
+            return 'not considered'
 
 
-def build_regress_datafrane_for_one_newly_built_station(treatment_dataframe, control_dataframe,
+def build_regress_dataframe_for_combined_areas(kwun_tong_treatment, kwun_tong_control, south_horizons_treatment,
+                                               south_horizons_control, ocean_park_treatment, ocean_park_control,
+                                               check_window_value=0):
+    """
+    Build dataframes for the combined DID analysis based on treatment & control dataframes of each station
+    :param kwun_tong_treatment: the dataframe saving tweets for kwun tong treatment area
+    :param kwun_tong_control: the dataframe saving tweets for kwun tong control area
+    :param south_horizons_treatment: the dataframe saving tweets for south horizons treatment area
+    :param south_horizons_control: the dataframe saving tweets for south horizons control area
+    :param ocean_park_treatment: the dataframe saving tweets for ocean park treatment area
+    :param ocean_park_control: the dataframe saving tweets for ocean park control area
+    :param check_window_value: the month window we consider when doing the DID analysis
+    :return: a combined dataframe which could be used for combined DID analysis
+    """
+    result_dataframe = pd.DataFrame(columns=['Time', 'T_i_t', 'Post', 'Sentiment', 'Activity'])
+    # build the treatment control binary variable
+    kwun_tong_treatment['T_i_t'] = [1] * kwun_tong_treatment.shape[0]
+    kwun_tong_control['T_i_t'] = [0] * kwun_tong_control.shape[0]
+    south_horizons_treatment['T_i_t'] = [1] * south_horizons_treatment.shape[0]
+    south_horizons_control['T_i_t'] = [0] * south_horizons_control.shape[0]
+    ocean_park_treatment['T_i_t'] = [1] * ocean_park_treatment.shape[0]
+    ocean_park_control['T_i_t'] = [0] * ocean_park_control.shape[0]
+    # add the post variable
+    kwun_tong_treatment['Post'] = kwun_tong_treatment.apply(
+        lambda row: add_post_variable(row['hk_time'], opening_start_date=october_23_start,
+                                      opening_end_date=october_23_end, check_window=check_window_value), axis=1)
+    kwun_tong_control['Post'] = kwun_tong_control.apply(
+        lambda row: add_post_variable(row['hk_time'], opening_start_date=october_23_start,
+                                      opening_end_date=october_23_end, check_window=check_window_value), axis=1)
+    south_horizons_treatment['Post'] = south_horizons_treatment.apply(
+        lambda row: add_post_variable(row['hk_time'], opening_start_date=december_28_start,
+                                      opening_end_date=december_28_end, check_window=check_window_value), axis=1)
+    south_horizons_control['Post'] = south_horizons_control.apply(
+        lambda row: add_post_variable(row['hk_time'], opening_start_date=december_28_start,
+                                      opening_end_date=december_28_end, check_window=check_window_value), axis=1)
+    ocean_park_treatment['Post'] = ocean_park_treatment.apply(
+        lambda row: add_post_variable(row['hk_time'], opening_start_date=december_28_start,
+                                      opening_end_date=december_28_end, check_window=check_window_value), axis=1)
+    ocean_park_control['Post'] = ocean_park_control.apply(
+        lambda row: add_post_variable(row['hk_time'], opening_start_date=december_28_start,
+                                      opening_end_date=december_28_end, check_window=check_window_value), axis=1)
+    dataframe_list = [kwun_tong_treatment, kwun_tong_control, south_horizons_treatment, south_horizons_control,
+                      ocean_park_treatment, ocean_park_control]
+    combined_dataframe = pd.concat(dataframe_list, axis=0, sort=True)
+    combined_dataframe = combined_dataframe.reset_index(drop=True)
+    # We don't consider the tweets posted on the open date
+    combined_dataframe_without_not_considered = \
+        combined_dataframe.loc[combined_dataframe['Post'] != 'not considered']
+    combined_data_copy = combined_dataframe_without_not_considered.copy()
+    combined_data_copy['month_plus_year'] = combined_data_copy.apply(
+        lambda row: str(int(float(row['year']))) + '_' + str(int(float(row['month']))), axis=1)
+    sentiment_dict = {}
+    activity_dict = {}
+    for _, dataframe in combined_data_copy.groupby(['month_plus_year', 'T_i_t', 'Post']):
+        time = str(list(dataframe['month_plus_year'])[0])
+        t_i_t = str(list(dataframe['T_i_t'])[0])
+        post = str(list(dataframe['Post'])[0])
+        sentiment_dict[time + '_' + t_i_t + '_' + post] = before_and_after_final_tpu.pos_percent_minus_neg_percent(
+            dataframe)
+        activity_dict[time + '_' + t_i_t + '_' + post] = np.log(dataframe.shape[0])
+    result_dataframe_copy = result_dataframe.copy()
+    time_list = []
+    t_i_t_list = []
+    post_list = []
+    sentiment_list = []
+    activity_list = []
+    for key in list(sentiment_dict.keys()):
+        # don't consider the tweets posted in 2016_10(for Whampoa and Ho Man Tin) or 2016_12(for other stations)
+        if key[:7] not in ['2016_10', '2016_12']:
+            time_list.append(key[:-4])
+            t_i_t_list.append(int(key[-3]))
+            post_list.append(int(key[-1]))
+            sentiment_list.append(sentiment_dict[key])
+            activity_list.append(activity_dict[key])
+        else:
+            pass
+    result_dataframe_copy['Time'] = time_list
+    result_dataframe_copy['T_i_t'] = t_i_t_list
+    result_dataframe_copy['Post'] = post_list
+    result_dataframe_copy['Sentiment'] = sentiment_list
+    result_dataframe_copy['Activity'] = activity_list
+    return result_dataframe_copy
+
+
+def build_regress_dataframe_for_one_newly_built_station(treatment_dataframe, control_dataframe,
                                                         station_open_start_date, station_open_end_date,
-                                                        open_year_plus_month):
+                                                        open_year_plus_month, check_window_value=0):
     # check the date
     assert open_year_plus_month in ['2016_10', '2016_12']
     result_dataframe = pd.DataFrame(columns=['Time', 'T_i_t', 'Post', 'Sentiment', 'Activity'])
@@ -103,14 +207,14 @@ def build_regress_datafrane_for_one_newly_built_station(treatment_dataframe, con
     # build the post variable
     treatment_dataframe['Post'] = treatment_dataframe.apply(
         lambda row: add_post_variable(row['hk_time'], opening_start_date=station_open_start_date,
-                                      opening_end_date=station_open_end_date), axis=1)
+                                      opening_end_date=station_open_end_date, check_window=check_window_value), axis=1)
     print('Check the post variable distribution of treatment group: {}'.format(
         Counter(treatment_dataframe['Post'])))
     print('Check the T_i_t variable distribution of treatment group: {}'.format(
         Counter(treatment_dataframe['T_i_t'])))
     control_dataframe['Post'] = control_dataframe.apply(
         lambda row: add_post_variable(row['hk_time'], opening_start_date=station_open_start_date,
-                                      opening_end_date=station_open_end_date), axis=1)
+                                      opening_end_date=station_open_end_date, check_window=check_window_value), axis=1)
     print('Check the post variable distribution of control group: {}'.format(
         Counter(control_dataframe['Post'])))
     print('Check the T_i_t variable distribution of control group: {}'.format(
@@ -129,7 +233,7 @@ def build_regress_datafrane_for_one_newly_built_station(treatment_dataframe, con
         time = str(list(dataframe['month_plus_year'])[0])
         t_i_t = str(list(dataframe['T_i_t'])[0])
         post = str(list(dataframe['Post'])[0])
-        sentiment_dict[time + '_' + t_i_t + '_' + post] = before_and_after_final.pos_percent_minus_neg_percent(dataframe)
+        sentiment_dict[time + '_' + t_i_t + '_' + post] = before_and_after_final_tpu.pos_percent_minus_neg_percent(dataframe)
         activity_dict[time + '_' + t_i_t + '_' + post] = np.log(dataframe.shape[0])
     result_dataframe_copy = result_dataframe.copy()
     time_list = []
@@ -155,6 +259,45 @@ def build_regress_datafrane_for_one_newly_built_station(treatment_dataframe, con
     return result_dataframe_copy
 
 
+def conduct_combined_did_analysis(kwun_tong_treatment_dataframe, kwun_tong_control_dataframe,
+                                  south_horizons_treatment_dataframe, south_horizons_control_dataframe,
+                                  ocean_park_treatment_dataframe, ocean_park_control_dataframe,
+                                  dataframe_saving_path, filename, check_window_value=0):
+
+    longitudinal_dataframe = build_regress_dataframe_for_combined_areas(
+        kwun_tong_treatment=kwun_tong_treatment_dataframe, kwun_tong_control=kwun_tong_control_dataframe,
+        south_horizons_treatment=south_horizons_treatment_dataframe,
+        south_horizons_control=south_horizons_control_dataframe, ocean_park_treatment=ocean_park_treatment_dataframe,
+        ocean_park_control=ocean_park_control_dataframe, check_window_value=check_window_value)
+    longitudinal_dataframe.to_csv(os.path.join(dataframe_saving_path, filename))
+
+    reg_combined_sentiment = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', longitudinal_dataframe).fit()
+    reg_combined_activity = smf.ols('Activity ~ T_i_t+Post+Post:T_i_t', longitudinal_dataframe).fit()
+    print('----The sentiment did result-----')
+    print(reg_combined_sentiment.summary())
+    print('----The activity did result-----')
+    print(reg_combined_activity.summary())
+    print()
+
+
+def conduct_did_analysis_one_area(treatment_considered_dataframe, control_considered_dataframe, opening_start_date,
+                                  opening_end_date, open_year_month, window_size_value, file_path, filename):
+    constructed_dataframe = build_regress_dataframe_for_one_newly_built_station(
+        treatment_dataframe=treatment_considered_dataframe,
+        control_dataframe=control_considered_dataframe,
+        station_open_start_date=opening_start_date,
+        station_open_end_date=opening_end_date, open_year_plus_month=open_year_month,
+        check_window_value=window_size_value)
+    constructed_dataframe.to_csv(os.path.join(file_path, filename), encoding='utf-8')
+    combined_sentiment = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', constructed_dataframe).fit()
+    combined_activity = smf.ols('Activity ~ T_i_t+Post+Post:T_i_t', constructed_dataframe).fit()
+    print('----The sentiment did result-----')
+    print(combined_sentiment.summary())
+    print('----The activity did result-----')
+    print(combined_activity.summary())
+    print('-------------------------------------------------------\n')
+
+
 def build_dataframe_based_on_set(datapath, tpu_set):
     tpu_name_list = []
     dataframe_list = []
@@ -169,7 +312,7 @@ def build_dataframe_based_on_set(datapath, tpu_set):
 
 if __name__ == '__main__':
 
-    path = os.path.join(read_data.transit_non_transit_comparison_before_after, 'tpu_data_with_visitors')
+    path = os.path.join(read_data.tweet_combined_path, 'longitudinal_tpus')
     kwun_tong_line_treatment_dict = {}
     kwun_tong_line_control_dict = {}
     south_island_line_treatment_dict = {}
@@ -181,7 +324,7 @@ if __name__ == '__main__':
     south_horizons_lei_tung_control_tpu_set = {'172', '182'}
     ocean_park_wong_chuk_hang_treatment_tpu_set = {'175'}
     ocean_park_wong_chuk_hang_control_tpu_set = {'184', '183', '182'}
-    tpu_213_set, tpu_236_set, tpu_243_set, tpu_245_set = {'213'}, {'236'}, {'243'}, {'245'}
+    # tpu_213_set, tpu_236_set, tpu_243_set, tpu_245_set = {'213'}, {'236'}, {'243'}, {'245'}
 
     kwun_tong_line_treatment_dataframe = build_dataframe_based_on_set(datapath=path,
                                                                       tpu_set=kwun_tong_line_treatment_tpu_set)
@@ -195,119 +338,164 @@ if __name__ == '__main__':
                                                                                  tpu_set=ocean_park_wong_chuk_hang_treatment_tpu_set)
     ocean_park_wong_chuk_hang_control_dataframe = build_dataframe_based_on_set(datapath=path,
                                                                                tpu_set=ocean_park_wong_chuk_hang_control_tpu_set)
-    tpu_213_treatment_dataframe = build_dataframe_based_on_set(datapath=path, tpu_set=tpu_213_set)
-    tpu_236_treatment_dataframe = build_dataframe_based_on_set(datapath=path, tpu_set=tpu_236_set)
-    tpu_243_treatment_dataframe = build_dataframe_based_on_set(datapath=path, tpu_set=tpu_243_set)
-    tpu_245_treatment_dataframe = build_dataframe_based_on_set(datapath=path, tpu_set=tpu_245_set)
+
+    # tpu_213_treatment_dataframe = build_dataframe_based_on_set(datapath=path, tpu_set=tpu_213_set)
+    # tpu_236_treatment_dataframe = build_dataframe_based_on_set(datapath=path, tpu_set=tpu_236_set)
+    # tpu_243_treatment_dataframe = build_dataframe_based_on_set(datapath=path, tpu_set=tpu_243_set)
+    # tpu_245_treatment_dataframe = build_dataframe_based_on_set(datapath=path, tpu_set=tpu_245_set)
 
     print('************************DID Analysis Starts....************************')
+    dataframe_saving_path = os.path.join(read_data.tweet_combined_path, 'longitudinal_did_analysis_dataframes')
     print('Overall Treatment and Control Comparison...')
+    conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,
+                                  kwun_tong_control_dataframe=kwun_tong_line_control_dataframe,
+                                  south_horizons_treatment_dataframe=south_horizons_lei_tung_treatment_dataframe,
+                                  south_horizons_control_dataframe=south_horizons_lei_tung_control_dataframe,
+                                  ocean_park_treatment_dataframe=ocean_park_wong_chuk_hang_treatment_dataframe,
+                                  ocean_park_control_dataframe=ocean_park_wong_chuk_hang_control_dataframe,
+                                  dataframe_saving_path=dataframe_saving_path,
+                                  filename='longitudinal_did_dataframe_all.csv', check_window_value=0)
+
+    print('Overall Treatment and Control Comparison(3 months)...')
+    conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,
+                                  kwun_tong_control_dataframe=kwun_tong_line_control_dataframe,
+                                  south_horizons_treatment_dataframe=south_horizons_lei_tung_treatment_dataframe,
+                                  south_horizons_control_dataframe=south_horizons_lei_tung_control_dataframe,
+                                  ocean_park_treatment_dataframe=ocean_park_wong_chuk_hang_treatment_dataframe,
+                                  ocean_park_control_dataframe=ocean_park_wong_chuk_hang_control_dataframe,
+                                  dataframe_saving_path=dataframe_saving_path,
+                                  filename='longitudinal_did_dataframe_3_months.csv', check_window_value=3)
+
+    print('Overall Treatment and Control Comparison(4 months)...')
+    conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,
+                                  kwun_tong_control_dataframe=kwun_tong_line_control_dataframe,
+                                  south_horizons_treatment_dataframe=south_horizons_lei_tung_treatment_dataframe,
+                                  south_horizons_control_dataframe=south_horizons_lei_tung_control_dataframe,
+                                  ocean_park_treatment_dataframe=ocean_park_wong_chuk_hang_treatment_dataframe,
+                                  ocean_park_control_dataframe=ocean_park_wong_chuk_hang_control_dataframe,
+                                  dataframe_saving_path=dataframe_saving_path,
+                                  filename='longitudinal_did_dataframe_4_months.csv', check_window_value=4)
+
+    print('Overall Treatment and Control Comparison(5 months)...')
+    conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,
+                                  kwun_tong_control_dataframe=kwun_tong_line_control_dataframe,
+                                  south_horizons_treatment_dataframe=south_horizons_lei_tung_treatment_dataframe,
+                                  south_horizons_control_dataframe=south_horizons_lei_tung_control_dataframe,
+                                  ocean_park_treatment_dataframe=ocean_park_wong_chuk_hang_treatment_dataframe,
+                                  ocean_park_control_dataframe=ocean_park_wong_chuk_hang_control_dataframe,
+                                  dataframe_saving_path=dataframe_saving_path,
+                                  filename='longitudinal_did_dataframe_5_months.csv', check_window_value=5)
+
+    print('Overall Treatment and Control Comparison(6 months)...')
+    conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,
+                                  kwun_tong_control_dataframe=kwun_tong_line_control_dataframe,
+                                  south_horizons_treatment_dataframe=south_horizons_lei_tung_treatment_dataframe,
+                                  south_horizons_control_dataframe=south_horizons_lei_tung_control_dataframe,
+                                  ocean_park_treatment_dataframe=ocean_park_wong_chuk_hang_treatment_dataframe,
+                                  ocean_park_control_dataframe=ocean_park_wong_chuk_hang_control_dataframe,
+                                  dataframe_saving_path=dataframe_saving_path,
+                                  filename='longitudinal_did_dataframe_6_months.csv', check_window_value=6)
+
+    print('Cope with the three areas seperately...')
     print('---------------------Kwun Tong Line---------------------------')
-    kwun_tong_line_result_dataframe = build_regress_datafrane_for_one_newly_built_station(
-        treatment_dataframe=kwun_tong_line_treatment_dataframe,
-        control_dataframe=kwun_tong_line_control_dataframe,
-        station_open_start_date=october_23_start,
-        station_open_end_date=october_23_end,
-        open_year_plus_month='2016_10')
-    reg_kwun_tong_line_sentiment = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', kwun_tong_line_result_dataframe).fit()
-    reg_kwun_tong_line_activity = smf.ols('Activity ~ T_i_t+Post+Post:T_i_t', kwun_tong_line_result_dataframe).fit()
-    print('----The sentiment did result-----')
-    print(reg_kwun_tong_line_sentiment.summary())
-    print('----The activity did result-----')
-    print(reg_kwun_tong_line_activity.summary())
+    print('For 3 months....')
+    conduct_did_analysis_one_area(treatment_considered_dataframe=kwun_tong_line_treatment_dataframe,
+                                  control_considered_dataframe=kwun_tong_line_control_dataframe,
+                                  opening_start_date=october_23_start, opening_end_date=october_23_end,
+                                  open_year_month='2016_10', window_size_value=3, file_path=dataframe_saving_path,
+                                  filename='kwun_tong_line_did_3_months.csv')
+
+    print('For 4 months....')
+    conduct_did_analysis_one_area(treatment_considered_dataframe=kwun_tong_line_treatment_dataframe,
+                                  control_considered_dataframe=kwun_tong_line_control_dataframe,
+                                  opening_start_date=october_23_start, opening_end_date=october_23_end,
+                                  open_year_month='2016_10', window_size_value=4, file_path=dataframe_saving_path,
+                                  filename='kwun_tong_line_did_4_months.csv')
+
+    print('For 5 months....')
+    conduct_did_analysis_one_area(treatment_considered_dataframe=kwun_tong_line_treatment_dataframe,
+                                  control_considered_dataframe=kwun_tong_line_control_dataframe,
+                                  opening_start_date=october_23_start, opening_end_date=october_23_end,
+                                  open_year_month='2016_10', window_size_value=5, file_path=dataframe_saving_path,
+                                  filename='kwun_tong_line_did_5_months.csv')
+
+    print('For 6 months....')
+    conduct_did_analysis_one_area(treatment_considered_dataframe=kwun_tong_line_treatment_dataframe,
+                                  control_considered_dataframe=kwun_tong_line_control_dataframe,
+                                  opening_start_date=october_23_start, opening_end_date=october_23_end,
+                                  open_year_month='2016_10', window_size_value=6, file_path=dataframe_saving_path,
+                                  filename='kwun_tong_line_did_6_months.csv')
+
+    print('For all combined did analysis....')
+    conduct_did_analysis_one_area(treatment_considered_dataframe=kwun_tong_line_treatment_dataframe,
+                                  control_considered_dataframe=kwun_tong_line_control_dataframe,
+                                  opening_start_date=october_23_start, opening_end_date=october_23_end,
+                                  open_year_month='2016_10', window_size_value=0, file_path=dataframe_saving_path,
+                                  filename='kwun_tong_line_did_all.csv')
     print('-------------------------------------------------------\n')
 
     print('---------------------South Horizons & Lei Tung---------------------------')
-    south_horizons_lei_tung_result_dataframe = build_regress_datafrane_for_one_newly_built_station(
-        treatment_dataframe=south_horizons_lei_tung_treatment_dataframe,
-        control_dataframe=south_horizons_lei_tung_control_dataframe,
-        station_open_start_date=december_28_start,
-        station_open_end_date=december_28_end,
-        open_year_plus_month='2016_12')
-    reg_south_horizons_lei_tung_sentiment = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t',
-                                          south_horizons_lei_tung_result_dataframe).fit()
-    reg_south_horizons_lei_tung_activity = smf.ols('Activity ~ T_i_t+Post+Post:T_i_t',
-                                          south_horizons_lei_tung_result_dataframe).fit()
-    print('----The sentiment did result-----')
-    print(reg_south_horizons_lei_tung_sentiment.summary())
-    print('----The activity did result-----')
-    print(reg_south_horizons_lei_tung_activity.summary())
+    print('For 3 months....')
+    conduct_did_analysis_one_area(treatment_considered_dataframe=south_horizons_lei_tung_treatment_dataframe,
+                                  control_considered_dataframe=south_horizons_lei_tung_control_dataframe,
+                                  opening_start_date=december_28_start, opening_end_date=december_28_end,
+                                  open_year_month='2016_12', window_size_value=3, file_path=dataframe_saving_path,
+                                  filename='south_horizons_did_3_months.csv')
+    print('For 4 months....')
+    conduct_did_analysis_one_area(treatment_considered_dataframe=south_horizons_lei_tung_treatment_dataframe,
+                                  control_considered_dataframe=south_horizons_lei_tung_control_dataframe,
+                                  opening_start_date=december_28_start, opening_end_date=december_28_end,
+                                  open_year_month='2016_12', window_size_value=4, file_path=dataframe_saving_path,
+                                  filename='south_horizons_did_4_months.csv')
+    print('For 5 months....')
+    conduct_did_analysis_one_area(treatment_considered_dataframe=south_horizons_lei_tung_treatment_dataframe,
+                                  control_considered_dataframe=south_horizons_lei_tung_control_dataframe,
+                                  opening_start_date=december_28_start, opening_end_date=december_28_end,
+                                  open_year_month='2016_12', window_size_value=5, file_path=dataframe_saving_path,
+                                  filename='south_horizons_did_5_months.csv')
+    print('For 6 months....')
+    conduct_did_analysis_one_area(treatment_considered_dataframe=south_horizons_lei_tung_treatment_dataframe,
+                                  control_considered_dataframe=south_horizons_lei_tung_control_dataframe,
+                                  opening_start_date=december_28_start, opening_end_date=december_28_end,
+                                  open_year_month='2016_12', window_size_value=6, file_path=dataframe_saving_path,
+                                  filename='south_horizons_did_6_months.csv')
+    print('For all combined did analysis....')
+    conduct_did_analysis_one_area(treatment_considered_dataframe=south_horizons_lei_tung_treatment_dataframe,
+                                  control_considered_dataframe=south_horizons_lei_tung_control_dataframe,
+                                  opening_start_date=december_28_start, opening_end_date=december_28_end,
+                                  open_year_month='2016_12', window_size_value=0, file_path=dataframe_saving_path,
+                                  filename='south_horizons_did_all.csv')
     print('-------------------------------------------------------\n')
 
     print('---------------------Ocean Park & Wong Chuk Hang---------------------------')
-    ocean_park_wong_chuk_hang_result_dataframe = build_regress_datafrane_for_one_newly_built_station(
-        treatment_dataframe=ocean_park_wong_chuk_hang_treatment_dataframe,
-        control_dataframe=ocean_park_wong_chuk_hang_control_dataframe,
-        station_open_start_date=december_28_start,
-        station_open_end_date=december_28_end,
-        open_year_plus_month='2016_12')
-    reg_ocean_park_wong_chuk_hang_sentiment = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t',
-                                          ocean_park_wong_chuk_hang_result_dataframe).fit()
-    reg_ocean_park_wong_chuk_hang_activity = smf.ols('Activity ~ T_i_t+Post+Post:T_i_t',
-                                                      ocean_park_wong_chuk_hang_result_dataframe).fit()
-    print('----The sentiment did result-----')
-    print(reg_ocean_park_wong_chuk_hang_sentiment.summary())
-    print('----The activity did result-----')
-    print(reg_ocean_park_wong_chuk_hang_activity.summary())
-    print('-------------------------------------------------------\n')
-
-    print('For the Kwun Tong Line, if we look at each TPU in the treatment group....')
-    print('For TPU 213: ')
-    tpu_213_result_dataframe = build_regress_datafrane_for_one_newly_built_station(
-        treatment_dataframe=tpu_213_treatment_dataframe,
-        control_dataframe=kwun_tong_line_control_dataframe,
-        station_open_start_date=october_23_start,
-        station_open_end_date=october_23_end,
-        open_year_plus_month='2016_10')
-    reg_213_sentiment = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', tpu_213_result_dataframe).fit()
-    reg_213_activity = smf.ols('Activity ~ T_i_t+Post+Post:T_i_t', tpu_213_result_dataframe).fit()
-    print('----The sentiment did result-----')
-    print(reg_213_sentiment.summary())
-    print('----The activity did result-----')
-    print(reg_213_activity.summary())
-    print('-------------------------------------------------------\n')
-
-    print('For TPU 236: ')
-    tpu_236_result_dataframe = build_regress_datafrane_for_one_newly_built_station(
-        treatment_dataframe=tpu_236_treatment_dataframe,
-        control_dataframe=kwun_tong_line_control_dataframe,
-        station_open_start_date=october_23_start,
-        station_open_end_date=october_23_end,
-        open_year_plus_month='2016_10')
-    reg_236_sentiment = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', tpu_236_result_dataframe).fit()
-    reg_236_activity = smf.ols('Activity ~ T_i_t+Post+Post:T_i_t', tpu_236_result_dataframe).fit()
-    print('----The sentiment did result-----')
-    print(reg_236_sentiment.summary())
-    print('----The activity did result-----')
-    print(reg_236_activity.summary())
-    print('-------------------------------------------------------\n')
-
-    print('For TPU 243: ')
-    tpu_243_result_dataframe = build_regress_datafrane_for_one_newly_built_station(
-        treatment_dataframe=tpu_243_treatment_dataframe,
-        control_dataframe=kwun_tong_line_control_dataframe,
-        station_open_start_date=october_23_start,
-        station_open_end_date=october_23_end,
-        open_year_plus_month='2016_10')
-    reg_243_sentiment = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', tpu_243_result_dataframe).fit()
-    reg_243_activity = smf.ols('Activity ~ T_i_t+Post+Post:T_i_t', tpu_243_result_dataframe).fit()
-    print('----The sentiment did result-----')
-    print(reg_243_sentiment.summary())
-    print('----The activity did result-----')
-    print(reg_243_activity.summary())
-    print('-------------------------------------------------------\n')
-
-    print('For TPU 245: ')
-    tpu_245_result_dataframe = build_regress_datafrane_for_one_newly_built_station(
-        treatment_dataframe=tpu_245_treatment_dataframe,
-        control_dataframe=kwun_tong_line_control_dataframe,
-        station_open_start_date=october_23_start,
-        station_open_end_date=october_23_end,
-        open_year_plus_month='2016_10')
-    reg_245_sentiment = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', tpu_245_result_dataframe).fit()
-    reg_245_activity = smf.ols('Activity ~ T_i_t+Post+Post:T_i_t', tpu_245_result_dataframe).fit()
-    print('----The sentiment did result-----')
-    print(reg_245_sentiment.summary())
-    print('----The activity did result-----')
-    print(reg_245_activity.summary())
+    print('For 3 months....')
+    conduct_did_analysis_one_area(treatment_considered_dataframe=ocean_park_wong_chuk_hang_treatment_dataframe,
+                                  control_considered_dataframe=ocean_park_wong_chuk_hang_control_dataframe,
+                                  opening_start_date=december_28_start, opening_end_date=december_28_end,
+                                  open_year_month='2016_12', window_size_value=3, file_path=dataframe_saving_path,
+                                  filename='ocean_park_did_3_months.csv')
+    print('For 4 months....')
+    conduct_did_analysis_one_area(treatment_considered_dataframe=ocean_park_wong_chuk_hang_treatment_dataframe,
+                                  control_considered_dataframe=ocean_park_wong_chuk_hang_control_dataframe,
+                                  opening_start_date=december_28_start, opening_end_date=december_28_end,
+                                  open_year_month='2016_12', window_size_value=4, file_path=dataframe_saving_path,
+                                  filename='ocean_park_did_4_months.csv')
+    print('For 5 months....')
+    conduct_did_analysis_one_area(treatment_considered_dataframe=ocean_park_wong_chuk_hang_treatment_dataframe,
+                                  control_considered_dataframe=ocean_park_wong_chuk_hang_control_dataframe,
+                                  opening_start_date=december_28_start, opening_end_date=december_28_end,
+                                  open_year_month='2016_12', window_size_value=5, file_path=dataframe_saving_path,
+                                  filename='ocean_park_did_5_months.csv')
+    print('For 6 months....')
+    conduct_did_analysis_one_area(treatment_considered_dataframe=ocean_park_wong_chuk_hang_treatment_dataframe,
+                                  control_considered_dataframe=ocean_park_wong_chuk_hang_control_dataframe,
+                                  opening_start_date=december_28_start, opening_end_date=december_28_end,
+                                  open_year_month='2016_12', window_size_value=6, file_path=dataframe_saving_path,
+                                  filename='ocean_park_did_6_months.csv')
+    print('For all combined did analysis....')
+    conduct_did_analysis_one_area(treatment_considered_dataframe=ocean_park_wong_chuk_hang_treatment_dataframe,
+                                  control_considered_dataframe=ocean_park_wong_chuk_hang_control_dataframe,
+                                  opening_start_date=december_28_start, opening_end_date=december_28_end,
+                                  open_year_month='2016_12', window_size_value=0, file_path=dataframe_saving_path,
+                                  filename='ocean_park_did_all.csv')
     print('-------------------------------------------------------\n')

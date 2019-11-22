@@ -10,6 +10,7 @@ from dateutil.relativedelta import relativedelta
 
 import read_data
 import before_and_after_final_tpu
+import utils
 
 # statistics
 import statsmodels.api as sm
@@ -23,13 +24,10 @@ rc('mathtext', default='regular')
 # Hong Kong and Shanghai share the same time zone.
 # Hence, we transform the utc time in our dataset into Shanghai time
 time_zone_hk = pytz.timezone('Asia/Shanghai')
-studied_stations = before_and_after_final_tpu.TransitNeighborhood_Before_After.before_after_stations
 october_23_start = datetime(2016, 10, 23, 0, 0, 0, tzinfo=time_zone_hk)
 october_23_end = datetime(2016, 10, 23, 23, 59, 59, tzinfo=time_zone_hk)
 december_28_start = datetime(2016, 12, 28, 0, 0, 0, tzinfo=time_zone_hk)
 december_28_end = datetime(2016, 12, 28, 23, 59, 59, tzinfo=time_zone_hk)
-start_date = datetime(2016, 5, 7, tzinfo=time_zone_hk)
-end_date = datetime(2017, 12, 31, tzinfo=time_zone_hk)
 
 before_after_stations = ['Whampoa', 'Ho Man Tin', 'South Horizons', 'Wong Chuk Hang', 'Ocean Park',
                              'Lei Tung']
@@ -271,8 +269,8 @@ def conduct_combined_did_analysis(kwun_tong_treatment_dataframe, kwun_tong_contr
         ocean_park_control=ocean_park_control_dataframe, check_window_value=check_window_value)
     longitudinal_dataframe.to_csv(os.path.join(dataframe_saving_path, filename))
 
-    reg_combined_sentiment = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', longitudinal_dataframe).fit()
-    reg_combined_activity = smf.ols('Activity ~ T_i_t+Post+Post:T_i_t', longitudinal_dataframe).fit()
+    reg_combined_sentiment = smf.ols('Sentiment ~ T_i_t+Post+T_i_t:Post', longitudinal_dataframe).fit()
+    reg_combined_activity = smf.ols('Activity ~ T_i_t+Post+T_i_t:Post', longitudinal_dataframe).fit()
     print('----The sentiment did result-----')
     print(reg_combined_sentiment.summary())
     print('----The activity did result-----')
@@ -289,8 +287,8 @@ def conduct_did_analysis_one_area(treatment_considered_dataframe, control_consid
         station_open_end_date=opening_end_date, open_year_plus_month=open_year_month,
         check_window_value=window_size_value)
     constructed_dataframe.to_csv(os.path.join(file_path, filename), encoding='utf-8')
-    combined_sentiment = smf.ols('Sentiment ~ T_i_t+Post+Post:T_i_t', constructed_dataframe).fit()
-    combined_activity = smf.ols('Activity ~ T_i_t+Post+Post:T_i_t', constructed_dataframe).fit()
+    combined_sentiment = smf.ols('Sentiment ~ T_i_t+Post+T_i_t:Post', constructed_dataframe).fit()
+    combined_activity = smf.ols('Activity ~ T_i_t+Post+Post:T_i_t:Post', constructed_dataframe).fit()
     print('----The sentiment did result-----')
     print(combined_sentiment.summary())
     print('----The activity did result-----')
@@ -305,6 +303,9 @@ def build_dataframe_based_on_set(datapath, tpu_set):
         tpu_name_list.append(tpu)
         dataframe = pd.read_csv(os.path.join(datapath, tpu, tpu+'_data.csv'), encoding='utf-8', dtype='str',
                                 quoting=csv.QUOTE_NONNUMERIC)
+        tweet_num, user_num = utils.number_of_tweet_user(dataframe, print_values=False)
+        # print('For TPU {}, the general info of tweet data is: tweet num: {}; unique tweet user: {}'.format(
+        #     tpu, tweet_num, user_num))
         dataframe_list.append(dataframe)
     combined_dataframe = pd.concat(dataframe_list, axis=0)
     return combined_dataframe
@@ -313,10 +314,6 @@ def build_dataframe_based_on_set(datapath, tpu_set):
 if __name__ == '__main__':
 
     path = os.path.join(read_data.tweet_combined_path, 'longitudinal_tpus')
-    kwun_tong_line_treatment_dict = {}
-    kwun_tong_line_control_dict = {}
-    south_island_line_treatment_dict = {}
-    south_island_line_control_dict = {}
 
     kwun_tong_line_treatment_tpu_set = {'243', '245', '236', '213'}
     kwun_tong_line_control_tpu_set = {'247', '234', '242', '212', '235'}
@@ -324,20 +321,39 @@ if __name__ == '__main__':
     south_horizons_lei_tung_control_tpu_set = {'172', '182'}
     ocean_park_wong_chuk_hang_treatment_tpu_set = {'175'}
     ocean_park_wong_chuk_hang_control_tpu_set = {'184', '183', '182'}
+    south_island_treatment_tpu_set = {'174', '175'}
+    south_island_control_tpu_set = {'172', '182', '183', '184'}
     # tpu_213_set, tpu_236_set, tpu_243_set, tpu_245_set = {'213'}, {'236'}, {'243'}, {'245'}
 
+    print('Treatment & Control Data Overview...')
     kwun_tong_line_treatment_dataframe = build_dataframe_based_on_set(datapath=path,
                                                                       tpu_set=kwun_tong_line_treatment_tpu_set)
+    print('For Kwun Tong Line treatment...')
+    utils.number_of_tweet_user(kwun_tong_line_treatment_dataframe)
     kwun_tong_line_control_dataframe = build_dataframe_based_on_set(datapath=path,
                                                                     tpu_set=kwun_tong_line_control_tpu_set)
+    print('For Kwun Tong Line control...')
+    utils.number_of_tweet_user(kwun_tong_line_control_dataframe)
     south_horizons_lei_tung_treatment_dataframe = build_dataframe_based_on_set(datapath=path,
                                                                                tpu_set=south_horizons_lei_tung_treatment_tpu_set)
+
     south_horizons_lei_tung_control_dataframe = build_dataframe_based_on_set(datapath=path,
                                                                              tpu_set=south_horizons_lei_tung_control_tpu_set)
+
     ocean_park_wong_chuk_hang_treatment_dataframe = build_dataframe_based_on_set(datapath=path,
                                                                                  tpu_set=ocean_park_wong_chuk_hang_treatment_tpu_set)
+
     ocean_park_wong_chuk_hang_control_dataframe = build_dataframe_based_on_set(datapath=path,
                                                                                tpu_set=ocean_park_wong_chuk_hang_control_tpu_set)
+
+    south_island_treatment_dataframe = build_dataframe_based_on_set(datapath=path,
+                                                                    tpu_set=south_island_treatment_tpu_set)
+    print('For South Island treatment area...')
+    utils.number_of_tweet_user(south_island_treatment_dataframe)
+    south_island_control_dataframe = build_dataframe_based_on_set(datapath=path,
+                                                                    tpu_set=south_island_control_tpu_set)
+    print('For South Island control area...')
+    utils.number_of_tweet_user(south_island_control_dataframe)
 
     # tpu_213_treatment_dataframe = build_dataframe_based_on_set(datapath=path, tpu_set=tpu_213_set)
     # tpu_236_treatment_dataframe = build_dataframe_based_on_set(datapath=path, tpu_set=tpu_236_set)

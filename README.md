@@ -4,13 +4,10 @@
 
 In this repository, I will show how to analyze the geo-coded social media data posted in Hong Kong. The general procedure is the following:
 
-1. Tweet filtering. For more information, please check the following two Jupyter notebooks:
+1. Tweet filtering. For more information, please check the following  Jupyter notebooks:
 
-   - [Tweet filtering without visitors](https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/tweet_filtering_process_without_visitors.ipynb)
-   - [Tweet filtering process for tweets posted by visitors](https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/tweet_filtering_process_visitors.ipynb)
-
-   The final dataset we use is the combined datafile derived from the above two Jupyter notebooks
-
+   - [tweet_filtering_process]( https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/tweet_filtering_final_github.ipynb )
+   
 2. Tweet text preprocessing
 
    -  Please check the [clean the text sample notebook]( https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/clean_the_text_sample.ipynb )
@@ -19,7 +16,7 @@ In this repository, I will show how to analyze the geo-coded social media data p
 
 4. Manually label 5000 tweets randomly sampled from our tweet dataset
 
-5. Sentiment analysis classifiers cross validation and sentiment prediction
+5. Build Sentiment analysis classifiers and conduct cross validation
 
 6. Cross sectional analysis and longitudinal analysis
 

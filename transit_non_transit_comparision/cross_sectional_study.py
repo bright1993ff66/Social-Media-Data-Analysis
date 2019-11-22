@@ -32,7 +32,7 @@ time_list = ['2016_7', '2016_8', '2016_9', '2016_10', '2016_11', '2016_12', '201
 # Hence, we transform the utc time in our dataset into Shanghai time
 time_zone_hk = pytz.timezone('Asia/Shanghai')
 # Data path which stores the tweet data for each TPU
-data_path = os.path.join(read_data.transit_non_transit_comparison_cross_sectional, 'tpu_data_more')
+data_path = os.path.join(read_data.tweet_combined_path, 'cross_sectional_tpus')
 # Load a csv file which saves the names of TPUs
 tpu_dataframe = pd.read_csv(os.path.join(read_data.transit_non_transit_comparison_cross_sectional,
                                          'cross_sectional_independent_variables',
@@ -125,7 +125,7 @@ class TransitNeighborhood_TPU(object):
         ax.set_xticklabels(time_list, rotation='vertical')
         ax.set_title(plot_title_name)
         plt.show()
-        fig.savefig(os.path.join(read_data.transit_non_transit_comparison_cross_sectional, saving_file_name))
+        fig.savefig(os.path.join(read_data.tweet_combined_path, 'cross_sectional_plots', saving_file_name))
 
     @staticmethod
     def select_tpu_for_following_analysis(check_all_stations=False):
@@ -218,8 +218,8 @@ class TransitNeighborhood_TPU(object):
         for name in tpu_name_list:
             sentiment_list.append(sent_dict[name])
             acitivity_list.append(activity_dict[name])
-        activity_log10_list = [np.log10(count) if count !=0 else 0 for count in acitivity_list]
-        activity_log2_list = [np.log2(count) if count !=0 else 0 for count in acitivity_list]
+        activity_log10_list = [np.log10(count) if count != 0 else 0 for count in acitivity_list]
+        activity_log2_list = [np.log2(count) if count != 0 else 0 for count in acitivity_list]
         result_dataframe = pd.DataFrame({'tpu_name': tpu_name_list, 'Sentiment': sentiment_list,
                                          'activity':acitivity_list, 'Activity_log10': activity_log10_list,
                                          'Activity_log2':activity_log2_list})
@@ -237,6 +237,15 @@ class TransitNeighborhood_TPU(object):
         else:
             result = 'not considered'
         return result
+
+    @staticmethod
+    def check_not_considered(dataframe):
+        for index, row in dataframe.iterrows():
+            if row['activity'] >= 200:
+                dataframe.loc[index, 'tn_or_not_considered'] = row['tn_or_not']
+            else:
+                dataframe.loc[index, 'tn_or_not_considered'] = 'not_considered'
+        return dataframe
 
     @staticmethod
     def plot_overall_sentiment_for_whole_tweets(df, y_label_name:str, figure_title: str=None,
@@ -364,8 +373,8 @@ class TransitNeighborhood_TPU(object):
 def positive_percent(df):
     positive = 0
     for sentiment in list(df['sentiment']):
-        if int(float(sentiment))==2:
-            positive+=1
+        if int(float(sentiment)) == 2:
+            positive += 1
         else:
             pass
     try:
@@ -379,8 +388,8 @@ def positive_percent(df):
 def negative_percent(df):
     negative = 0
     for sentiment in list(df['sentiment']):
-        if int(float(sentiment))==0:
-            negative+=1
+        if int(float(sentiment)) == 0:
+            negative += 1
         else:
             pass
     try:
@@ -495,7 +504,7 @@ def draw_boxplot(dataframe, column_name, title_name):
     x_tick_list = ['Non-TN TPUs', 'TN TPUs']
     ax.set_xticklabels(x_tick_list, fontsize=7)
     ax.set_title(title_name)
-    plot_saving_path = os.path.join(read_data.transit_non_transit_comparison_cross_sectional, 'plots')
+    plot_saving_path = os.path.join(read_data.tweet_combined_path, 'cross_sectional_plots')
     fig.savefig(os.path.join(plot_saving_path, column_name+'.png'))
     plt.show()
 
@@ -509,12 +518,10 @@ def build_data_for_cross_sectional_study(tweet_data_path, saving_path, only_2017
     """
     all_tweet_data = pd.read_csv(os.path.join(tweet_data_path, 'tweet_combined_sentiment_without_bots.csv'),
                                  encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC)
-    if only_2017_2018:
-        # Only consider tweets posted in 2017
+    if only_2017_2018: # Only consider the tweets posted in 2017 and 2018
         assert 2017.0 in list(all_tweet_data['year'])
         assert 2018.0 in list(all_tweet_data['year'])
         tweet_2017_2018 = all_tweet_data.loc[all_tweet_data['year'].isin([2017.0, 2018.0])]
-        # Change the name of the column
         tpu_set = set(tpu_dataframe['TPU Names'])
         for tpu in tpu_set:
             try:
@@ -548,7 +555,7 @@ def draw_correlation_plot(dataframe):
                 cmap=plt.get_cmap('coolwarm'), cbar=False, ax=ax)
     ax.set_yticklabels(ax.get_yticklabels(), rotation="horizontal")
     fig.savefig(os.path.join(
-        read_data.transit_non_transit_comparison_cross_sectional, 'independent_correlation.png'))
+        read_data.tweet_combined_path, 'cross_sectional_plots', 'independent_correlation.png'))
     plt.show()
 
 
@@ -597,8 +604,6 @@ def regres_analysis(sent_act_dataframe, social_demographic_merged_filenanme):
     print('Building the regressiong model between sentiment/activity and social demographic variables...')
     combined_dataframe = sent_act_dataframe.merge(tpu_2016_social_demographic_dataframe, on='tpu_name')
     print('The shape of the combined dataframe is : {}'.format(combined_dataframe.shape))
-    combined_dataframe.to_csv(os.path.join(read_data.desktop, social_demographic_merged_filenanme), encoding='utf-8',
-                              quoting=csv.QUOTE_NONNUMERIC)
     print('----------------------------------------------------------')
     tn_or_not_dict = {'non_tn_tpu': 0, 'tn_tpu': 1}
     combined_dataframe = combined_dataframe.replace({'tn_or_not': tn_or_not_dict})
@@ -632,8 +637,6 @@ def regres_analysis(sent_act_dataframe, social_demographic_merged_filenanme):
     normalized_combined_dataframe = (combined_dataframe - combined_dataframe.mean()) / combined_dataframe.std()
     normalized_combined_dataframe['tn_or_not'] = tn_or_not_list
     normalized_combined_dataframe['tpu_name'] = tpu_name_list_from_combined_data
-    print(normalized_combined_dataframe.head(5))
-    print(normalized_combined_dataframe.columns)
     # Check the correlation matrix of independent variables and compute VIF value for each independent variable
     combined_dataframe['tn_or_not'] = tn_or_not_list
     dataframe_for_correlation_matrix = combined_dataframe[['median_income', 'employment', 'marry', 'education',
@@ -656,8 +659,6 @@ if __name__ == '__main__':
     october_23_end = datetime(2016, 10, 23, 23, 59, 59, tzinfo=time_zone_hk)
     december_28_start = datetime(2016, 12, 28, 0, 0, 0, tzinfo=time_zone_hk)
     december_28_end = datetime(2016, 12, 28, 23, 59, 59, tzinfo=time_zone_hk)
-    start_date = datetime(2016, 5, 7, tzinfo=time_zone_hk)
-    end_date = datetime(2017, 12, 31, tzinfo=time_zone_hk)
 
     # Build the dataframe for the social demographic variables for each TPU
     demographic_path = os.path.join(read_data.transit_non_transit_comparison_cross_sectional,
@@ -677,16 +678,16 @@ if __name__ == '__main__':
     print('The combined social demographic data(median income, marry, employment, education) is......')
     print(tpu_2016_social_demographic_dataframe)
 
-    # Create TPU-shape area dictionary
-    tpu_area_dict = pd.Series(avg_population_dataframe.ShapeArea.values,index=avg_population_dataframe.TPU).to_dict()
+    # Create TPU-shape area dictionary. The area is saved in square meter
+    tpu_area_dict = pd.Series(avg_population_dataframe.ShapeArea.values, index=avg_population_dataframe.TPU).to_dict()
     print(tpu_area_dict)
     print('--------------------------------------------------')
 
     print('-----------------------Deal with the tweet 2017 & tweet 2018 together--------------------------')
     # Find the tweets in each TPU and save them to a local directory
     build_data_for_cross_sectional_study(tweet_data_path=read_data.tweet_combined_path,
-                                         saving_path=os.path.join(
-                                             read_data.transit_non_transit_comparison_cross_sectional, 'tpu_data_more'))
+                                         saving_path=os.path.join(read_data.tweet_combined_path,
+                                                                  'cross_sectional_tpus'))
     # We have built folder for each TPU to store tweets
     # Based on the created folders, select tpus which have at least 100 tweets in 2017
     activity_dict = TransitNeighborhood_TPU.select_tpu_for_following_analysis(check_all_stations=False)
@@ -695,29 +696,19 @@ if __name__ == '__main__':
     print(len(activity_dict.keys()))
     print('Total number of tweets we consider...')
     print(sum(activity_dict.values()))
-    # print(activity_dict)
     sentiment_dict = {}
     for tpu in activity_dict.keys():
-        dataframe = pd.read_csv(os.path.join(read_data.transit_non_transit_comparison_cross_sectional, 'tpu_data_more',
-                                             tpu, tpu+'_data.csv'), encoding='utf-8', dtype='str',
+        dataframe = pd.read_csv(os.path.join(data_path, tpu, tpu+'_data.csv'), encoding='utf-8', dtype='str',
                                 quoting=csv.QUOTE_NONNUMERIC)
         # dataframe['sentiment'] = dataframe['sentiment'].astype(np.int)
         sentiment_dict[tpu] = pos_percent_minus_neg_percent(dataframe)
 
     sentiment_dict_whole = {}
     for tpu in activity_dict_whole.keys():
-        dataframe = pd.read_csv(os.path.join(read_data.transit_non_transit_comparison_cross_sectional, 'tpu_data_more',
-                                             tpu, tpu + '_data.csv'), encoding='utf-8', dtype='str',
+        dataframe = pd.read_csv(os.path.join(data_path, tpu, tpu + '_data.csv'), encoding='utf-8', dtype='str',
                                 quoting=csv.QUOTE_NONNUMERIC)
         # dataframe['sentiment'] = dataframe['sentiment'].astype(np.int)
         sentiment_dict_whole[tpu] = pos_percent_minus_neg_percent(dataframe)
-
-    sentiment_activity_combined_dict = {}
-    for tpu_name in sentiment_dict.keys():
-        sentiment_activity_combined_dict[tpu_name] = (sentiment_dict[tpu_name], activity_dict[tpu_name])
-    print('\nThe TPUs we consider and their sentiment and activity are...')
-    print(sentiment_activity_combined_dict)
-    print('-----------------------------------------------\n')
 
     # the tn_tpus
     whole_tpu_sent_act_dataframe = TransitNeighborhood_TPU.construct_sent_act_dataframe(sent_dict=sentiment_dict,
@@ -726,7 +717,15 @@ if __name__ == '__main__':
         sent_dict=sentiment_dict_whole, activity_dict=activity_dict_whole)
 
     whole_tpu_sent_act_dataframe.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act.csv'))
-    whole_tpu_sent_act_dataframe_all_considered.to_csv(os.path.join(read_data.desktop,
+    # Check which tpu should not be considered
+    whole_tpu_sent_act_dataframe_tn_or_not_considered = \
+        TransitNeighborhood_TPU.check_not_considered(whole_tpu_sent_act_dataframe_all_considered)
+    # Create the tpu name to match the shapefile
+    whole_tpu_sent_act_dataframe_tn_or_not_considered['tpu_old_name'] = \
+        whole_tpu_sent_act_dataframe_tn_or_not_considered.apply(
+            lambda row: utils.tpu_name_match_reverse[row['tpu_name']]
+            if row['tpu_name'] in  utils.tpu_name_match_reverse else row['tpu_name'], axis=1)
+    whole_tpu_sent_act_dataframe_tn_or_not_considered.to_csv(os.path.join(read_data.desktop,
                                                                     'tpu_sent_act_all_considered.csv'))
     y_label = 'Percentage of Positive Tweets Minus Percentage of Negative Tweets'
     # Draw the tpu sentiment against activity
@@ -752,8 +751,7 @@ if __name__ == '__main__':
         index_value = activity_list_yearly.index(activity_dict)
         for tpu in list(activity_dict.keys()):
             dataframe = pd.read_csv(
-                os.path.join(read_data.transit_non_transit_comparison_cross_sectional, 'tpu_data_more',
-                             tpu, tpu + '_data.csv'), encoding='utf-8', dtype='str',
+                os.path.join(data_path, tpu, tpu + '_data.csv'), encoding='utf-8', dtype='str',
                 quoting=csv.QUOTE_NONNUMERIC)
             if index_value == 0:
                 year_dataframe = dataframe.loc[dataframe['year'].isin(['2017.0'])]
@@ -826,9 +824,8 @@ if __name__ == '__main__':
     for index_value, activity_dict, sentiment_dict in zip(index_value_list, activity_dict_list, sentiment_dict_list):
         print('Coping with the {} sent activity pair'.format(index_value))
         for tpu in list(activity_dict.keys()):
-            dataframe = pd.read_csv(
-                os.path.join(read_data.transit_non_transit_comparison_cross_sectional, 'tpu_data_more',
-                             tpu, tpu + '_data.csv'), encoding='utf-8', dtype='str', quoting=csv.QUOTE_NONNUMERIC)
+            dataframe = pd.read_csv(os.path.join(data_path, tpu, tpu + '_data.csv'), encoding='utf-8', dtype='str',
+                                    quoting=csv.QUOTE_NONNUMERIC)
             if index_value == 0:
                 month_plus_year_list = ['2017_1', '2017_2', '2017_3']
             elif index_value == 1:

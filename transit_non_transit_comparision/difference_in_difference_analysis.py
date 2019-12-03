@@ -99,7 +99,12 @@ def add_post_variable(string, opening_start_date, opening_end_date, check_window
     else:
         left_time_range = opening_start_date - relativedelta(months=check_window)
         right_time_range = opening_start_date + relativedelta(months=check_window)
-        if left_time_range < time_object < opening_start_date:
+        # Here, for the dec 28 2016 case, if we set window_size = 5, the starting date would be May 28 2016.
+        # We should delete the May 2016 in the DID analysis in this case. Apply to all the did analysis
+        final_left_year = left_time_range.year
+        final_left_month = (left_time_range + relativedelta(months=1)).month
+        final_left_range = datetime(final_left_year, final_left_month, 1, 0, 0, 0, tzinfo=time_zone_hk)
+        if final_left_range < time_object < opening_start_date:
             return 0
         elif opening_end_date < time_object < right_time_range:
             return 1
@@ -346,14 +351,14 @@ if __name__ == '__main__':
     ocean_park_wong_chuk_hang_control_dataframe = build_dataframe_based_on_set(datapath=path,
                                                                                tpu_set=ocean_park_wong_chuk_hang_control_tpu_set)
 
-    south_island_treatment_dataframe = build_dataframe_based_on_set(datapath=path,
-                                                                    tpu_set=south_island_treatment_tpu_set)
-    print('For South Island treatment area...')
-    utils.number_of_tweet_user(south_island_treatment_dataframe)
-    south_island_control_dataframe = build_dataframe_based_on_set(datapath=path,
-                                                                    tpu_set=south_island_control_tpu_set)
-    print('For South Island control area...')
-    utils.number_of_tweet_user(south_island_control_dataframe)
+    # south_island_treatment_dataframe = build_dataframe_based_on_set(datapath=path,
+    #                                                                 tpu_set=south_island_treatment_tpu_set)
+    # print('For South Island treatment area...')
+    # utils.number_of_tweet_user(south_island_treatment_dataframe)
+    # south_island_control_dataframe = build_dataframe_based_on_set(datapath=path,
+    #                                                                 tpu_set=south_island_control_tpu_set)
+    # print('For South Island control area...')
+    # utils.number_of_tweet_user(south_island_control_dataframe)
 
     # tpu_213_treatment_dataframe = build_dataframe_based_on_set(datapath=path, tpu_set=tpu_213_set)
     # tpu_236_treatment_dataframe = build_dataframe_based_on_set(datapath=path, tpu_set=tpu_236_set)

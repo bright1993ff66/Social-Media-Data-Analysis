@@ -4,15 +4,16 @@ This folder will record some recent works about the analysis of social media dat
 
 Social media data contains various datatypes about a specific user, ranging from raw text, time to location. Merging multi-type data structures derived from social media data could be very useful when coping with some real-world problems such as identifying risky comments, traffic event detection, etc.
 
-The following sections are arranged as follows. In **Section 1**, a list of some research subfields would be given. Each subfield is attached with some relevant  papers. In **Section 2**, Some popular NLP tools and useful datasets would be shown. Finally in **Section 3**, some interesting but unanswered research problems are listed and possible solutions are also given.
+The following sections are arranged as follows. In **Section 1**, a list of some research subfields would be given. Each subfield is attached with some relevant  papers. In **Section 2**, Some popular tools and useful datasets would be listed. Finally in **Section 3**, some interesting but unanswered research problems are shown and possible solutions are also given.
 
 The contents of this repo would be updated on a regular basis :happy:
 
 ## 1. Recent Research Progress in Social Media Data Analysis
 
-Generally speaking, the research based on social media data could be classified into two groups:
+Social Media Data Analysis has been seen in various research fields. Some hot research topics are given below:
 
 - Social media text analysis
+- Social media user profiling, including link prediction, user modeling, etc.
 - Combine the text in social media with other resources such as time, location, author description, demographic information, etc.to solve some real-world problems
 
 Some interesting research topics are given below:
@@ -62,6 +63,19 @@ Automatically generate response based on some comments posted in social media pl
 
 - [Data-Driven Response Generation in Social Media](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/mt_chat.pdf)
 - ...
+
+### 1.5 Text Style Transfer
+
+Social Media text has a totally different text style comparing to formal text such as news and Wiki articles. The text style transfer could be used to forbid the offensive language in the social media:
+
+- [Style Transfer from Non-Parallel Text by Cross Alignment](https://papers.nips.cc/paper/7259-style-transfer-from-non-parallel-text-by-cross-alignment.pdf)
+
+- [Fighting Offensive Language on Social Media with Unsupervised Text Style Transfer](https://www.aclweb.org/anthology/P18-2031.pdf)
+- ...
+
+### 1.6 Social Media User Profiling
+
+This task wants to describe each user and the user interaction using mathematical representations. 
 
 ## 2. Some Datasets and Python Tools
 

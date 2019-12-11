@@ -75,7 +75,7 @@ Social Media text has a totally different text style comparing to formal text su
 
 ### 1.6 Social Media User Profiling
 
-This task wants to describe each user and the user interaction using mathematical representations. 
+This task wants to describe each user and the user interaction using mathematical representations(waiting to be updated...)
 
 ## 2. Some Datasets and Python Tools
 

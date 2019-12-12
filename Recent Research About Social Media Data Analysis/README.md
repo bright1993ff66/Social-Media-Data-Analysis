@@ -95,6 +95,7 @@ Of course, packages like [Pandas](<https://pandas.pydata.org/>) and [Tensorflow]
 Moreover, the following lists some datasets for social media data analysis:
 
 - [Datasets for Social Network Analysis](https://aminer.org/data-sna): A great collection of social media datasets. 
+- [Social Computting Datasets](http://socialcomputing.asu.edu/pages/datasets): This collection of dataset, maintained by Arizona State University, contains network data from multiple types of social network
 - [Higgs Twitter Dataset](https://snap.stanford.edu/data/higgs-twitter.html): This dataset has been built after monitoring the spreading processes on Twitter before, during and after **the announcement of the discovery of a new particle with the features of the elusive Higgs boson on 4th July 2012**.
 - [BlogCatalog](http://socialcomputing.asu.edu/datasets/BlogCatalog): This dataset is a social blog directory which manages the bloggers and their blogs. Meanwhile, the bloggers also provide their interested topics, which are regarded as labels
 - [Sentiment 140](<http://help.sentiment140.com/for-students>): 1.6 million tweets

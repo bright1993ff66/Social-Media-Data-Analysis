@@ -96,6 +96,7 @@ Moreover, the following lists some datasets for social media data analysis:
 
 - [Datasets for Social Network Analysis](https://aminer.org/data-sna): A great collection of social media datasets. 
 - [Higgs Twitter Dataset](https://snap.stanford.edu/data/higgs-twitter.html): This dataset has been built after monitoring the spreading processes on Twitter before, during and after **the announcement of the discovery of a new particle with the features of the elusive Higgs boson on 4th July 2012**.
+- [BlogCatalog](http://socialcomputing.asu.edu/datasets/BlogCatalog): This dataset is a social blog directory which manages the bloggers and their blogs. Meanwhile, the bloggers also provide their interested topics, which are regarded as labels
 - [Sentiment 140](<http://help.sentiment140.com/for-students>): 1.6 million tweets
 - [Tweets with traffic-related labels](<https://data.mendeley.com/datasets/c3xvj5snvv/1>): useful for traffic-related tweet analysis
 - [TwitterCrawl](https://wiki.illinois.edu/wiki/display/forward/Dataset-UDI-TwitterCrawl-Aug2012): This dataset is a subset of Twitter. It contains 284 million following relationships, 3 million user profiles and 50 million tweets. The dataset was collected at May 2011.

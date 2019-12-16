@@ -7,20 +7,16 @@ In this repository, I will show how to analyze the geo-coded social media data p
 1. Tweet filtering. For more information, please check the following  Jupyter notebooks:
 
    - [tweet_filtering_process]( https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/tweet_filtering_final_github.ipynb )
-   
 2. Tweet text preprocessing
 
-   -  Please check the [clean the text sample notebook]( https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/clean_the_text_sample.ipynb )
-
+   -  Please check the [clean the text sample notebook]( https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/clean_the_text_sample.ipynb) for how to get the raw Chinese tweet text
+   -  Please check the [tweet cleaning notebook](https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/tweet_cleaning_final_github.ipynb) to know how we clean, translate and preprocess the tweet for this work
 3. Generate tweet representation using [FastText](https://fasttext.cc/) word embedding based on [sentiment140](http://help.sentiment140.com/for-students)
-
-4. Manually label 5000 tweets randomly sampled from our tweet dataset
-
-5. Build Sentiment analysis classifiers and conduct cross validation
-
+4. Manually label the sentiment of 5000 tweets randomly sampled from our tweet dataset
+5. Build Sentiment analysis classifiers and conduct cross validation. To check how to train the word embedding model based on sentiment140, please check the [train_word_vectors_from_sentiment140](https://github.com/bright1993ff66/Social-Media-Data-Analysis/tree/master/train_word_vectors_from_sentiment140) folder. To generate the tweet representation for each tweet of our own dataset, please visit the [emoji2vec](https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/generate_tweet_representation/emoji2vec.ipynb) notebook or the code [get_tweet_representation.py](https://github.com/bright1993ff66/Social-Media-Data-Analysis/blob/master/generate_tweet_representation/get_tweet_representation.py)
 6. Cross sectional analysis and longitudinal analysis
-
-7. Result visualization(word cloud, topic modelling, etc)
+7. Difference-in-difference analysis
+8. Result visualization(word cloud, topic modelling, etc)
 
 ## 2. Prerequisite Python Packages
 

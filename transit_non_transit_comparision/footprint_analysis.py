@@ -8,7 +8,7 @@ import pytz
 
 import matplotlib.pyplot as plt
 
-import read_data
+import data_paths
 import utils
 
 time_zone_hk = pytz.timezone('Asia/Shanghai')
@@ -85,11 +85,11 @@ def get_daytime_footprints(dataframe, studied_area: str, before_or_not=True):
     time_mask = (dataframe['hour'] >= 9) & (dataframe['hour'] < 18)
     seleted_time_dataframe = dataframe.loc[time_mask]
     if before_or_not:
-        seleted_time_dataframe.to_csv(os.path.join(read_data.footprint_analysis,
+        seleted_time_dataframe.to_csv(os.path.join(data_paths.footprint_analysis,
                                                    '{}_before_day_footprint.csv'.format(studied_area)),
                                       encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC)
     else:
-        seleted_time_dataframe.to_csv(os.path.join(read_data.footprint_analysis,
+        seleted_time_dataframe.to_csv(os.path.join(data_paths.footprint_analysis,
                                                    '{}_after_day_footprint.csv'.format(studied_area)),
                                       encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC)
 
@@ -97,7 +97,7 @@ def get_daytime_footprints(dataframe, studied_area: str, before_or_not=True):
 if __name__ == '__main__':
 
     # Load all the geocoded tweets
-    tweet_2016_2017_2018 = utils.read_local_csv_file(path=read_data.tweet_combined_path,
+    tweet_2016_2017_2018 = utils.read_local_csv_file(path=data_paths.tweet_combined_path,
                                                      filename='tweets_with_chinese_vader.csv',
                                                      dtype_str=True)
     all_geocoded_data = tweet_2016_2017_2018.copy()
@@ -109,9 +109,9 @@ if __name__ == '__main__':
     print(all_geocoded_data.columns)
 
     # Get tweets before & after
-    before_oct, after_oct = get_tweets_before_after(all_geocoded_data, saving_path=read_data.footprint_analysis,
+    before_oct, after_oct = get_tweets_before_after(all_geocoded_data, saving_path=data_paths.footprint_analysis,
                                                     oct_open=True, studied_area='hong_kong_oct')
-    before_dec, after_dec = get_tweets_before_after(all_geocoded_data, saving_path=read_data.footprint_analysis,
+    before_dec, after_dec = get_tweets_before_after(all_geocoded_data, saving_path=data_paths.footprint_analysis,
                                                     oct_open=False, studied_area='hong_kong_dec')
 
     # Find the residents user id based on the treatment TPU list and tweets posted before the station operation

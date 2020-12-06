@@ -7,7 +7,7 @@ import numpy as np
 import os, re
 import string
 
-import read_data
+import data_paths
 import Topic_Modelling_for_tweets
 
 import gensim
@@ -20,7 +20,7 @@ from nltk.tokenize import word_tokenize
 import matplotlib.pyplot as plt
 from PIL import Image
 
-plot_path = read_data.plot_path_2017
+plot_path = data_paths.plot_path_2017
 
 unuseful_terms_set = Topic_Modelling_for_tweets.unuseful_terms_set
 
@@ -35,7 +35,7 @@ ascii_art = r"(?:[{punctuation}][{punctuation}]+)".format(punctuation=string.pun
 emoji = r"(?:[^\s])(?<![\w{ascii_printable}])".format(ascii_printable=string.printable)
 regexp = r"{normal_word}|{ascii_art}|{emoji}".format(normal_word=normal_word, ascii_art=ascii_art,
                                                      emoji=emoji)
-symbola_font_path = os.path.join(read_data.plot_path_2017, 'Symbola_Hinted.ttf')
+symbola_font_path = os.path.join(data_paths.plot_path_2017, 'Symbola_Hinted.ttf')
 
 circle_mask = np.array(Image.open(r"F:\CityU\Datasets\Hong Kong Tweets 2017\circle.png"))
 

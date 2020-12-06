@@ -8,7 +8,7 @@ import csv
 
 # load my own modules
 import before_and_after_final_tpu
-import read_data
+import data_paths
 import utils
 import wordcloud_generate
 
@@ -32,9 +32,9 @@ time_list = ['2016_7', '2016_8', '2016_9', '2016_10', '2016_11', '2016_12', '201
 # Hence, we transform the utc time in our dataset into Shanghai time
 time_zone_hk = pytz.timezone('Asia/Shanghai')
 # Data path which stores the tweet data for each TPU
-data_path = os.path.join(read_data.tweet_combined_path, 'cross_sectional_tpus')
+data_path = os.path.join(data_paths.tweet_combined_path, 'cross_sectional_tpus')
 # Load a csv file which saves the names of TPUs
-tpu_dataframe = pd.read_csv(os.path.join(read_data.transit_non_transit_comparison_cross_sectional,
+tpu_dataframe = pd.read_csv(os.path.join(data_paths.transit_non_transit_comparison_cross_sectional,
                                          'cross_sectional_independent_variables',
                                          'tpu_names.csv'), encoding='utf-8')
 
@@ -44,8 +44,8 @@ class TransitNeighborhood_TPU(object):
     # Get the TPU name list
     tpu_name_list = list(tpu_dataframe['TPU Names'])
     # Get the TN tpus and non-TN TPUs
-    tn_tpus = np.load(os.path.join(read_data.transit_non_transit_comparison, 'tn_tpus.npy'))
-    non_tn_tpus = np.load(os.path.join(read_data.transit_non_transit_comparison, 'non_tn_tpus.npy'))
+    tn_tpus = np.load(os.path.join(data_paths.transit_non_transit_comparison, 'tn_tpus.npy'))
+    non_tn_tpus = np.load(os.path.join(data_paths.transit_non_transit_comparison, 'non_tn_tpus.npy'))
 
     def __init__(self, tpu_dataframe, oct_open: bool, before_and_after: bool, compute_positive: bool,
                  compute_negative: bool):
@@ -125,7 +125,7 @@ class TransitNeighborhood_TPU(object):
         ax.set_xticklabels(time_list, rotation='vertical')
         ax.set_title(plot_title_name)
         plt.show()
-        fig.savefig(os.path.join(read_data.tweet_combined_path, 'cross_sectional_plots', saving_file_name))
+        fig.savefig(os.path.join(data_paths.tweet_combined_path, 'cross_sectional_plots', saving_file_name))
 
     @staticmethod
     def select_tpu_for_following_analysis(check_all_stations=False):
@@ -311,7 +311,7 @@ class TransitNeighborhood_TPU(object):
             adjust_text(other_stations_text, only_move={'points': 'y', 'text': 'y'},
                         arrowprops=dict(arrowstyle="->", color='k', lw=0.5))
             plt.legend()
-            fig.savefig(os.path.join(read_data.plot_path_2017, saved_file_name), dpi=fig.dpi, bbox_inches='tight')
+            fig.savefig(os.path.join(data_paths.plot_path_2017, saved_file_name), dpi=fig.dpi, bbox_inches='tight')
             # plt.show()
         elif 'tn_or_not' in df.columns:
             tn_tpu_dataframe = df.loc[df['tn_or_not'] == 'tn_tpu']
@@ -344,7 +344,7 @@ class TransitNeighborhood_TPU(object):
                         arrowprops=dict(arrowstyle="->", color='g', lw=0.5))
 
             plt.legend()
-            plot_saving_path = os.path.join(read_data.tweet_combined_path, 'cross_sectional_plots')
+            plot_saving_path = os.path.join(data_paths.tweet_combined_path, 'cross_sectional_plots')
             fig.savefig(os.path.join(plot_saving_path, saved_file_name), dpi=fig.dpi, bbox_inches='tight')
             # plt.show()
         else:
@@ -365,7 +365,7 @@ class TransitNeighborhood_TPU(object):
 
             adjust_text(texts, only_move={'points': 'y', 'text': 'y'},
                         arrowprops=dict(arrowstyle="->", color='r', lw=0.5))
-            fig.savefig(os.path.join(read_data.plot_path_2017, saved_file_name), dpi=fig.dpi, bbox_inches='tight')
+            fig.savefig(os.path.join(data_paths.plot_path_2017, saved_file_name), dpi=fig.dpi, bbox_inches='tight')
             # plt.show()
 
 
@@ -504,7 +504,7 @@ def draw_boxplot(dataframe, column_name, title_name):
     x_tick_list = ['Non-TN TPUs', 'TN TPUs']
     ax.set_xticklabels(x_tick_list, fontsize=7)
     ax.set_title(title_name)
-    plot_saving_path = os.path.join(read_data.tweet_combined_path, 'cross_sectional_plots')
+    plot_saving_path = os.path.join(data_paths.tweet_combined_path, 'cross_sectional_plots')
     fig.savefig(os.path.join(plot_saving_path, column_name+'.png'))
     plt.show()
 
@@ -555,7 +555,7 @@ def draw_correlation_plot(dataframe):
                 cmap=plt.get_cmap('coolwarm'), cbar=False, ax=ax)
     ax.set_yticklabels(ax.get_yticklabels(), rotation="horizontal")
     fig.savefig(os.path.join(
-        read_data.tweet_combined_path, 'cross_sectional_plots', 'independent_correlation.png'))
+        data_paths.tweet_combined_path, 'cross_sectional_plots', 'independent_correlation.png'))
     plt.show()
 
 
@@ -661,7 +661,7 @@ if __name__ == '__main__':
     december_28_end = datetime(2016, 12, 28, 23, 59, 59, tzinfo=time_zone_hk)
 
     # Build the dataframe for the social demographic variables for each TPU
-    demographic_path = os.path.join(read_data.transit_non_transit_comparison_cross_sectional,
+    demographic_path = os.path.join(data_paths.transit_non_transit_comparison_cross_sectional,
                                     'cross_sectional_independent_variables')
     income_employment_rate = pd.read_csv(os.path.join(demographic_path, 'Median Income and Employment Rate.csv'))
     marry_status_dataframe = pd.read_csv(os.path.join(demographic_path, 'Marital Status.csv'))
@@ -685,8 +685,8 @@ if __name__ == '__main__':
 
     print('-----------------------Deal with the tweet 2017 & tweet 2018 together--------------------------')
     # Find the tweets in each TPU and save them to a local directory
-    build_data_for_cross_sectional_study(tweet_data_path=read_data.tweet_combined_path,
-                                         saving_path=os.path.join(read_data.tweet_combined_path,
+    build_data_for_cross_sectional_study(tweet_data_path=data_paths.tweet_combined_path,
+                                         saving_path=os.path.join(data_paths.tweet_combined_path,
                                                                   'cross_sectional_tpus'))
     # We have built folder for each TPU to store tweets
     # Based on the created folders, select tpus which have at least 100 tweets in 2017
@@ -716,7 +716,7 @@ if __name__ == '__main__':
     whole_tpu_sent_act_dataframe_all_considered = TransitNeighborhood_TPU.construct_sent_act_dataframe(
         sent_dict=sentiment_dict_whole, activity_dict=activity_dict_whole)
 
-    whole_tpu_sent_act_dataframe.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act.csv'))
+    whole_tpu_sent_act_dataframe.to_csv(os.path.join(data_paths.desktop, 'tpu_sent_act.csv'))
     # Check which tpu should not be considered
     whole_tpu_sent_act_dataframe_tn_or_not_considered = \
         TransitNeighborhood_TPU.check_not_considered(whole_tpu_sent_act_dataframe_all_considered)
@@ -725,7 +725,7 @@ if __name__ == '__main__':
         whole_tpu_sent_act_dataframe_tn_or_not_considered.apply(
             lambda row: utils.tpu_name_match_reverse[row['tpu_name']]
             if row['tpu_name'] in  utils.tpu_name_match_reverse else row['tpu_name'], axis=1)
-    whole_tpu_sent_act_dataframe_tn_or_not_considered.to_csv(os.path.join(read_data.desktop,
+    whole_tpu_sent_act_dataframe_tn_or_not_considered.to_csv(os.path.join(data_paths.desktop,
                                                                     'tpu_sent_act_all_considered.csv'))
     y_label = 'Percentage of Positive Tweets Minus Percentage of Negative Tweets'
     # Draw the tpu sentiment against activity
@@ -773,8 +773,8 @@ if __name__ == '__main__':
     print(sum(list(whole_sent_act_year_2017['activity'])))
     print('--------------------------------------------------------------------')
 
-    whole_sent_act_year_2017.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act_year_2017.csv'))
-    whole_sent_act_year_2018.to_csv(os.path.join(read_data.desktop, 'tpu_sent_act_year_2018.csv'))
+    whole_sent_act_year_2017.to_csv(os.path.join(data_paths.desktop, 'tpu_sent_act_year_2017.csv'))
+    whole_sent_act_year_2018.to_csv(os.path.join(data_paths.desktop, 'tpu_sent_act_year_2018.csv'))
     y_label = 'Percentage of Positive Tweets Minus Percentage of Negative Tweets'
     # Draw the tpu sentiment against activity
     figure_title_name_year_2017 = 'Sentiment Against Activity Across TPUs(Year 2017)'
@@ -877,14 +877,14 @@ if __name__ == '__main__':
     print('For instance, total number of tweets we consider in the second quarter of 2018 in the cross sectional study...')
     print(sum(list(whole_sent_act_quarter_6['activity'])))
     print('--------------------------------------------------------------------')
-    whole_sent_act_quarter_1.to_csv(os.path.join(read_data.desktop, '2017_tpu_sent_act_quarter_1.csv'))
-    whole_sent_act_quarter_2.to_csv(os.path.join(read_data.desktop, '2017_tpu_sent_act_quarter_2.csv'))
-    whole_sent_act_quarter_3.to_csv(os.path.join(read_data.desktop, '2017_tpu_sent_act_quarter_3.csv'))
-    whole_sent_act_quarter_4.to_csv(os.path.join(read_data.desktop, '2017_tpu_sent_act_quarter_4.csv'))
-    whole_sent_act_quarter_5.to_csv(os.path.join(read_data.desktop, '2018_tpu_sent_act_quarter_1.csv'))
-    whole_sent_act_quarter_6.to_csv(os.path.join(read_data.desktop, '2018_tpu_sent_act_quarter_2.csv'))
-    whole_sent_act_quarter_7.to_csv(os.path.join(read_data.desktop, '2018_tpu_sent_act_quarter_3.csv'))
-    whole_sent_act_quarter_8.to_csv(os.path.join(read_data.desktop, '2018_tpu_sent_act_quarter_4.csv'))
+    whole_sent_act_quarter_1.to_csv(os.path.join(data_paths.desktop, '2017_tpu_sent_act_quarter_1.csv'))
+    whole_sent_act_quarter_2.to_csv(os.path.join(data_paths.desktop, '2017_tpu_sent_act_quarter_2.csv'))
+    whole_sent_act_quarter_3.to_csv(os.path.join(data_paths.desktop, '2017_tpu_sent_act_quarter_3.csv'))
+    whole_sent_act_quarter_4.to_csv(os.path.join(data_paths.desktop, '2017_tpu_sent_act_quarter_4.csv'))
+    whole_sent_act_quarter_5.to_csv(os.path.join(data_paths.desktop, '2018_tpu_sent_act_quarter_1.csv'))
+    whole_sent_act_quarter_6.to_csv(os.path.join(data_paths.desktop, '2018_tpu_sent_act_quarter_2.csv'))
+    whole_sent_act_quarter_7.to_csv(os.path.join(data_paths.desktop, '2018_tpu_sent_act_quarter_3.csv'))
+    whole_sent_act_quarter_8.to_csv(os.path.join(data_paths.desktop, '2018_tpu_sent_act_quarter_4.csv'))
     y_label = 'Percentage of Positive Tweets Minus Percentage of Negative Tweets'
     # Draw the tpu sentiment against activity
     figure_title_name_quarter1 = 'Sentiment Against Activity Across TPUs(2017 Quarter 1)'

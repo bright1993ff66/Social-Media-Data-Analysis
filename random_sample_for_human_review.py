@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 import os
-import read_data
+import data_paths
 import string
 from collections import Counter
 import re
@@ -193,8 +193,8 @@ def clean_chinese_tweet_for_review(text, emoji_dictionary):
 if __name__ == '__main__':
     # load the data
     # Use the tweets_filtering.py to get the final_uncleaned file
-    final_uncleaned = pd.read_pickle(os.path.join(read_data.tweet_2017, 'final_uncleaned.pkl'))
-    emoji_dict = pd.read_pickle(os.path.join(read_data.tweet_2017, 'emoji.pkl'))
+    final_uncleaned = pd.read_pickle(os.path.join(data_paths.tweet_2017, 'final_uncleaned.pkl'))
+    emoji_dict = pd.read_pickle(os.path.join(data_paths.tweet_2017, 'emoji.pkl'))
     final_uncleaned_without_tl = final_uncleaned.loc[final_uncleaned['lang'] != 'tl']
     final_uncleaned_without_tl_hk_time = get_hk_time(final_uncleaned_without_tl)
     final_uncleaned_without_tl_hk_time['month'] = final_uncleaned_without_tl_hk_time.apply(
@@ -204,13 +204,13 @@ if __name__ == '__main__':
     # Then use the cross_sectional_study.py to get the tweets in each TN
     # Save the station related dataframes to read_data.prepare_for_the_review_path
 
-    files = os.listdir(read_data.prepare_for_the_review_path)
+    files = os.listdir(data_paths.prepare_for_the_review_path)
     dataframes = []
 
     # The path should be the path which contains raw tweets waiting to be preprocessed
     # Here we only consider the TNs which have at least 100 tweets
     for file in files:
-        dataframe = pd.read_pickle(os.path.join(read_data.prepare_for_the_review_path, file))
+        dataframe = pd.read_pickle(os.path.join(data_paths.prepare_for_the_review_path, file))
         if dataframe.shape[0] < 100:
             pass
         else:
@@ -227,9 +227,9 @@ if __name__ == '__main__':
     zh_review['cleaned_text'] = zh_review.apply(lambda row: clean_chinese_tweet_for_review(row['text'], emoji_dict),
                                         axis = 1)
 
-    en_review.to_pickle(os.path.join(read_data.human_review_result_path, 'en_review.pkl'))
-    zh_review.to_pickle(os.path.join(read_data.human_review_result_path, 'zh_review.pkl'))
+    en_review.to_pickle(os.path.join(data_paths.human_review_result_path, 'en_review.pkl'))
+    zh_review.to_pickle(os.path.join(data_paths.human_review_result_path, 'zh_review.pkl'))
 
     cleaned_review_data = pd.concat([zh_review, en_review])
     cleaned_review_data = shuffle(cleaned_review_data)
-    cleaned_review_data.to_pickle(os.path.join(read_data.human_review_result_path, 'review_data.pkl'))
+    cleaned_review_data.to_pickle(os.path.join(data_paths.human_review_result_path, 'review_data.pkl'))

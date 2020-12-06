@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from collections import Counter
 import time
-import read_data
+import data_paths
 import utils
 import csv
 
@@ -272,20 +272,20 @@ if __name__ == '__main__':
     print("========================================================================")
     print('The sentiment would be set to neutral only if two reviewer label it neutral...')
     # Load the tweet_representation_array
-    tweets_representations_whole_sample_array = np.load(os.path.join(read_data.tweet_representation_path,
+    tweets_representations_whole_sample_array = np.load(os.path.join(data_paths.tweet_representation_path,
                                                                      'whole_sample_array.npy'))
-    whole_review_result_scheme2 = np.load(os.path.join(read_data.tweet_representation_path,
+    whole_review_result_scheme2 = np.load(os.path.join(data_paths.tweet_representation_path,
                                                        'whole_samply_label.npy'))
     # Load the data and label for train and validation
-    X_train_valid = np.load(os.path.join(read_data.tweet_representation_path,
+    X_train_valid = np.load(os.path.join(data_paths.tweet_representation_path,
                                          'train_valid_cross_validation_data.npy'))
-    y_train_valid = np.load(os.path.join(read_data.tweet_representation_path,
+    y_train_valid = np.load(os.path.join(data_paths.tweet_representation_path,
                                          'train_valid_cross_validation_label.npy'))
     # Load the data and label for test
-    X_test = np.load(os.path.join(read_data.tweet_representation_path, 'test_data_for_model_compare.npy'))
-    y_test = np.load(os.path.join(read_data.tweet_representation_path, 'test_label_for_model_compare.npy'))
+    X_test = np.load(os.path.join(data_paths.tweet_representation_path, 'test_data_for_model_compare.npy'))
+    y_test = np.load(os.path.join(data_paths.tweet_representation_path, 'test_label_for_model_compare.npy'))
     # Load the data for the whole tweet combined array
-    whole_combined_array = np.load(os.path.join(read_data.tweet_combined_path, 'tweet_representations',
+    whole_combined_array = np.load(os.path.join(data_paths.tweet_combined_path, 'tweet_representations',
                                                 'tweet_combined_repre.npy'))
 
     # Use SMOTE to do the oversampling
@@ -319,12 +319,12 @@ if __name__ == '__main__':
     tuned_parameters_tree = {'max_depth': np.arange(3, 11)}
 
     params_dict_tree, performance_dict_tree = kfold_with_smote(clf=classifiers_decision_tree['Decision Tree'],
-                                                                  train_valid_data_X=oversampled_train_validate_data,
-                                                             train_valid_label_y=oversampled_train_validate_y,
-                                                             tuned_parameters=tuned_parameters_tree, X_test=X_test,
-                                                           y_test=y_test,
-                                                           whole_tweets_array=whole_combined_array,
-                                                           save_path=read_data.model_selection_path_oversampling,
+                                                               train_valid_data_X=oversampled_train_validate_data,
+                                                               train_valid_label_y=oversampled_train_validate_y,
+                                                               tuned_parameters=tuned_parameters_tree, X_test=X_test,
+                                                               y_test=y_test,
+                                                               whole_tweets_array=whole_combined_array,
+                                                               save_path=data_paths.model_selection_path_oversampling,
                                                                clf_name='DT')
     print('The best hyperparameter setting is....')
     print(params_dict_tree)
@@ -336,10 +336,10 @@ if __name__ == '__main__':
     params_dict_rf, performance_dict_rf = kfold_with_smote(clf=ensembled_classifiers['Random Forest'],
                                                            train_valid_data_X=oversampled_train_validate_data,
                                                            train_valid_label_y=oversampled_train_validate_y,
-                                                             tuned_parameters=tuned_parameters_rf, X_test=X_test,
+                                                           tuned_parameters=tuned_parameters_rf, X_test=X_test,
                                                            y_test=y_test,
                                                            whole_tweets_array=whole_combined_array,
-                                                           save_path=read_data.model_selection_path_oversampling,
+                                                           save_path=data_paths.model_selection_path_oversampling,
                                                            clf_name='RF')
     print('The best hyperparameter setting is....')
     print(params_dict_rf)
@@ -350,10 +350,10 @@ if __name__ == '__main__':
     params_dict_svm, performance_dict_svm = kfold_with_smote(clf=classifiers_svm['SVM'],
                                                              train_valid_data_X=oversampled_train_validate_data,
                                                              train_valid_label_y=oversampled_train_validate_y,
-                                                           tuned_parameters=tuned_parameters_svm, X_test=X_test,
-                                                           y_test=y_test,
-                                                           whole_tweets_array=whole_combined_array,
-                                                           save_path=read_data.model_selection_path_oversampling,
+                                                             tuned_parameters=tuned_parameters_svm, X_test=X_test,
+                                                             y_test=y_test,
+                                                             whole_tweets_array=whole_combined_array,
+                                                             save_path=data_paths.model_selection_path_oversampling,
                                                              clf_name='SVM')
     print('The best hyperparameter setting is....')
     print(params_dict_svm)
@@ -370,7 +370,7 @@ if __name__ == '__main__':
                                                                train_valid_label_y=oversampled_train_validate_y,
                                                                X_test = X_test, y_test = y_test,
                                                                whole_tweets_array = whole_combined_array,
-                                                               save_path = read_data.model_selection_path_oversampling,
+                                                               save_path = data_paths.model_selection_path_oversampling,
                                                                clf_name='ffnn')
     print('The best hyperparameter setting is....')
     print(params_dict_ffnn)

@@ -14,7 +14,7 @@ import pandas as pd
 from collections import Counter
 import time
 import csv
-import read_data
+import data_paths
 import utils
 
 from sklearn.utils import shuffle
@@ -109,14 +109,14 @@ if __name__ == '__main__':
     p2v_our_emoji = p2v.Phrase2Vec(out_dim, w2v, e2v=e2v_ours)
 
     # #=========================For the unprocessed text========================================
-    tweet_combined_dataframe = utils.read_local_csv_file(path=read_data.tweet_combined_path,
-                                                 filename='tweet_combined_cleaned_translated.csv')
+    tweet_combined_dataframe = utils.read_local_csv_file(path=data_paths.tweet_combined_path,
+                                                         filename='tweet_combined_cleaned_translated.csv')
     text_unprocessed = list(tweet_combined_dataframe['cleaned_text'])
     #
     tweet_array = prepare_tweet_vector_averages_for_prediction(text_unprocessed, p2v_our_emoji)
     tweet_repre = list_of_array_to_array(tweet_array)
 
-    np.save(os.path.join(read_data.tweet_combined_path, 'tweet_representations', 'tweet_combined_repre.npy'),
+    np.save(os.path.join(data_paths.tweet_combined_path, 'tweet_representations', 'tweet_combined_repre.npy'),
             tweet_repre)
 
 

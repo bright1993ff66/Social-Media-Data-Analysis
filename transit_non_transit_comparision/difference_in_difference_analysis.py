@@ -8,7 +8,7 @@ import pytz
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-import read_data
+import data_paths
 import before_and_after_final_tpu
 import utils
 
@@ -393,7 +393,7 @@ def build_dataframe_based_on_set(datapath, tpu_set):
 
 if __name__ == '__main__':
 
-    path = os.path.join(read_data.tweet_combined_path, 'longitudinal_tpus')
+    path = os.path.join(data_paths.tweet_combined_path, 'longitudinal_tpus')
 
     kwun_tong_line_treatment_tpu_set = {'243', '245', '236', '213'}
     kwun_tong_line_control_tpu_set = {'247', '234', '242', '212', '235'}
@@ -428,7 +428,7 @@ if __name__ == '__main__':
                                                                 tpu_set=ocean_park_wong_chuk_hang_control_tpu_set)
 
     print('************************DID Analysis Starts....************************')
-    dataframe_saving_path = os.path.join(read_data.tweet_combined_path, 'longitudinal_did_analysis_dataframes')
+    dataframe_saving_path = os.path.join(data_paths.tweet_combined_path, 'longitudinal_did_analysis_dataframes')
 
     print('Overall Treatment and Control Comparison for sentiment(3 months)...')
     conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,

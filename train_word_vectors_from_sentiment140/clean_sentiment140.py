@@ -4,7 +4,7 @@ import os
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem.wordnet import WordNetLemmatizer
-import read_data
+import data_paths
 import utils
 import pandas as pd
 
@@ -51,9 +51,9 @@ def clean_raw_text(raw_text, caller, remove_stopwords=True, lemmatize = True):
 
 if __name__ == '__main__':
     # Clean the Sentiment140 Dataset and Save
-    sentiment140 = pd.read_pickle(os.path.join(read_data.tweet_2016, 'sentiment140.pkl'))
+    sentiment140 = pd.read_pickle(os.path.join(data_paths.tweet_2016, 'sentiment140.pkl'))
     # If caller = 'bilstm', the cleaned text is string. Otherwise it's list
     sentiment140['text'] = sentiment140['text'].apply(lambda x: clean_raw_text(raw_text=x, caller='bilstm'),
                                                       axis=1)
     sentiment140_cleaned = sentiment140.copy()
-    sentiment140_cleaned.to_pickle(os.path.join(read_data.tweet_2016, 'sentiment140_cleaned.pkl'))
+    sentiment140_cleaned.to_pickle(os.path.join(data_paths.tweet_2016, 'sentiment140_cleaned.pkl'))

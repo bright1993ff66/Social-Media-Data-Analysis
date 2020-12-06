@@ -5,13 +5,12 @@ import csv
 import pytz
 from datetime import datetime
 from collections import Counter
-from geopy.distance import vincenty
 
 # For plots
 from matplotlib import pyplot as plt
 import seaborn as sns
 
-import read_data
+import data_paths
 
 time_zone_hk = pytz.timezone('Asia/Shanghai')
 
@@ -114,15 +113,6 @@ def get_year_month_day(df):
     df_copy['day'] = df_copy.apply(lambda row: row['hk_time'].day, axis=1)
     return df_copy
 
-
-# Calculate the haversine distance between two points based on latitude and longitude
-# More about the haversine distance: https://en.wikipedia.org/wiki/Haversine_formula
-def distance_calc(row, station_lat, station_lon):
-    start = (row['lat'], row['lon'])
-    stop = (station_lat, station_lon)
-    return vincenty(start, stop).meters
-
-
 """
 An instance of using haversine_distance to calculate the distance of two points
 lat1 = 52.2296756
@@ -134,15 +124,6 @@ Ho_Man_Tin_lon = 114.1827
 
 print(distance(lat1, lon1, Whampoa_lat, Whampoa_lon))
 """
-
-
-def select_data_based_on_location(row, station_lat, station_lon):
-    if distance_calc(row, station_lat, station_lon) < 500:
-        result = 'TRUE'
-    else:
-        result = 'FALSE'
-    return result
-
 
 def read_text_from_multi_csvs(path):
     all_csv_files = os.listdir(path)
@@ -186,7 +167,7 @@ def build_line_graph_urban_rate(dataframe):
     ax.set_xlabel('Time')
     ax.set_ylabel('Urban Population Rate %')
     ax.set_title('Urban Population Rate for US, China and World from 1960 to 2018')
-    plt.savefig(os.path.join(read_data.plot_path_2017, 'urban_rate_plot.png'))
+    plt.savefig(os.path.join(data_paths.plot_path_2017, 'urban_rate_plot.png'))
     plt.show()
 
 
@@ -204,7 +185,7 @@ def build_bar_plot_distribution_comparison(**key_list_dict):
     ax.set_xticks(x_values_for_plot)
     ax.set_xticklabels(sentiment_tag)
     filename = name_list[0] + '_distribution'
-    fig.savefig(os.path.join(read_data.human_review_result_path, filename))
+    fig.savefig(os.path.join(data_paths.human_review_result_path, filename))
     plt.show()
 
 
@@ -229,7 +210,7 @@ def classifiers_performance_compare(filename):
     # sns.set_palette(qualitative_colors)
     sns.barplot(x="metrics", y="performance", hue="Classifiers", data=result_dataframe, ax=ax,
                 palette=["#6553FF", "#E8417D", "#FFAC42", '#A5FF47'])
-    fig_classifier_compare.savefig(os.path.join(read_data.human_review_result_path, filename))
+    fig_classifier_compare.savefig(os.path.join(data_paths.human_review_result_path, filename))
     plt.show()
 
 
@@ -281,7 +262,7 @@ def general_info_before_and_after_compare(df, oct_open:bool, study_area:str, sho
 
 
 if __name__ == '__main__':
-    urban_rate_dataframe = pd.read_csv(os.path.join(read_data.datasets, 'urban_rate.csv'), encoding='latin-1',
+    urban_rate_dataframe = pd.read_csv(os.path.join(data_paths.datasets, 'urban_rate.csv'), encoding='latin-1',
                                        dtype=str)
     draw_urban_rate_main(urban_rate_dataframe)
 
@@ -292,7 +273,7 @@ if __name__ == '__main__':
     classifiers_performance_compare(filename= 'classifier_performance_compare.png')
 
     # Output general information of the dataframes involved in the longitudinal study
-    treatment_control_saving_path = os.path.join(read_data.transit_non_transit_comparison_before_after,
+    treatment_control_saving_path = os.path.join(data_paths.transit_non_transit_comparison_before_after,
                                                  'three_areas_longitudinal_analysis')
     kwun_tong_line_treatment_dataframe = read_local_csv_file(filename='kwun_tong_line_treatment.csv',
                                                              path=treatment_control_saving_path, dtype_str=False)

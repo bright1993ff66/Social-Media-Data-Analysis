@@ -5,7 +5,7 @@ from collections import Counter
 import pandas as pd
 import numpy as np
 import os, re
-import read_data
+import data_paths
 
 from wordcloud import STOPWORDS
 import gensim
@@ -34,7 +34,7 @@ tokenizer = Tokenizer(nlp.vocab)
 # Specify the random seed
 random_seed = 777
 
-whole_tweets = pd.read_pickle(os.path.join(read_data.tweet_2017, 'final_2017_with_sentiment_smote.pkl'))
+whole_tweets = pd.read_pickle(os.path.join(data_paths.tweet_2017, 'final_2017_with_sentiment_smote.pkl'))
 
 # gensim.corpora.MmCorpus.serialize('MmCorpusTest.mm', corpus)
 # gensim.corpora.MmCorpus.serialize('MmCorpusTest.mm', corpus)
@@ -96,7 +96,7 @@ def delete_bots_have_same_geoinformation(df):
 
 
 def get_lda_model(sentiment_text_in_one_list, grid_search_params, number_of_keywords, topic_predict_file,
-                  keywords_file, topic_number, grid_search_or_not = True, saving_path = read_data.topic_modelling_path):
+                  keywords_file, topic_number, grid_search_or_not = True, saving_path = data_paths.topic_modelling_path):
     """
     :param sentiment_text_in_one_list: a text list. Each item of this list is a posted tweet
     :param grid_search_params: the dictionary which contains the values of hyperparameters for gridsearch
@@ -190,5 +190,5 @@ def plot_topic_num(topic_df, filename):
     plt.yticks(y_pos, topic_list)
     plt.ylabel('Topic Number')
     plt.xlabel('Count')
-    plt.savefig(os.path.join(read_data.plot_path_2017, filename))
+    plt.savefig(os.path.join(data_paths.plot_path_2017, filename))
     plt.show()

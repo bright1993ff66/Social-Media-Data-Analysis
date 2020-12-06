@@ -55,7 +55,6 @@ def text_has_emoji(text):
     return False
 
 
-
 if __name__ == '__main__':
 
     # Load the emoji data

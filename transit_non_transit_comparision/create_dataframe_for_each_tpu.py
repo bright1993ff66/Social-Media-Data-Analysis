@@ -3,7 +3,7 @@ import os
 import numpy as np
 import csv
 
-import read_data
+import data_paths
 
 
 def created_dataframe_from_index(tweet_dataframe, index_num_npy, saving_path, filename):
@@ -59,14 +59,14 @@ if __name__ == '__main__':
 
     # Load the tweet 2016, 2017 dataframe
     path = r'F:\CityU\Datasets\tweet_filtering'
-    tweet_2016_2017_2018 = pd.read_csv(os.path.join(read_data.tweet_combined_path,
+    tweet_2016_2017_2018 = pd.read_csv(os.path.join(data_paths.tweet_combined_path,
                                                     'tweet_combined_sentiment_without_bots.csv'),
                                  encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC, dtype='str')
     print(tweet_2016_2017_2018.columns)
     # tweet_2016_2017['index_num'] = list(range(0, tweet_2016_2017.shape[0]))
 
     print('For the tpu setting...')
-    with open(os.path.join(read_data.tweet_combined_path, 'tpu_longitudinal_names.txt'), encoding='utf-8') as f:
+    with open(os.path.join(data_paths.tweet_combined_path, 'tpu_longitudinal_names.txt'), encoding='utf-8') as f:
         header = f.readline()
         lines = f.readlines()
         tpu_name_list = []
@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
     for name in tpu_name_list:
         try:
-            os.mkdir(os.path.join(read_data.tweet_combined_path, 'longitudinal_tpus', name))
+            os.mkdir(os.path.join(data_paths.tweet_combined_path, 'longitudinal_tpus', name))
         except WindowsError:
             pass
 
@@ -86,6 +86,6 @@ if __name__ == '__main__':
         # Use the TPU_cross_sectional column
         print('Coping with the tpu: {}'.format(tpu_name))
         dataframe = tweet_2016_2017_2018.loc[tweet_2016_2017_2018['TPU_longitudinal'] == tpu_name]
-        dataframe.to_csv(os.path.join(read_data.tweet_combined_path, 'longitudinal_tpus', tpu_name,
+        dataframe.to_csv(os.path.join(data_paths.tweet_combined_path, 'longitudinal_tpus', tpu_name,
                                       tpu_name + '_data.csv'), encoding='utf-8',
                          quoting=csv.QUOTE_NONNUMERIC)

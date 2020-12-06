@@ -6,7 +6,7 @@ import os
 import time
 import re
 import string
-import read_data
+import data_paths
 from collections import Counter
 
 # A package which could deal with emojis
@@ -30,10 +30,10 @@ from adjustText import adjust_text
 
 
 # Load all the necessary paths
-station_related_path_zh_en_cleaned = read_data.station_related_2017_zh_en_cleaned
+station_related_path_zh_en_cleaned = data_paths.station_related_2017_zh_en_cleaned
 station_related_without_same_geo = \
-    read_data.station_related_2017_without_same_geo
-plot_path = read_data.plot_path
+    data_paths.station_related_2017_without_same_geo
+plot_path = data_paths.plot_path
 
 months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -250,7 +250,7 @@ def select_stations_for_overall_sentiment_plot(sentiment_dict, activity_dict, hu
         df = pd.DataFrame({'Station': stations_list, 'Activity': activity_list, 'Sentiment': pos_minus_neg_list})
     df['Activity_log10'] = df.apply(lambda row: np.log10(row['Activity']), axis=1)
     df['Activity_log_e'] = df.apply(lambda row: np.log(row['Activity']), axis=1)
-    tweet_with_abbreviation = pd.read_csv(os.path.join(read_data.tweet_2017,
+    tweet_with_abbreviation = pd.read_csv(os.path.join(data_paths.tweet_2017,
                                                        'station_with_abbreviations.csv'))
     name_abbre = tweet_with_abbreviation[['Station', 'Station abbreviations']]
     result = pd.merge(df, name_abbre, on='Station')
@@ -315,7 +315,7 @@ def plot_heatmap(df, y_label, file_name):
     cbar.ax.set_ylabel(y_label, rotation=-90, va="bottom")
 
     # ax.set_title("Sentiment Level of Transit Neighborhoods - On a Monthly Basis")
-    fig.savefig(os.path.join(read_data.desktop, file_name), dpi=fig.dpi,
+    fig.savefig(os.path.join(data_paths.desktop, file_name), dpi=fig.dpi,
                 bbox_inches='tight')
     plt.show()
 
@@ -400,7 +400,7 @@ if __name__ == '__main__':
     print(activity_dict)
     activity_dataframe = pd.DataFrame(activity_dict).T
     activity_dataframe = activity_dataframe[months]
-    activity_dataframe.to_csv(os.path.join(read_data.desktop, 'by_month_activity.csv'))
+    activity_dataframe.to_csv(os.path.join(data_paths.desktop, 'by_month_activity.csv'))
     print('On a monthly basis, the number of transit neighborhoods we consider is.....')
     selected_stations = list(activity_dict.keys())
     print(len(selected_stations))
@@ -430,7 +430,7 @@ if __name__ == '__main__':
     # Reorder the columns of a pandas dataframe
     sentiment_for_selected_stations_by_month_pos_minus_neg = \
         sentiment_for_selected_stations_by_month_pos_minus_neg[months]
-    sentiment_for_selected_stations_by_month_pos_minus_neg.to_csv(os.path.join(read_data.desktop,
+    sentiment_for_selected_stations_by_month_pos_minus_neg.to_csv(os.path.join(data_paths.desktop,
                                                                                'by_month_file.csv'))
 
     # plot the heatmap of the sentiment

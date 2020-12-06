@@ -4,7 +4,7 @@ import arcpy
 import time
 import csv
 
-import read_data
+import data_paths
 
 # Give the workspace first
 workspace_path = \

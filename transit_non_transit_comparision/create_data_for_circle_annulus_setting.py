@@ -5,7 +5,7 @@ import time
 import arcpy
 import arcgisscripting
 import pandas as pd
-import read_data
+import data_paths
 import csv
 
 # Give the workspace first

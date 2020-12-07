@@ -8,7 +8,7 @@ import os, re
 import string
 
 import data_paths
-import Topic_Modelling_for_tweets
+from Visualization import topic_model_tweets
 
 import gensim
 from gensim import corpora, models
@@ -20,10 +20,10 @@ from nltk.tokenize import word_tokenize
 import matplotlib.pyplot as plt
 from PIL import Image
 
-plot_path = data_paths.plot_path_2017
+# Load the unmeaningful terms
+unuseful_terms_set = topic_model_tweets.unuseful_terms_set
 
-unuseful_terms_set = Topic_Modelling_for_tweets.unuseful_terms_set
-
+# Load the spacy language model
 nlp = spacy.load('en_core_web_sm', disable=['parser', 'ner'])
 
 # the regex used to detect words is a combination of normal words, ascii art, and emojis
@@ -35,9 +35,9 @@ ascii_art = r"(?:[{punctuation}][{punctuation}]+)".format(punctuation=string.pun
 emoji = r"(?:[^\s])(?<![\w{ascii_printable}])".format(ascii_printable=string.printable)
 regexp = r"{normal_word}|{ascii_art}|{emoji}".format(normal_word=normal_word, ascii_art=ascii_art,
                                                      emoji=emoji)
-symbola_font_path = os.path.join(data_paths.plot_path_2017, 'Symbola_Hinted.ttf')
+symbola_font_path = os.path.join(data_paths.wordcloud_font_path, 'Symbola_Hinted.ttf')
 
-circle_mask = np.array(Image.open(r"F:\CityU\Datasets\Hong Kong Tweets 2017\circle.png"))
+circle_mask = np.array(Image.open(os.path.join(data_paths.longitudinal_plot_path, 'circle_mask.png')))
 
 
 # Change the color of the wordcloud
@@ -51,7 +51,7 @@ def red_func(word, font_size, position, orientation, random_state=None,
     return "hsl(19, 0%%, %d%%)" % np.random.randint(49, 100)
 
 
-def generate_wordcloud(words, mask, file_name, color_func, saving_path=plot_path):
+def generate_wordcloud(words, mask, file_name, color_func, saving_path):
     """
     :param words: the text we use to draw the wordcloud. The datatype should be string
     :param mask: a mask we load to draw the plot

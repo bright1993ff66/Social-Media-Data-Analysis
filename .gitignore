@@ -1,2 +1,5 @@
 # Ignore the data paths
 data_paths.py
+
+# Ignore some paths
+.idea

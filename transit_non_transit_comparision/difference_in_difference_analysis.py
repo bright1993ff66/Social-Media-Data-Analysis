@@ -9,7 +9,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 import data_paths
-import before_and_after_final_tpu
+from transit_non_transit_comparision import before_and_after_final_tpu
 import utils
 
 # statistics
@@ -401,36 +401,28 @@ if __name__ == '__main__':
     south_horizons_lei_tung_control_tpu_set = {'172', '182'}
     ocean_park_wong_chuk_hang_treatment_tpu_set = {'175'}
     ocean_park_wong_chuk_hang_control_tpu_set = {'184', '183', '182'}
-    south_island_treatment_tpu_set = {'174', '175'}
-    south_island_control_tpu_set = {'172', '182', '183', '184'}
-    # tpu_213_set, tpu_236_set, tpu_243_set, tpu_245_set = {'213'}, {'236'}, {'243'}, {'245'}
 
-    print('Treatment & Control Data Overview...')
+    print('Load the treatment and control groups in three areas...')
     kwun_tong_line_treatment_dataframe = build_dataframe_based_on_set(datapath=path,
                                                                       tpu_set=kwun_tong_line_treatment_tpu_set)
-    print('For Kwun Tong Line treatment...')
     utils.number_of_tweet_user(kwun_tong_line_treatment_dataframe)
     kwun_tong_line_control_dataframe = build_dataframe_based_on_set(datapath=path,
                                                                 tpu_set=kwun_tong_line_control_tpu_set)
-    print('For Kwun Tong Line control sentiment...')
     utils.number_of_tweet_user(kwun_tong_line_control_dataframe)
-
     south_horizons_lei_tung_treatment_dataframe = build_dataframe_based_on_set(datapath=path,
                                                                 tpu_set=south_horizons_lei_tung_treatment_tpu_set)
-
     south_horizons_lei_tung_control_dataframe = build_dataframe_based_on_set(datapath=path,
                                                                 tpu_set=south_horizons_lei_tung_control_tpu_set)
-
     ocean_park_wong_chuk_hang_treatment_dataframe = build_dataframe_based_on_set(datapath=path,
                                                                 tpu_set=ocean_park_wong_chuk_hang_treatment_tpu_set)
-
     ocean_park_wong_chuk_hang_control_dataframe = build_dataframe_based_on_set(datapath=path,
                                                                 tpu_set=ocean_park_wong_chuk_hang_control_tpu_set)
+    print('Done!')
 
     print('************************DID Analysis Starts....************************')
     dataframe_saving_path = os.path.join(data_paths.tweet_combined_path, 'longitudinal_did_analysis_dataframes')
 
-    print('Overall Treatment and Control Comparison for sentiment(3 months)...')
+    print('Overall Treatment and Control Comparison for sentiment(3 jkjj:months)...')
     conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,
                                   kwun_tong_control_dataframe=kwun_tong_line_control_dataframe,
                                   south_horizons_treatment_dataframe=south_horizons_lei_tung_treatment_dataframe,

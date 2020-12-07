@@ -16,8 +16,7 @@ import gensim
 
 import data_paths
 import utils
-import wordcloud_generate
-import Topic_Modelling_for_tweets
+from Visualization import topic_model_tweets, wordcloud_tweets
 
 from matplotlib import pyplot as plt
 import matplotlib.font_manager as font_manageer
@@ -514,12 +513,13 @@ def sentiment_by_month(df, compute_positive_percent=False, compute_negative_perc
     else:
         pass
     # Check whether one dataframe has the year and the month columns. If not, generate them!
-    try:
-        df['month_plus_year'] = df.apply(lambda row: str(int(float(row['year'])))+'_'+str(int(float(row['month']))),
-                                         axis=1)
-    except KeyError:
-        df['month_plus_year'] = df.apply(lambda row: str(row['hk_time'].year) + '_' + str(row['hk_time'].month),
-                                         axis=1)
+    assert 'month_plus_year' in df, 'The dataframe should contain the month_plus_year column!'
+    # try:
+    #     df['month_plus_year'] = df.apply(lambda row: str(int(float(row['year'])))+'_'+str(int(float(row['month']))),
+    #                                      axis=1)
+    # except KeyError:
+    #     df['month_plus_year'] = df.apply(lambda row: str(row['hk_time'].year) + '_' + str(row['hk_time'].month),
+    #                                      axis=1)
     dataframe_dict = {}
     # Iterate over the pandas dataframe based on the month_plus_year column
     for time, dataframe_by_time in df.groupby('month_plus_year'):
@@ -569,10 +569,8 @@ def build_text_for_wordcloud_topic_model(df, oct_open=True, build_wordcloud=True
         df_before = df_copy.loc[df_copy['hk_time'] < open_date_start]
         df_after = df_copy.loc[df_copy['hk_time'] > open_date_end]
     if build_wordcloud: # return a string, for wordcloud creation
-        before_text = wordcloud_generate.create_text_for_wordcloud(df_before, save_to_local_directory=save_raw_text,
-                                                                   saving_path=saving_path, filename=filename_before)
-        after_text = wordcloud_generate.create_text_for_wordcloud(df_after, save_to_local_directory=save_raw_text,
-                                                                  saving_path=saving_path, filename=filename_after)
+        before_text = wordcloud_tweets.create_text_for_wordcloud(df_before)
+        after_text = wordcloud_tweets.create_text_for_wordcloud(df_after)
         return before_text, after_text
     else: # if not, return a dataframe
         return df_before, df_after
@@ -591,10 +589,10 @@ def generate_wordcloud(words_before, words_after, mask, file_name_before, file_n
     """
     # stopwords argument in word_cloud: specify the words we neglect when outputing the wordcloud
     word_cloud_before = WordCloud(width = 520, height = 520, background_color='white',
-                           font_path=wordcloud_generate.symbola_font_path,
+                           font_path=wordcloud_tweets.symbola_font_path,
                                   mask=mask, max_words=800, collocations=False).generate(words_before)
     word_cloud_after = WordCloud(width = 520, height = 520, background_color='white',
-                           font_path=wordcloud_generate.symbola_font_path,
+                           font_path=wordcloud_tweets.symbola_font_path,
                                   mask=mask, max_words=800, collocations=False).generate((words_after))
     fig_before = plt.figure(figsize=(15,13), facecolor = 'white', edgecolor='black')
     plt.imshow(word_cloud_before.recolor(color_func=color_func, random_state=3), interpolation="bilinear")
@@ -625,8 +623,8 @@ def draw_word_count_histogram(df, station_name, saved_file_name):
 
     trigram_mod = gensim.models.phrases.Phraser(trigram_phrases)
 
-    data_ready = Topic_Modelling_for_tweets.process_words(tokenized_text_list,
-                                                          stop_words=Topic_Modelling_for_tweets.unuseful_terms_set,
+    data_ready = topic_model_tweets.process_words(tokenized_text_list,
+                                                          stop_words=topic_model_tweets.unuseful_terms_set,
                                                           bigram_mod=bigram_mod,
                                                           trigram_mod=trigram_mod)
     # save the processed text
@@ -643,8 +641,7 @@ def draw_word_count_histogram(df, station_name, saved_file_name):
     ax.set_xticks(list(plt.xticks()[0]) + [np.median(text_count_list)])
     ax.set_title(station_name+': Tweet Word Count Histogram')
     ax.legend()
-    saving_path = os.path.join(data_paths.tweet_combined_path, 'longitudinal_plots')
-    fig_word_count.savefig(os.path.join(saving_path, saved_file_name))
+    fig_word_count.savefig(os.path.join(data_paths.longitudinal_plot_path, saved_file_name))
     # plt.show()
 
 
@@ -666,8 +663,8 @@ def build_topic_model(df, keyword_file_name, topic_number, topic_predict_file_na
     bigram_mod = gensim.models.phrases.Phraser(bigram_phrases)
     trigram_phrases = gensim.models.phrases.Phrases(bigram_mod[tokenized_text_list])
     trigram_mod = gensim.models.phrases.Phraser(trigram_phrases)
-    data_ready = Topic_Modelling_for_tweets.process_words(tokenized_text_list,
-                                                          stop_words=Topic_Modelling_for_tweets.unuseful_terms_set,
+    data_ready = topic_model_tweets.process_words(tokenized_text_list,
+                                                          stop_words=topic_model_tweets.unuseful_terms_set,
                                                           bigram_mod=bigram_mod, trigram_mod=trigram_mod)
     # np.save(os.path.join(read_data.desktop, 'saving_path', keyword_file_name[:-12]+'_text_topic.pkl'), data_ready)
     # Draw the distribution of the length of the tweet: waiting to be changed tomorrow
@@ -675,7 +672,7 @@ def build_topic_model(df, keyword_file_name, topic_number, topic_predict_file_na
     # Get the median of number of phrases
     count_list = [len(tweet) for tweet in data_ready]
     print('The number of keywords we use is {}'.format(np.median(count_list)))
-    Topic_Modelling_for_tweets.get_lda_model(data_sentence_in_one_list,
+    topic_model_tweets.get_lda_model(data_sentence_in_one_list,
                                              grid_search_params=topic_modelling_search_params,
                                              number_of_keywords=int(np.median(count_list)),
                                              keywords_file=keyword_file_name,
@@ -705,6 +702,15 @@ def build_treatment_control_tpu_compare_for_one_line(treatment_csv, control_1000
 
 def select_dataframe_for_treatment_control(treatment_set, control_set, treatment_not_considered_set,
                                            datapath, return_dataframe=False):
+    """
+    Create the treatment & control dataframe based on tweets posted in each TPU
+    :param treatment_set: a set containing the treatment TPU name strings
+    :param control_set: a set containing the control TPU name strings
+    :param treatment_not_considered_set: a set containing the treatment but not considered TPU name strings
+    :param datapath: the datapath used to save the tweets posted in each TPU
+    :param return_dataframe: whether return a pandas dataframe or not
+    :return:
+    """
     treatment_dataframe_list = []
     control_dataframe_list = []
     treatment_dataframe_not_considered_list = []
@@ -729,10 +735,9 @@ def select_dataframe_for_treatment_control(treatment_set, control_set, treatment
     combined_treatment = pd.concat(treatment_dataframe_list, axis=0)
     combined_control = pd.concat(control_dataframe_list, axis=0)
     combined_not_considered_treatment = pd.concat(treatment_dataframe_not_considered_list, axis=0)
-    print(
-        'The size of the treatment group {}; The size of the not considered treatment group {}; '
+    print('The size of the treatment group {}; The size of the not considered treatment group {}; '
         'The size of the control group {}'.format(
-            combined_treatment.shape, combined_not_considered_treatment.shape, combined_control.shape))
+        combined_treatment.shape, combined_not_considered_treatment.shape, combined_control.shape))
     if return_dataframe:
         return combined_treatment, combined_not_considered_treatment, combined_control
     else:
@@ -789,6 +794,7 @@ if __name__ == '__main__':
           'the control group 1000-meter is: {}; the control group 1500-meter is: {}'.format(
         kwun_tong_line_treatment_selected, kwun_tong_line_control_1000, kwun_tong_line_control_1500))
     print('----------------------------------------------------------------------------------\n')
+
     south_horizons_lei_tung_treatment_selected = {'174'}
     south_horizons_lei_tung_treatment = {'173', '174'}
     south_horizons_lei_tung_treatment_not_considered = south_horizons_lei_tung_treatment - \
@@ -805,6 +811,7 @@ if __name__ == '__main__':
         south_horizons_lei_tung_treatment_selected, south_horizons_lei_tung_control_1000,
         south_horizons_lei_tung_control_1500))
     print('----------------------------------------------------------------------------------\n')
+
     ocean_park_wong_chuk_hang_treatment_selected = {'175'}
     ocean_park_wong_chuk_hang_treatment = {'175', '176', '191'}
     ocean_park_wong_chuk_hang_treatment_not_considered = ocean_park_wong_chuk_hang_treatment - \
@@ -830,8 +837,7 @@ if __name__ == '__main__':
         select_dataframe_for_treatment_control(treatment_set=kwun_tong_line_treatment_selected,
                                                control_set=kwun_tong_line_control_1000,
                                                treatment_not_considered_set=kwun_tong_line_treatment_not_considered,
-                                               datapath=os.path.join(data_paths.tweet_combined_path,
-                                                                     'longitudinal_tpus'),
+                                               datapath=os.path.join(data_paths.tweet_combined_path, 'longitudinal_tpus'),
                                                return_dataframe=True)
     print('treatment vs 1500-meter control group')
     _, _, kwun_tong_line_control_1500_dataframe = \
@@ -1094,29 +1100,27 @@ if __name__ == '__main__':
     ocean_park_wong_chuk_hang_treatment_negative = ocean_park_wong_chuk_hang_treatment_dataframe.loc[
         ocean_park_wong_chuk_hang_treatment_dataframe['sentiment_vader_percent'] == '0'
     ]
-    dataframe_sentiment_before_after_path = os.path.join(data_paths.tweet_combined_path,
-                                                         'longitudinal_content_compare_sentiment')
-    kwun_tong_line_treatment_positive.to_csv(os.path.join(dataframe_sentiment_before_after_path,
+    kwun_tong_line_treatment_positive.to_csv(os.path.join(data_paths.transit_non_transit_comparison_before_after,
                                                           'kwun_tong_positive.csv'), quoting=csv.QUOTE_NONNUMERIC)
-    kwun_tong_line_treatment_neutral.to_csv(os.path.join(dataframe_sentiment_before_after_path,
+    kwun_tong_line_treatment_neutral.to_csv(os.path.join(data_paths.transit_non_transit_comparison_before_after,
                                                           'kwun_tong_neutral.csv'), quoting=csv.QUOTE_NONNUMERIC)
-    kwun_tong_line_treatment_negative.to_csv(os.path.join(dataframe_sentiment_before_after_path,
+    kwun_tong_line_treatment_negative.to_csv(os.path.join(data_paths.transit_non_transit_comparison_before_after,
                                                           'kwun_tong_negative.csv'), quoting=csv.QUOTE_NONNUMERIC)
-    south_horizons_lei_tung_treatment_positive.to_csv(os.path.join(dataframe_sentiment_before_after_path,
+    south_horizons_lei_tung_treatment_positive.to_csv(os.path.join(data_paths.transit_non_transit_comparison_before_after,
                                                           'south_horizons_positive.csv'), quoting=csv.QUOTE_NONNUMERIC)
-    south_horizons_lei_tung_treatment_neutral.to_csv(os.path.join(dataframe_sentiment_before_after_path,
+    south_horizons_lei_tung_treatment_neutral.to_csv(os.path.join(data_paths.transit_non_transit_comparison_before_after,
                                                                   'south_horizons_neutral.csv'),
                                                      quoting=csv.QUOTE_NONNUMERIC)
-    south_horizons_lei_tung_treatment_negative.to_csv(os.path.join(dataframe_sentiment_before_after_path,
+    south_horizons_lei_tung_treatment_negative.to_csv(os.path.join(data_paths.transit_non_transit_comparison_before_after,
                                                                    'south_horizons_negative.csv'),
                                                       quoting=csv.QUOTE_NONNUMERIC)
-    ocean_park_wong_chuk_hang_treatment_positive.to_csv(os.path.join(dataframe_sentiment_before_after_path,
+    ocean_park_wong_chuk_hang_treatment_positive.to_csv(os.path.join(data_paths.transit_non_transit_comparison_before_after,
                                                                    'ocean_park_positive.csv'),
                                                         quoting=csv.QUOTE_NONNUMERIC)
-    ocean_park_wong_chuk_hang_treatment_neutral.to_csv(os.path.join(dataframe_sentiment_before_after_path,
+    ocean_park_wong_chuk_hang_treatment_neutral.to_csv(os.path.join(data_paths.transit_non_transit_comparison_before_after,
                                                                      'ocean_park_neutral.csv'),
                                                         quoting=csv.QUOTE_NONNUMERIC)
-    ocean_park_wong_chuk_hang_treatment_negative.to_csv(os.path.join(dataframe_sentiment_before_after_path,
+    ocean_park_wong_chuk_hang_treatment_negative.to_csv(os.path.join(data_paths.transit_non_transit_comparison_before_after,
                                                                      'ocean_park_negative.csv'),
                                                         quoting=csv.QUOTE_NONNUMERIC)
 
@@ -1137,58 +1141,58 @@ if __name__ == '__main__':
         filename_before='ocean_park_before_text.npy',
         filename_after='ocean_park_after_text.npy')
    
-    generate_wordcloud(before_text_kwun_tong_line, after_text_kwun_tong_line, mask=wordcloud_generate.circle_mask,
+    generate_wordcloud(before_text_kwun_tong_line, after_text_kwun_tong_line, mask=wordcloud_tweets.circle_mask,
                        file_name_before='before_kwun_tong_line_wordcloud',
                        file_name_after="after_kwun_tong_line_wordcloud",
-                       color_func=wordcloud_generate.green_func,
+                       color_func=wordcloud_tweets.green_func,
                        figure_saving_path=data_paths.tweet_combined_path)
     generate_wordcloud(before_text_south_horizons_lei_tung, after_text_south_horizons_lei_tung,
-                       mask=wordcloud_generate.circle_mask,
+                       mask=wordcloud_tweets.circle_mask,
                        file_name_before='before_south_horizons_lei_tung_wordcloud',
                        file_name_after="after_south_horizons_lei_tung_wordcloud",
-                       color_func=wordcloud_generate.green_func,
+                       color_func=wordcloud_tweets.green_func,
                        figure_saving_path=data_paths.tweet_combined_path)
     generate_wordcloud(before_text_ocean_park_wong_chuk_hang, after_text_ocean_park_wong_chuk_hang,
-                       mask=wordcloud_generate.circle_mask,
+                       mask=wordcloud_tweets.circle_mask,
                        file_name_before='before_ocean_park_wong_chuk_hang_wordcloud',
                        file_name_after="after_ocean_park_wong_chuk_hang_wordcloud",
-                       color_func=wordcloud_generate.green_func,
+                       color_func=wordcloud_tweets.green_func,
                        figure_saving_path=data_paths.tweet_combined_path)
     # =========================================================================================================
 
-    # =======================================Topic Modelling===================================================
-    # build text for the treatment group
-    before_dataframe_kwun_tong_line, after_dataframe_kwun_tong_line = \
-        build_text_for_wordcloud_topic_model(kwun_tong_line_treatment_dataframe, oct_open=True, build_wordcloud=False)
-    before_dataframe_south_horizons_lei_tung, after_dataframe_south_horizons_lei_tung = \
-        build_text_for_wordcloud_topic_model(south_horizons_lei_tung_treatment_dataframe, oct_open=False,
-                                             build_wordcloud=False)
-    before_dataframe_ocean_park_wong_chuk_hang, after_dataframe_ocean_park_wong_chuk_hang = \
-        build_text_for_wordcloud_topic_model(ocean_park_wong_chuk_hang_treatment_dataframe, oct_open=False,
-                                             build_wordcloud=False)
-
-    # Build the topic model for the treatment dataframe
-    before_and_after_dataframes_list = [before_dataframe_kwun_tong_line, after_dataframe_kwun_tong_line,
-                                        before_dataframe_south_horizons_lei_tung,
-                                        after_dataframe_south_horizons_lei_tung,
-                                        before_dataframe_ocean_park_wong_chuk_hang,
-                                        after_dataframe_ocean_park_wong_chuk_hang]
-
-    name_list = ['before_kwun_tong_line', 'after_kwun_tong_line', 'before_south_horizons_lei_tung',
-                 'after_south_horizons_lei_tung', 'before_ocean_park_wong_chuk_hang',
-                 'after_ocean_park_wong_chuk_hang']
-
-    topic_number_list = [5,6,7,8,9,10]
-    for dataframe, file_name in zip(before_and_after_dataframes_list, name_list):
-        print('-------------------' + file_name + ' starts--------------------------')
-        for topic_number in topic_number_list:
-            print('Setting topic number equals {}'.format(topic_number))
-            build_topic_model(df=dataframe, keyword_file_name=file_name + '_' + str(topic_number) + '_' + '_keyword.pkl',
-                              topic_predict_file_name=file_name + '_' + str(topic_number) + '_' + '_tweet_topic.pkl',
-                              saving_path=data_paths.before_and_after_topic_modelling_compare,
-                              topic_number=topic_number)
-        print('------------------' + file_name + ' ends-----------------------------')
-
+    # # =======================================Topic Modelling===================================================
+    # # build text for the treatment group
+    # before_dataframe_kwun_tong_line, after_dataframe_kwun_tong_line = \
+    #     build_text_for_wordcloud_topic_model(kwun_tong_line_treatment_dataframe, oct_open=True, build_wordcloud=False)
+    # before_dataframe_south_horizons_lei_tung, after_dataframe_south_horizons_lei_tung = \
+    #     build_text_for_wordcloud_topic_model(south_horizons_lei_tung_treatment_dataframe, oct_open=False,
+    #                                          build_wordcloud=False)
+    # before_dataframe_ocean_park_wong_chuk_hang, after_dataframe_ocean_park_wong_chuk_hang = \
+    #     build_text_for_wordcloud_topic_model(ocean_park_wong_chuk_hang_treatment_dataframe, oct_open=False,
+    #                                          build_wordcloud=False)
+    #
+    # # Build the topic model for the treatment dataframe
+    # before_and_after_dataframes_list = [before_dataframe_kwun_tong_line, after_dataframe_kwun_tong_line,
+    #                                     before_dataframe_south_horizons_lei_tung,
+    #                                     after_dataframe_south_horizons_lei_tung,
+    #                                     before_dataframe_ocean_park_wong_chuk_hang,
+    #                                     after_dataframe_ocean_park_wong_chuk_hang]
+    #
+    # name_list = ['before_kwun_tong_line', 'after_kwun_tong_line', 'before_south_horizons_lei_tung',
+    #              'after_south_horizons_lei_tung', 'before_ocean_park_wong_chuk_hang',
+    #              'after_ocean_park_wong_chuk_hang']
+    #
+    # topic_number_list = [5,6,7,8,9,10]
+    # for dataframe, file_name in zip(before_and_after_dataframes_list, name_list):
+    #     print('-------------------' + file_name + ' starts--------------------------')
+    #     for topic_number in topic_number_list:
+    #         print('Setting topic number equals {}'.format(topic_number))
+    #         build_topic_model(df=dataframe, keyword_file_name=file_name + '_' + str(topic_number) + '_' + '_keyword.pkl',
+    #                           topic_predict_file_name=file_name + '_' + str(topic_number) + '_' + '_tweet_topic.pkl',
+    #                           saving_path=data_paths.before_and_after_topic_modelling_compare,
+    #                           topic_number=topic_number)
+    #     print('------------------' + file_name + ' ends-----------------------------')
+    #
     ending_time = time.time()
 
     print('Total time for running this code is: {}'.format(ending_time - starting_time))

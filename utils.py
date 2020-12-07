@@ -75,11 +75,14 @@ def transform_string_time_to_datetime(string):
     return final_time_object
 
 
-def number_of_tweet_user(df):
+def number_of_tweet_user(df, print_values=False):
     user_num = len(set(df['user_id_str']))
     tweet_num = df.shape[0]
-    print('Total number of tweet is: {}; Total number of user is {}'.format(
-        tweet_num, user_num))
+    if print_values:
+        print('Total number of tweet is: {}; Total number of user is {}'.format(
+            tweet_num, user_num))
+    else:
+        return tweet_num, user_num
 
 
 # Use this function to select the MTR-related tweets

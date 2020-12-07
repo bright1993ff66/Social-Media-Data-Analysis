@@ -34,10 +34,8 @@ tokenizer = Tokenizer(nlp.vocab)
 # Specify the random seed
 random_seed = 777
 
-whole_tweets = pd.read_pickle(os.path.join(data_paths.tweet_2017, 'final_2017_with_sentiment_smote.pkl'))
 
-# gensim.corpora.MmCorpus.serialize('MmCorpusTest.mm', corpus)
-# gensim.corpora.MmCorpus.serialize('MmCorpusTest.mm', corpus)
+# Specify unuseful terms
 stopwords = list(set(STOPWORDS))
 strange_terms = ['allcaps', 'repeated', 'elongated', 'repeat', 'user', 'percent_c', 'hong kong', 'hong',
                  'kong', 'u_u', 'u_u_number', 'u_u_u_u', 'u_number', 'elongate', 'u_number_u',

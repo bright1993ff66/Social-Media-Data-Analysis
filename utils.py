@@ -1,5 +1,6 @@
 import re
 import os
+import numpy as np
 import pandas as pd
 import csv
 import pytz
@@ -17,12 +18,12 @@ time_zone_hk = pytz.timezone('Asia/Shanghai')
 # For instance, if we want to compare the sentiment and activity level before and after the
 # openning date of the Whampoa MTR railway station in Hong Kong, since the station is opened on 23 Oct 2016,
 # we could specify the openning date using datatime package and output before and after dataframes
-october_23_start = datetime(2016, 10, 23, 0, 0, 0, tzinfo=time_zone_hk)
-october_23_end = datetime(2016, 10, 23, 23, 59, 59, tzinfo=time_zone_hk)
-december_28_start = datetime(2016, 12, 28, 0, 0, 0, tzinfo=time_zone_hk)
-december_28_end = datetime(2016, 12, 28, 23, 59, 59, tzinfo=time_zone_hk)
+october_1_start = datetime(2016, 10, 1, 0, 0, 0, tzinfo=time_zone_hk)
+october_31_end = datetime(2016, 10, 31, 23, 59, 59, tzinfo=time_zone_hk)
+december_1_start = datetime(2016, 12, 1, 0, 0, 0, tzinfo=time_zone_hk)
+december_31_end = datetime(2016, 12, 31, 23, 59, 59, tzinfo=time_zone_hk)
 start_date = datetime(2016, 5, 7, 0, 0, 0, tzinfo=time_zone_hk)
-end_date = datetime(2017, 12, 31,  23, 59, 59, tzinfo=time_zone_hk)
+end_date = datetime(2018, 12, 18, 23, 59, 59, tzinfo=time_zone_hk)
 
 # The replacement patterns used in cleaning the raw text data
 replacement_patterns = [
@@ -55,6 +56,19 @@ class RegexpReplacer(object):
         return s
 
 
+def weighted_average(group: pd.DataFrame, value_col: str, weight_col: str) -> float:
+    """
+    Compute the weighted average based on a pandas dataframe
+    :param group: a pandas dataframe that we want to compute the weighted average
+    :param value_col: the column name that saves the values of weighted average
+    :param weight_col: the column name that saves the weights of weighted average
+    :return: the weighted average
+    """
+    weights = group[value_col]
+    values = group[weight_col]
+    return np.average(values, weights=weights)
+
+
 def read_local_csv_file(path, filename, dtype_str=True):
     if dtype_str:
         dataframe = pd.read_csv(os.path.join(path, filename), encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC,
@@ -75,12 +89,17 @@ def transform_string_time_to_datetime(string):
     return final_time_object
 
 
-def number_of_tweet_user(df, print_values=False):
+def number_of_tweet_user(df: pd.DataFrame, print_values=False):
+    """
+    Output the number of tweets and number of unique social media users for a tweet dataframe
+    :param df: a tweet dataframe
+    :param print_values: whether print the results or not
+    :return: A description or the results of the number of tweets and number of unique social media users
+    """
     user_num = len(set(df['user_id_str']))
     tweet_num = df.shape[0]
     if print_values:
-        print('Total number of tweet is: {}; Total number of user is {}'.format(
-            tweet_num, user_num))
+        print('Total number of tweet is: {}; Total number of user is {}'.format(tweet_num, user_num))
     else:
         return tweet_num, user_num
 
@@ -116,19 +135,13 @@ def get_year_month_day(df):
     df_copy['day'] = df_copy.apply(lambda row: row['hk_time'].day, axis=1)
     return df_copy
 
-"""
-An instance of using haversine_distance to calculate the distance of two points
-lat1 = 52.2296756
-lon1 = 21.0122287
-Whampoa_lat = 22.3051
-Whampoa_lon = 114.1895
-Ho_Man_Tin_lat = 22.3094
-Ho_Man_Tin_lon = 114.1827
 
-print(distance(lat1, lon1, Whampoa_lat, Whampoa_lon))
-"""
-
-def read_text_from_multi_csvs(path):
+def read_text_from_multi_csvs(path: str) -> pd.DataFrame:
+    """
+    Combine csv files in a local path
+    :param path: a path containing many csv files
+    :return: a combined pandas dataframe
+    """
     all_csv_files = os.listdir(path)
     dataframes = []
     for file in all_csv_files:
@@ -174,15 +187,20 @@ def build_line_graph_urban_rate(dataframe):
     plt.show()
 
 
-def build_bar_plot_distribution_comparison(**key_list_dict):
+def build_bar_plot_distribution_comparison(**key_list_dict: dict):
+    """
+    Build the bar plot showing the sentiment distribution
+    :param key_list_dict: a dictionary containing the number of tweets for each sentiment category
+    :return:
+    """
     name_list = list(key_list_dict.keys())
-    if len(name_list) ==  1:
+    if len(name_list) == 1:
         value_list = key_list_dict[name_list[0]]
     else:
         return 'Not Worked Out'
     sentiment_tag = ['Positive', 'Neutral', 'Negative']
     x_values_for_plot = list(range(len(sentiment_tag)))
-    fig, ax = plt.subplots(1,1, figsize=(10, 8))
+    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
 
     ax.bar(x_values_for_plot, value_list, color='red')
     ax.set_xticks(x_values_for_plot)
@@ -222,46 +240,57 @@ def draw_urban_rate_main(dataframe):
     build_line_graph_urban_rate(dataframe=data_for_plot)
 
 
-def general_info_of_tweet_dataset(df, study_area:str, show_result=True):
+def general_info_of_tweet_dataset(df, study_area: str):
+    """
+    Get the general info of a tweet dataframe
+    :param df: a pandas tweet dataframe having been sorted by time
+    :param study_area: a string describing the study area
+    :return: None. A short description of the tweet dataframe is given, including user number, tweet number,
+    average number of tweets per day, language distribution and sentiment distribution
+    """
     user_number = len(set(list(df['user_id_str'])))
     tweet_number = df.shape[0]
     starting_time = list(df['hk_time'])[0]
     ending_time = list(df['hk_time'])[-1]
-    daily_tweet_count = df.shape[0]/(ending_time-starting_time).days
+    daily_tweet_count = df.shape[0] / (ending_time - starting_time).days
     language_dist_dict = Counter(df['lang'])
     sentiment_dist_dict = Counter(df['sentiment'])
-    if show_result:
-        print('For {}, number of users: {}; number of tweets: {}; average daily number of tweets: {}; '
-              'language distribution: {}; sentiment distribution: {}'.format(study_area, user_number,
-                                                                             tweet_number,
-                                                                             daily_tweet_count, language_dist_dict,
-                                                                             sentiment_dist_dict))
-    else:
-        return user_number, daily_tweet_count, language_dist_dict, sentiment_dist_dict
+    print('For {}, number of users: {}; number of tweets: {}; average daily number of tweets: {}; '
+          'language distribution: {}; sentiment distribution: {}'.format(study_area, user_number,
+                                                                         tweet_number,
+                                                                         daily_tweet_count, language_dist_dict,
+                                                                         sentiment_dist_dict))
 
 
-def general_info_before_and_after_compare(df, oct_open:bool, study_area:str, show_result_or_not=True):
+def get_tweets_before_after(df: pd.DataFrame, oct_open: bool,
+                            start_time=datetime(2016, 5, 1, 0, 0, 0, tzinfo=time_zone_hk),
+                            end_time=datetime(2018, 12, 31, 23, 59, 59, tzinfo=time_zone_hk)):
+    """
+    Get the tweets posted before and after the introduction of MTR stations
+    :param df: a pandas tweet dataframe
+    :param oct_open: whether the station in opened on October, 2016 or not
+    :param start_time: the considered start time of the tweets
+    :param end_time: the considered end time of the tweets
+    :return: two pandas dataframe, one is for the 'before' period and another is for the 'after' period
+    """
     df_copy = df.copy()
     if isinstance(list(df['hk_time'])[0], str):
-        df_copy['hk_time'] = df_copy.apply(
-                lambda row: transform_string_time_to_datetime(row['hk_time']), axis=1)
+        df_copy['hk_time'] = df_copy.apply(lambda row: transform_string_time_to_datetime(row['hk_time']), axis=1)
     else:
         pass
+    # Set the user id to int
+    df_copy['user_id_str'] = df_copy['user_id_str'].astype(float)
+    df_copy['user_id_str'] = df_copy['user_id_str'].astype(np.int64)
     df_copy_sorted = df_copy.sort_values(by='hk_time')
     if oct_open:
-        before_time_mask = (df_copy_sorted['hk_time'] < october_23_start)
-        after_time_mask = (df_copy_sorted['hk_time'] > october_23_end)
+        before_time_mask = (df_copy_sorted['hk_time'] < october_1_start) & (start_time <= df_copy_sorted['hk_time'])
+        after_time_mask = (df_copy_sorted['hk_time'] > october_31_end) & (end_time > df_copy_sorted['hk_time'])
     else:
-        before_time_mask = (df_copy_sorted['hk_time'] < december_28_start)
-        after_time_mask = (df_copy_sorted['hk_time'] > december_28_end)
+        before_time_mask = (df_copy_sorted['hk_time'] < december_1_start) & (start_time <= df_copy_sorted['hk_time'])
+        after_time_mask = (df_copy_sorted['hk_time'] > december_31_end) & (end_time > df_copy_sorted['hk_time'])
     df_before = df_copy_sorted.loc[before_time_mask]
     df_after = df_copy_sorted.loc[after_time_mask]
-    before_study_area_name = study_area+'_before'
-    after_study_area_name = study_area+'_after'
-    print('--------------------------------------------------------------------------------')
-    general_info_of_tweet_dataset(df=df_before, study_area=before_study_area_name, show_result=show_result_or_not)
-    general_info_of_tweet_dataset(df=df_after, study_area=after_study_area_name, show_result=show_result_or_not)
-    print('--------------------------------------------------------------------------------')
+    return df_before, df_after
 
 
 if __name__ == '__main__':
@@ -273,7 +302,7 @@ if __name__ == '__main__':
     build_bar_plot_distribution_comparison(**{'total_sentiment_label_comparison': [1942, 2920, 137]})
 
     # draw bar plot which show the performance of various algorithms
-    classifiers_performance_compare(filename= 'classifier_performance_compare.png')
+    classifiers_performance_compare(filename='classifier_performance_compare.png')
 
     # Output general information of the dataframes involved in the longitudinal study
     treatment_control_saving_path = os.path.join(data_paths.transit_non_transit_comparison_before_after,
@@ -281,7 +310,7 @@ if __name__ == '__main__':
     kwun_tong_line_treatment_dataframe = read_local_csv_file(filename='kwun_tong_line_treatment.csv',
                                                              path=treatment_control_saving_path, dtype_str=False)
     kwun_tong_line_control_dataframe = read_local_csv_file(filename='kwun_tong_line_control_1000.csv',
-                                                             path=treatment_control_saving_path, dtype_str=False)
+                                                           path=treatment_control_saving_path, dtype_str=False)
     south_horizons_treatment_dataframe = read_local_csv_file(filename='south_horizons_lei_tung_treatment.csv',
                                                              path=treatment_control_saving_path, dtype_str=False)
     south_horizons_control_dataframe = read_local_csv_file(filename='south_horizons_lei_tung_control_1500.csv',
@@ -290,26 +319,3 @@ if __name__ == '__main__':
                                                          path=treatment_control_saving_path, dtype_str=False)
     ocean_park_control_dataframe = read_local_csv_file(filename='ocean_park_wong_chuk_hang_control_1500.csv',
                                                        path=treatment_control_saving_path, dtype_str=False)
-
-    general_info_before_and_after_compare(df=kwun_tong_line_treatment_dataframe,
-                                          study_area='Kwun Tong Line(treatment)', oct_open=True)
-    general_info_before_and_after_compare(df=kwun_tong_line_control_dataframe,
-                                          study_area='Kwun Tong Line(control)', oct_open=True)
-    general_info_before_and_after_compare(df=south_horizons_treatment_dataframe,
-                                          study_area='South Horizons(treatment)', oct_open=False)
-    general_info_before_and_after_compare(df=south_horizons_control_dataframe,
-                                          study_area='South Horizons(control)', oct_open=False)
-    general_info_before_and_after_compare(df=ocean_park_treatment_dataframe,
-                                          study_area='Ocean Park(treatment)', oct_open=False)
-    general_info_before_and_after_compare(df=ocean_park_control_dataframe,
-                                          study_area='Ocean Park(control)', oct_open=False)
-    
-
-
-
-
-
-
-
-
-

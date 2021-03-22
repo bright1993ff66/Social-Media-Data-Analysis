@@ -3,3 +3,12 @@ data_paths.py
 
 # Ignore some paths
 .idea
+
+# Ignore the files
+.idea/workspace.xml
+transit_non_transit_comparision/sentiment_combined.tif
+transit_non_transit_comparision/__pycache__/before_and_after_final_tpu.cpython-37.pyc
+transit_non_transit_comparision/tweet_time_count_summary.csv
+transit_non_transit_comparision/tweets_in_tpus_count.xlsx
+transit_non_transit_comparision/users_not_visitors.npy
+transit_non_transit_comparision/DID_analysis_before.py

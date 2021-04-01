@@ -64,8 +64,8 @@ def weighted_average(group: pd.DataFrame, value_col: str, weight_col: str) -> fl
     :param weight_col: the column name that saves the weights of weighted average
     :return: the weighted average
     """
-    weights = group[value_col]
-    values = group[weight_col]
+    weights = group[weight_col]
+    values = group[value_col]
     return np.average(values, weights=weights)
 
 

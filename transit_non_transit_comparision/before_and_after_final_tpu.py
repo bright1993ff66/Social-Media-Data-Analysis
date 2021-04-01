@@ -1041,7 +1041,8 @@ if __name__ == '__main__':
     tweet_combined['user_id_str'] = tweet_combined.apply(lambda row: np.int64(float(row['user_id_str'])), axis=1)
     tweet_combined['TPU_cross_sectional'] = tweet_combined.apply(lambda row: str(row['TPU_cross_sectional']), axis=1)
     # users_not_visitors = TransitNeighborhood_Before_After.find_max_tweet_days_tweet_count(tweet_combined)
-    # np.save(os.path.join(data_paths.transit_non_transit_compare_code_path, 'users_not_visitors.npy'), users_not_visitors)
+    # np.save(os.path.join(data_paths.transit_non_transit_compare_code_path, 'users_not_visitors.npy'),
+    #         users_not_visitors)
     hk_shapefile = gpd.read_file(os.path.join(data_paths.shapefile_path, 'hk_tpu_project.shp'))
     users_not_visitors = np.load(os.path.join(
         data_paths.transit_non_transit_compare_code_path, 'users_not_visitors.npy'), allow_pickle=True).item()

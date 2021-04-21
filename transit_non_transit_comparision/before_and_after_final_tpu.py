@@ -38,6 +38,18 @@ time_list = ['2016_5', '2016_6', '2016_7', '2016_8', '2016_9', '2016_10', '2016_
              '2017_2', '2017_3', '2017_4', '2017_5', '2017_6', '2017_7', '2017_8', '2017_9', '2017_10',
              '2017_11', '2017_12', '2018_1', '2018_2', '2018_3', '2018_4', '2018_5', '2018_6', '2018_7',
              '2018_8', '2018_9', '2018_10', '2018_11', '2018_12']
+time_letter_list = ['May 2016', 'Jun 2016', 'Jul 2016', 'Aug 2016', 'Sep 2016', 'Oct 2016', 'Nov 2016',
+                    'Dec 2016', 'Jan 2017', 'Feb 2017', 'Mar 2017', 'Apr 2017', 'May 2017', 'Jun 2017',
+                    'Jul 2017', 'Aug 2017', 'Sep 2017', 'Oct 2017', 'Nov 2017', 'Dec 2017', 'Jan 2018',
+                    'Feb 2018', 'Mar 2018', 'Apr 2018', 'May 2018', 'Jun 2018', 'Jul 2018', 'Aug 2018',
+                    'Sep 2018', 'Oct 2018', 'Nov 2018', 'Dec 2018']
+month_letter_list = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov',
+                     'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan',
+                     'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+                     'Sep', 'Oct', 'Nov', 'Dec']
+
+assert len(time_letter_list) == len(month_letter_list)
 
 # Hong Kong and Shanghai share the same time zone.
 # Hence, we transform the utc time in our dataset into Shanghai time
@@ -45,7 +57,6 @@ time_zone_hk = pytz.timezone('Asia/Shanghai')
 
 
 class TransitNeighborhood_Before_After(object):
-
     before_after_stations = ['Whampoa', 'Ho Man Tin', 'South Horizons', 'Wong Chuk Hang', 'Ocean Park',
                              'Lei Tung']
 
@@ -236,7 +247,7 @@ class TransitNeighborhood_Before_After(object):
         figure.tight_layout(pad=0.5)
 
         # Save the figure to local
-        figure.savefig(os.path.join(data_paths.plot_path, self.name+'_users_footprints.tif'), bbox_inches='tight')
+        figure.savefig(os.path.join(data_paths.plot_path, self.name + '_users_footprints.tif'), bbox_inches='tight')
 
     def plot_sentiment_comparison(self):
         """
@@ -333,7 +344,7 @@ class TransitNeighborhood_Before_After(object):
         axes[1].set_yticks(ytick_values)
         axes[1].set_yticklabels(['0', '20', '40', '60', '80', '100'])
 
-        figure.savefig(os.path.join(data_paths.plot_path, self.name+'_sentiment_compare.tif'), bbox_inches='tight')
+        figure.savefig(os.path.join(data_paths.plot_path, self.name + '_sentiment_compare.tif'), bbox_inches='tight')
 
     # Function used to create plot for one TN and the control group
     def line_map_comparison(self, fig, ax, line_labels: tuple, ylabel: str, plot_title_name: str,
@@ -430,7 +441,7 @@ class TransitNeighborhood_Before_After(object):
 
         # Set the yticks
         if draw_sentiment:
-            ytick_vals= np.arange(-0.3, 0.4, 0.1)
+            ytick_vals = np.arange(-0.3, 0.4, 0.1)
             ax.set_yticks(ytick_vals)
             ax.set_yticklabels(['-30', '-20', '-10', '0', '10', '20', '30'])
         else:
@@ -440,7 +451,7 @@ class TransitNeighborhood_Before_After(object):
 
         # ax.set_ylabel(ylabel, color='k')  # color='k' means black
         ax.set_xticks(x)
-        ax.set_xticklabels(time_list, rotation='vertical', size=25)
+        ax.set_xticklabels(month_letter_list, size=20)
 
     def plot_wordclouds(self):
         """
@@ -604,15 +615,15 @@ class TransitNeighborhood_Before_After(object):
             if not user_counter % 1000:
                 print('We have processed 1000 users...')
 
-        result_data['user_id'] = user_set_list # user id
-        result_data['max_days'] = days_list # The time between the first tweet and the last tweet
-        result_data['max_days_2016'] = days_2016_list # The time between the first tweet and the last tweet in 2016
-        result_data['max_days_2017'] = days_2017_list # The time between the first tweet and the last tweet in 2017
-        result_data['max_days_2018'] = days_2018_list # The time between the first tweet and the last tweet in 2018
-        result_data['tweet_count'] = tweet_count_list # Total number of tweets posted by this user
-        result_data['year_2016'] = count_2016 # Total number of tweets posted by this user in 2016
-        result_data['year_2017'] = count_2017 # Total number of tweets posted by this user in 2017
-        result_data['year_2018'] = count_2018 # Total number of tweets posted by this user in 2018
+        result_data['user_id'] = user_set_list  # user id
+        result_data['max_days'] = days_list  # The time between the first tweet and the last tweet
+        result_data['max_days_2016'] = days_2016_list  # The time between the first tweet and the last tweet in 2016
+        result_data['max_days_2017'] = days_2017_list  # The time between the first tweet and the last tweet in 2017
+        result_data['max_days_2018'] = days_2018_list  # The time between the first tweet and the last tweet in 2018
+        result_data['tweet_count'] = tweet_count_list  # Total number of tweets posted by this user
+        result_data['year_2016'] = count_2016  # Total number of tweets posted by this user in 2016
+        result_data['year_2017'] = count_2017  # Total number of tweets posted by this user in 2017
+        result_data['year_2018'] = count_2018  # Total number of tweets posted by this user in 2018
 
         result_2016_more_7 = result_data.loc[result_data['max_days_2016'] > 7]
         result_2017_more_7 = result_data.loc[result_data['max_days_2017'] > 7]
@@ -621,16 +632,16 @@ class TransitNeighborhood_Before_After(object):
         result_all_selected = result_data.loc[select_mask]
 
         print('In 2016, {}% of users are likely to be influenced by new transit stations'.format(
-            round(result_2016_more_7.shape[0] * 100 /result_data.shape[0], 6)))
+            round(result_2016_more_7.shape[0] * 100 / result_data.shape[0], 6)))
         print('In 2017, {}% of users are likely to be influenced by new transit stations'.format(
-            round(result_2017_more_7.shape[0] * 100/ result_data.shape[0], 6)))
+            round(result_2017_more_7.shape[0] * 100 / result_data.shape[0], 6)))
         print('In 2018, {}% of users who are likely to be influenced by new transit stations'.format(
             round(result_2018_more_7.shape[0] * 100 / result_data.shape[0], 6)))
         all_selected_users = set(result_all_selected['user_id'])
         select_dataframe = dataframe.loc[dataframe['user_id_str'].isin(all_selected_users)].reset_index(drop=True)
         select_dataframe.to_csv(os.path.join(data_paths.tweets_data, 'hk_tweets_filtered_final.csv'), encoding='utf-8')
         print('Applying 7 days rule to the whole data...')
-        all_percent_user = round(len(all_selected_users)/len(set(result_data['user_id'])), 6) * 100
+        all_percent_user = round(len(all_selected_users) / len(set(result_data['user_id'])), 6) * 100
         all_tweet_percent = round(select_dataframe.shape[0] / dataframe.shape[0], 6) * 100
         print('We get {}% users who are likely to be influenced by new transit stations'.format(all_percent_user))
         print('They posted {}% of tweets'.format(all_tweet_percent))
@@ -662,7 +673,6 @@ class TransitNeighborhood_Before_After(object):
         result_dataframe = pd.concat(result_dataframe_list, axis=1)
         result_dataframe.to_excel(os.path.join(data_paths.transit_non_transit_compare_code_path,
                                                'tweets_in_tpus_count.xlsx'))
-
 
     @staticmethod
     def plot_tweet_time_count_distribution(tweet_count_dataframe, timespan_check=90):
@@ -1049,7 +1059,8 @@ if __name__ == '__main__':
     TransitNeighborhood_Before_After.count_tweet_in_tpus_monthly(tweet_combined, user_ids=users_not_visitors,
                                                                  interested_tpus=['212', '234', '235', '236', '242',
                                                                                   '243', '245', '247', '172', '174',
-                                                                                  '181 - 182', '175 - 176', '183 - 184'])
+                                                                                  '181 - 182', '175 - 176',
+                                                                                  '183 - 184'])
 
     # List the TPUs in the treatment group and control
     kwun_tong_line_treatment_selected = {'243', '245', '236'}
@@ -1153,9 +1164,9 @@ if __name__ == '__main__':
     kwun_tong_poi_dataframe = pd.read_csv(os.path.join(data_paths.land_use_poi_path, 'kwun_tong_pois.txt'),
                                           encoding='utf-8')
     south_horizons_poi_dataframe = pd.read_csv(os.path.join(data_paths.land_use_poi_path, 'south_horizons_pois.txt'),
-                                          encoding='utf-8')
+                                               encoding='utf-8')
     ocean_park_poi_dataframe = pd.read_csv(os.path.join(data_paths.land_use_poi_path, 'ocean_park_pois.txt'),
-                                          encoding='utf-8')
+                                           encoding='utf-8')
 
     # Create the study area objects
     kwun_tong_line_extension_1000_control = TransitNeighborhood_Before_After(name='Kwun_Tong_Line',

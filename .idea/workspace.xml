@@ -20,11 +20,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b53c25db-d0cb-46ac-94d9-8ec38766eb7c" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/tpu_data_check.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tpu_group_data_check.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transit_non_transit_comparision/DID_lag_final.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transit_non_transit_comparision/DID_lag.py" beforeDir="false" afterPath="$PROJECT_DIR$/transit_non_transit_comparision/DID_lag.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transit_non_transit_comparision/DID_without_lag.py" beforeDir="false" afterPath="$PROJECT_DIR$/transit_non_transit_comparision/DID_without_lag.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/transit_non_transit_comparision/before_and_after_final_tpu.py" beforeDir="false" afterPath="$PROJECT_DIR$/transit_non_transit_comparision/before_and_after_final_tpu.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transit_non_transit_comparision/difference_in_difference_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/transit_non_transit_comparision/difference_in_difference_analysis.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -46,7 +49,7 @@
     <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/transit_non_transit_comparision/difference_in_difference_analysis.py" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/transit_non_transit_comparision/DID_lag_final.py" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
     <property name="node.js.path.for.package.eslint" value="project" />
@@ -55,7 +58,51 @@
     <property name="node.js.selected.package.tslint" value="(autodetect)" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
-  <component name="RunManager" selected="Python.difference_in_difference_analysis">
+  <component name="RunManager" selected="Python.DID_lag">
+    <configuration name="DID_lag" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="MTR_station_project" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="D:\Python37\python.exe" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/transit_non_transit_comparision" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/transit_non_transit_comparision/DID_lag.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="DID_lag_final" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="MTR_station_project" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="D:\Python37\python.exe" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/transit_non_transit_comparision" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/transit_non_transit_comparision/DID_lag_final.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="before_and_after_final_tpu" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="MTR_station_project" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -103,6 +150,8 @@
     <list>
       <item itemvalue="Python.before_and_after_final_tpu" />
       <item itemvalue="Python.difference_in_difference_analysis" />
+      <item itemvalue="Python.DID_lag" />
+      <item itemvalue="Python.DID_lag_final" />
     </list>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
@@ -131,42 +180,11 @@
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
   </component>
-  <component name="WindowStateProjectService">
-    <state x="223" y="70" width="1089" height="734" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1607670179023">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state x="223" y="70" width="1089" height="734" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1536.824@0.0.1536.824" timestamp="1607670179023" />
-    <state x="898" y="213" key="FileChooserDialogImpl" timestamp="1607670175349">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state x="898" y="213" key="FileChooserDialogImpl/0.0.1536.824@0.0.1536.824" timestamp="1607670175349" />
-    <state width="1515" height="238" key="GridCell.Tab.0.bottom" timestamp="1607671418106">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state width="1515" height="238" key="GridCell.Tab.0.bottom/0.0.1536.824@0.0.1536.824" timestamp="1607671418106" />
-    <state width="1515" height="238" key="GridCell.Tab.0.center" timestamp="1607671418106">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state width="1515" height="238" key="GridCell.Tab.0.center/0.0.1536.824@0.0.1536.824" timestamp="1607671418106" />
-    <state width="1515" height="238" key="GridCell.Tab.0.left" timestamp="1607671418106">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state width="1515" height="238" key="GridCell.Tab.0.left/0.0.1536.824@0.0.1536.824" timestamp="1607671418106" />
-    <state width="1515" height="238" key="GridCell.Tab.0.right" timestamp="1607671418106">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state width="1515" height="238" key="GridCell.Tab.0.right/0.0.1536.824@0.0.1536.824" timestamp="1607671418106" />
-    <state x="272" y="58" key="SettingsEditor" timestamp="1607340147436">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state x="272" y="58" key="SettingsEditor/0.0.1536.824@0.0.1536.824" timestamp="1607340147436" />
-    <state x="431" y="145" width="672" height="678" key="search.everywhere.popup" timestamp="1607341234875">
-      <screen x="0" y="0" width="1536" height="824" />
-    </state>
-    <state x="431" y="145" width="672" height="678" key="search.everywhere.popup/0.0.1536.824@0.0.1536.824" timestamp="1607341234875" />
-  </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/MTR_station_project$before_and_after_final_tpu.coverage" NAME="before_and_after_final_tpu Coverage Results" MODIFIED="1615720457600" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/transit_non_transit_comparision" />
-    <SUITE FILE_PATH="coverage/MTR_station_project$difference_in_difference_analysis.coverage" NAME="difference_in_difference_analysis Coverage Results" MODIFIED="1615946993251" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/transit_non_transit_comparision" />
+    <SUITE FILE_PATH="coverage/MTR_station_project$DID_lag.coverage" NAME="DID_lag Coverage Results" MODIFIED="1618988169746" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/transit_non_transit_comparision" />
+    <SUITE FILE_PATH="coverage/MTR_station_project$before_and_after_final_tpu.coverage" NAME="before_and_after_final_tpu Coverage Results" MODIFIED="1617412625857" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/transit_non_transit_comparision" />
+    <SUITE FILE_PATH="coverage/MTR_station_project$DID_lag_final.coverage" NAME="DID_lag_final Coverage Results" MODIFIED="1618987847506" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/transit_non_transit_comparision" />
+    <SUITE FILE_PATH="coverage/MTR_station_project$DID_without_lag.coverage" NAME="DID_without_lag Coverage Results" MODIFIED="1617785506508" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/transit_non_transit_comparision" />
+    <SUITE FILE_PATH="coverage/MTR_station_project$difference_in_difference_analysis.coverage" NAME="difference_in_difference_analysis Coverage Results" MODIFIED="1617191073935" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/transit_non_transit_comparision" />
   </component>
 </project>

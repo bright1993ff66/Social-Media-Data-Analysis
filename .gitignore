@@ -1,8 +1,12 @@
 # Ignore the data paths
 data_paths.py
+*.npy
+*.pyc
+_config.yml
 
 # Ignore some paths
-.idea
+.idea/
+__pycache__/
 
 # Ignore the files
 .idea/workspace.xml
@@ -12,3 +16,5 @@ transit_non_transit_comparision/tweet_time_count_summary.csv
 transit_non_transit_comparision/tweets_in_tpus_count.xlsx
 transit_non_transit_comparision/users_not_visitors.npy
 transit_non_transit_comparision/DID_analysis_before.py
+transit_non_transit_comparision/check.sh
+Visualization/__pycache__/topic_model_tweets.cpython-37.pyc

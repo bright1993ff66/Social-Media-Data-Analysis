@@ -3,6 +3,8 @@ data_paths.py
 *.npy
 *.pyc
 _config.yml
+tpu_data_check.xlsx
+tpu_group_data_check.xlsx
 
 # Ignore some paths
 .idea/

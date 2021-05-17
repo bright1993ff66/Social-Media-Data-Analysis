@@ -1,10 +1,16 @@
 keras==2.2.0
+numpy
+nltk
 botometer
+matplotlib
+seaborn
 gensim
 tweepy
 geopy
 google
+pytz
 wordcloud
 sklearn
 spacy
 pandas
+geopandas

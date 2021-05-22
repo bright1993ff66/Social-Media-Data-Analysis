@@ -25,6 +25,28 @@ october_31_end = datetime(2016, 10, 31, 23, 59, 59, tzinfo=time_zone_hk)
 december_1_start = datetime(2016, 12, 1, 0, 0, 0, tzinfo=time_zone_hk)
 december_31_end = datetime(2016, 12, 31, 23, 59, 59, tzinfo=time_zone_hk)
 
+## TPU selection before the first review
+# kwun_tong_line_treatment_tpu_set = {'243', '245', '236', '213'}
+# kwun_tong_line_control_tpu_set = {'247', '234', '242', '212', '235'}
+# south_horizons_lei_tung_treatment_tpu_set = {'174'}
+# south_horizons_lei_tung_control_tpu_set = {'172', '182'}
+# ocean_park_wong_chuk_hang_treatment_tpu_set = {'175'}
+# ocean_park_wong_chuk_hang_control_tpu_set = {'184', '183', '182'}
+
+kwun_tong_line_treatment_tpu_set = {'236', '243', '245'}
+kwun_tong_line_control_tpu_set = {'247', '234', '242', '212', '235'}
+south_horizons_lei_tung_treatment_tpu_set = {'174'}
+south_horizons_lei_tung_control_tpu_set = {'172', '181', '182'}
+ocean_park_wong_chuk_hang_treatment_tpu_set = {'175', '176'}
+ocean_park_wong_chuk_hang_control_tpu_set = {'184', '183', '182', '181'}
+
+kwun_tong_line_treatment_tpu_group_set = {'236', '243', '245'}
+kwun_tong_line_control_tpu_group_set = {'247', '234', '242', '212', '235'}
+south_horizons_treatment_tpu_group_set = {'174'}
+south_horizons_control_tpu_group_set = {'172', '181 - 182'}
+ocean_park_treatment_tpu_group_set = {'175 - 176'}
+ocean_park_control_tpu_group_set = {'181 - 182', '183 - 184'}
+
 
 class StudyArea(object):
 
@@ -114,18 +136,40 @@ def add_post_variable_lag_effect(string, opening_start_date, opening_end_date, l
             return 'not considered'
 
 
-def get_population_one_area_combined(dataframe: pd.DataFrame, census_dict: dict):
+def get_population_one_area_combined(dataframe: pd.DataFrame, treatment_census_data, control_census_data):
     """
     Get the population data based on treatment and control setting
     :param dataframe: a pandas dataframe containing the data for DID analysis
-    :param census_dict: dictionary saving the population and median income information
+    :param treatment_census_data: the census dataframe for treatment area
+    :param control_census_data: the census dataframe for control area
     :return: dataframe containing the population
     """
     assert 'T_i_t' in dataframe, 'The dataframe should have treatment and control indicator'
-    dataframe['Population_log'] = dataframe.apply(
-        lambda row: np.log(census_dict['treatment'][0]) if row['T_i_t'] == 1 else np.log(census_dict['control'][0]),
-        axis=1)
-    return dataframe
+    assert 'Post' in dataframe, 'The dataframe should have post or not indicator'
+    dataframe_copy = dataframe.copy()
+    population_list = []
+    for index, row in dataframe_copy.iterrows():
+        if row['T_i_t'] == 1 and row['Post'] == 1:
+            select_columns = [col for col in treatment_census_data if '2016' in col] + ['SmallTPU']
+            select_dataframe = treatment_census_data[select_columns]
+            population_list.append(sum(select_dataframe['population_2016']))
+        elif row['T_i_t'] == 1 and row['Post'] == 0:
+            select_columns = [col for col in treatment_census_data if '2011' in col] + ['SmallTPU']
+            select_dataframe = treatment_census_data[select_columns]
+            population_list.append(sum(select_dataframe['population_2011']))
+        elif row['T_i_t'] == 0 and row['Post'] == 1:
+            select_columns = [col for col in control_census_data if '2016' in col] + ['SmallTPU']
+            select_dataframe = control_census_data[select_columns]
+            population_list.append(sum(select_dataframe['population_2016']))
+        elif row['T_i_t'] == 0 and row['Post'] == 0:
+            select_columns = [col for col in control_census_data if '2011' in col] + ['SmallTPU']
+            select_dataframe = control_census_data[select_columns]
+            population_list.append(sum(select_dataframe['population_2011']))
+        else:
+            raise ValueError('Something wrong with the T and Post variables...')
+    dataframe_copy['Population'] = population_list
+    dataframe_copy['Population_log'] = dataframe_copy.apply(lambda row: np.log(row['Population']), axis=1)
+    return dataframe_copy
 
 
 def get_population_one_area_seperate(dataframe: pd.DataFrame, census_dict: dict):
@@ -140,18 +184,48 @@ def get_population_one_area_seperate(dataframe: pd.DataFrame, census_dict: dict)
     return dataframe
 
 
-def get_median_income_one_area_combined(dataframe: pd.DataFrame, census_dict: dict):
+def get_median_income_one_area_combined(dataframe: pd.DataFrame, treatment_census_data, control_census_data):
     """
     Get the population data based on treatment and control setting
     :param dataframe: a pandas dataframe containing the data for DID analysis
-    :param census_dict: dictionary saving the population and median income information
+    :param treatment_census_data: the census dataframe for treatment area
+    :param control_census_data: the census dataframe for control area
     :return: dataframe containing the population
     """
     assert 'T_i_t' in dataframe, 'The dataframe should have treatment and control indicator'
-    dataframe['Median_Income_log'] = dataframe.apply(
-        lambda row: np.log(census_dict['treatment'][1]) if row['T_i_t'] == 1 else np.log(census_dict['control'][1]),
-        axis=1)
-    return dataframe
+    assert 'Post' in dataframe, 'The dataframe should have post or not indicator'
+    dataframe_copy = dataframe.copy()
+    median_income_list = []
+    for index, row in dataframe_copy.iterrows():
+        if row['T_i_t'] == 1 and row['Post'] == 1:
+            select_columns = [col for col in treatment_census_data if '2016' in col] + ['SmallTPU']
+            select_dataframe = treatment_census_data[select_columns]
+            median_income_list.append(utils.weighted_average(group=select_dataframe,
+                                                             value_col='m_income_2016',
+                                                             weight_col='population_2016'))
+        elif row['T_i_t'] == 1 and row['Post'] == 0:
+            select_columns = [col for col in treatment_census_data if '2011' in col] + ['SmallTPU']
+            select_dataframe = treatment_census_data[select_columns]
+            median_income_list.append(utils.weighted_average(group=select_dataframe,
+                                                             value_col='m_income_2011',
+                                                             weight_col='population_2011'))
+        elif row['T_i_t'] == 0 and row['Post'] == 1:
+            select_columns = [col for col in control_census_data if '2016' in col] + ['SmallTPU']
+            select_dataframe = control_census_data[select_columns]
+            median_income_list.append(utils.weighted_average(group=select_dataframe,
+                                                             value_col='m_income_2016',
+                                                             weight_col='population_2016'))
+        elif row['T_i_t'] == 0 and row['Post'] == 0:
+            select_columns = [col for col in control_census_data if '2011' in col] + ['SmallTPU']
+            select_dataframe = control_census_data[select_columns]
+            median_income_list.append(utils.weighted_average(group=select_dataframe,
+                                                             value_col='m_income_2011',
+                                                             weight_col='population_2011'))
+        else:
+            raise ValueError('Something wrong with the T and Post variables...')
+    dataframe_copy['Median_Income'] = median_income_list
+    dataframe_copy['Median_Income_log'] = dataframe_copy.apply(lambda row: np.log(row['Median_Income']), axis=1)
+    return dataframe_copy
 
 
 def get_median_income_one_area_seperate(dataframe: pd.DataFrame, census_dict: dict):
@@ -166,33 +240,82 @@ def get_median_income_one_area_seperate(dataframe: pd.DataFrame, census_dict: di
     return dataframe
 
 
-def get_population_three_areas_combined(dataframe: pd.DataFrame, census_dict: dict):
+def get_population_three_areas_combined(dataframe: pd.DataFrame, tpu_info_dataframe: pd.DataFrame):
     """
     Get the population data based on treatment and control setting
     :param dataframe: a pandas dataframe containing the data for DID analysis
-    :param census_dict: dictionary saving the population and median income information
+    :param tpu_info_dataframe: a pandas dataframe saving the TPU info information
     :return: dataframe containing the population
     """
-    assert 'T_i_t' in dataframe, 'The dataframe should have treatment and control indicator'
-    assert 'Area_name' in dataframe, "The dataframe should have one column saving the area name"
-    assert 'kwun_tong' in census_dict, 'The dictionary should contain whampoa & ho man tin data'
-    assert 'south_horizons' in census_dict, 'The dictionary should contain south horizons & lei tung data'
-    assert 'ocean_park' in census_dict, 'The dictionary should contain ocean park & wong chuk hang data'
     result_population_list = []
     dataframe_copy = dataframe.copy()
     for index, row in dataframe_copy.iterrows():
-        if (row['T_i_t'] == 1) and (row['Area_name'] == 'kwun_tong'):
-            result_population_list.append(census_dict['kwun_tong'][0][0])
-        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'kwun_tong'):
-            result_population_list.append(census_dict['kwun_tong'][1][0])
-        elif (row['T_i_t'] == 1) and (row['Area_name'] == 'south_horizons'):
-            result_population_list.append(census_dict['south_horizons'][0][0])
-        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'south_horizons'):
-            result_population_list.append(census_dict['south_horizons'][1][0])
-        elif (row['T_i_t'] == 1) and (row['Area_name'] == 'ocean_park'):
-            result_population_list.append(census_dict['ocean_park'][0][0])
-        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'ocean_park'):
-            result_population_list.append(census_dict['ocean_park'][1][0])
+
+        if (row['T_i_t'] == 1) and (row['Area_name'] == 'kwun_tong') and (row['Post'] == 0):
+            select_columns = [col for col in tpu_info_dataframe if '2011' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(
+                kwun_tong_line_treatment_tpu_group_set)]
+            result_population_list.append(sum(select_rows['population_2011']))
+        elif (row['T_i_t'] == 1) and (row['Area_name'] == 'kwun_tong') and (row['Post'] == 1):
+            select_columns = [col for col in tpu_info_dataframe if '2016' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(
+                kwun_tong_line_treatment_tpu_group_set)]
+            result_population_list.append(sum(select_rows['population_2016']))
+        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'kwun_tong') and (row['Post'] == 0):
+            select_columns = [col for col in tpu_info_dataframe if '2011' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(kwun_tong_line_control_tpu_group_set)]
+            result_population_list.append(sum(select_rows['population_2011']))
+        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'kwun_tong') and (row['Post'] == 1):
+            select_columns = [col for col in tpu_info_dataframe if '2016' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(kwun_tong_line_control_tpu_group_set)]
+            result_population_list.append(sum(select_rows['population_2016']))
+
+        elif (row['T_i_t'] == 1) and (row['Area_name'] == 'south_horizons') and (row['Post'] == 0):
+            select_columns = [col for col in tpu_info_dataframe if '2011' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(south_horizons_treatment_tpu_group_set)]
+            result_population_list.append(sum(select_rows['population_2011']))
+        elif (row['T_i_t'] == 1) and (row['Area_name'] == 'south_horizons') and (row['Post'] == 1):
+            select_columns = [col for col in tpu_info_dataframe if '2016' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(south_horizons_treatment_tpu_group_set)]
+            result_population_list.append(sum(select_rows['population_2016']))
+        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'south_horizons') and (row['Post'] == 0):
+            select_columns = [col for col in tpu_info_dataframe if '2011' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(south_horizons_control_tpu_group_set)]
+            result_population_list.append(sum(select_rows['population_2011']))
+        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'south_horizons') and (row['Post'] == 1):
+            select_columns = [col for col in tpu_info_dataframe if '2016' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(south_horizons_control_tpu_group_set)]
+            result_population_list.append(sum(select_rows['population_2016']))
+
+        elif (row['T_i_t'] == 1) and (row['Area_name'] == 'ocean_park') and (row['Post'] == 0):
+            select_columns = [col for col in tpu_info_dataframe if '2011' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(ocean_park_treatment_tpu_group_set)]
+            result_population_list.append(sum(select_rows['population_2011']))
+        elif (row['T_i_t'] == 1) and (row['Area_name'] == 'ocean_park') and (row['Post'] == 1):
+            select_columns = [col for col in tpu_info_dataframe if '2016' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(ocean_park_treatment_tpu_group_set)]
+            result_population_list.append(sum(select_rows['population_2016']))
+        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'ocean_park') and (row['Post'] == 0):
+            select_columns = [col for col in tpu_info_dataframe if '2011' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(ocean_park_control_tpu_group_set)]
+            result_population_list.append(sum(select_rows['population_2011']))
+        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'ocean_park') and (row['Post'] == 1):
+            select_columns = [col for col in tpu_info_dataframe if '2016' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(ocean_park_control_tpu_group_set)]
+            result_population_list.append(sum(select_rows['population_2016']))
+
         else:
             raise ValueError('Something wrong with the area name...')
     dataframe_copy['Population'] = result_population_list
@@ -200,52 +323,105 @@ def get_population_three_areas_combined(dataframe: pd.DataFrame, census_dict: di
     return dataframe_copy
 
 
-def get_median_income_three_areas_combined(dataframe: pd.DataFrame, census_dict: dict):
+def get_median_income_three_areas_combined(dataframe: pd.DataFrame, tpu_info_dataframe: pd.DataFrame):
     """
     Get the median income data based on treatment and control setting
     :param dataframe: a pandas dataframe containing the data for DID analysis
-    :param census_dict: dictionary saving the population and median income information
+    :param tpu_info_dataframe: the pandas dataframe for tpu census data
     :return: dataframe containing the median income
     """
-    assert 'T_i_t' in dataframe, 'The dataframe should have treatment and control indicator'
-    assert 'Area_name' in dataframe, "The dataframe should have one column saving the area name"
-    assert 'kwun_tong' in census_dict, 'The dictionary should contain whampoa & ho man tin data'
-    assert 'south_horizons' in census_dict, 'The dictionary should contain south horizons & lei tung data'
-    assert 'ocean_park' in census_dict, 'The dictionary should contain ocean park & wong chuk hang data'
+
     median_income_list = []
-    median_income_filtered_list = []
 
     dataframe_copy = dataframe.copy()
     for index, row in dataframe_copy.iterrows():
-        if (row['T_i_t'] == 1) and (row['Area_name'] == 'kwun_tong'):
-            median_income_list.append(census_dict['kwun_tong'][0][1])
-            median_income_filtered_list.append(census_dict['kwun_tong'][0][2])
-        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'kwun_tong'):
-            median_income_list.append(census_dict['kwun_tong'][1][1])
-            median_income_filtered_list.append(census_dict['kwun_tong'][1][2])
-        elif (row['T_i_t'] == 1) and (row['Area_name'] == 'south_horizons'):
-            median_income_list.append(census_dict['south_horizons'][0][1])
-            median_income_filtered_list.append(census_dict['south_horizons'][0][2])
-        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'south_horizons'):
-            median_income_list.append(census_dict['south_horizons'][1][1])
-            median_income_filtered_list.append(census_dict['south_horizons'][1][2])
-        elif (row['T_i_t'] == 1) and (row['Area_name'] == 'ocean_park'):
-            median_income_list.append(census_dict['ocean_park'][0][1])
-            median_income_filtered_list.append(census_dict['ocean_park'][0][2])
-        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'ocean_park'):
-            median_income_list.append(census_dict['ocean_park'][1][1])
-            median_income_filtered_list.append(census_dict['ocean_park'][1][2])
+        if (row['T_i_t'] == 1) and (row['Area_name'] == 'kwun_tong') and (row['Post'] == 0):
+            select_columns = [col for col in tpu_info_dataframe if '2011' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[
+                select_dataframe['SmallTPU'].isin(kwun_tong_line_treatment_tpu_group_set)]
+            median_income_list.append(utils.weighted_average(select_rows,
+                                                             value_col='m_income_2011', weight_col='population_2011'))
+        elif (row['T_i_t'] == 1) and (row['Area_name'] == 'kwun_tong') and (row['Post'] == 1):
+            select_columns = [col for col in tpu_info_dataframe if '2016' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[
+                select_dataframe['SmallTPU'].isin(kwun_tong_line_treatment_tpu_group_set)]
+            median_income_list.append(utils.weighted_average(select_rows,
+                                                             value_col='m_income_2016', weight_col='population_2016'))
+        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'kwun_tong') and (row['Post'] == 0):
+            select_columns = [col for col in tpu_info_dataframe if '2011' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(kwun_tong_line_control_tpu_group_set)]
+            median_income_list.append(utils.weighted_average(select_rows,
+                                                             value_col='m_income_2011', weight_col='population_2011'))
+        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'kwun_tong') and (row['Post'] == 1):
+            select_columns = [col for col in tpu_info_dataframe if '2016' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(kwun_tong_line_control_tpu_group_set)]
+            median_income_list.append(utils.weighted_average(select_rows,
+                                                             value_col='m_income_2016', weight_col='population_2016'))
+
+        elif (row['T_i_t'] == 1) and (row['Area_name'] == 'south_horizons') and (row['Post'] == 0):
+            select_columns = [col for col in tpu_info_dataframe if '2011' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[
+                select_dataframe['SmallTPU'].isin(south_horizons_treatment_tpu_group_set)]
+            median_income_list.append(utils.weighted_average(select_rows,
+                                                             value_col='m_income_2011', weight_col='population_2011'))
+        elif (row['T_i_t'] == 1) and (row['Area_name'] == 'south_horizons') and (row['Post'] == 1):
+            select_columns = [col for col in tpu_info_dataframe if '2016' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[
+                select_dataframe['SmallTPU'].isin(south_horizons_treatment_tpu_group_set)]
+            median_income_list.append(utils.weighted_average(select_rows,
+                                                             value_col='m_income_2016', weight_col='population_2016'))
+        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'south_horizons') and (row['Post'] == 0):
+            select_columns = [col for col in tpu_info_dataframe if '2011' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(south_horizons_control_tpu_group_set)]
+            median_income_list.append(utils.weighted_average(select_rows,
+                                                             value_col='m_income_2011', weight_col='population_2011'))
+        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'south_horizons') and (row['Post'] == 1):
+            select_columns = [col for col in tpu_info_dataframe if '2016' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(south_horizons_control_tpu_group_set)]
+            median_income_list.append(utils.weighted_average(select_rows,
+                                                             value_col='m_income_2016', weight_col='population_2016'))
+
+        elif (row['T_i_t'] == 1) and (row['Area_name'] == 'ocean_park') and (row['Post'] == 0):
+            select_columns = [col for col in tpu_info_dataframe if '2011' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(ocean_park_treatment_tpu_group_set)]
+            median_income_list.append(utils.weighted_average(select_rows,
+                                                             value_col='m_income_2011', weight_col='population_2011'))
+        elif (row['T_i_t'] == 1) and (row['Area_name'] == 'ocean_park') and (row['Post'] == 1):
+            select_columns = [col for col in tpu_info_dataframe if '2016' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(ocean_park_treatment_tpu_group_set)]
+            median_income_list.append(utils.weighted_average(select_rows,
+                                                             value_col='m_income_2016', weight_col='population_2016'))
+        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'ocean_park') and (row['Post'] == 0):
+            select_columns = [col for col in tpu_info_dataframe if '2011' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(ocean_park_control_tpu_group_set)]
+            median_income_list.append(utils.weighted_average(select_rows,
+                                                             value_col='m_income_2011', weight_col='population_2011'))
+        elif (row['T_i_t'] == 0) and (row['Area_name'] == 'ocean_park') and (row['Post'] == 1):
+            select_columns = [col for col in tpu_info_dataframe if '2016' in col] + ['SmallTPU']
+            select_dataframe = tpu_info_dataframe[select_columns]
+            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(ocean_park_control_tpu_group_set)]
+            median_income_list.append(utils.weighted_average(select_rows,
+                                                             value_col='m_income_2016', weight_col='population_2016'))
         else:
             raise ValueError('Something wrong with the area name...')
     dataframe_copy['Median_Income'] = median_income_list
     dataframe_copy['Median_Income_log'] = dataframe_copy.apply(lambda row: np.log(row['Median_Income']), axis=1)
-    dataframe_copy['Median_Income_Filtered'] = median_income_filtered_list
-    dataframe_copy['Median_Income_Filtered_log'] = dataframe_copy.apply(
-        lambda row: np.log(row['Median_Income_Filtered']), axis=1)
+
     return dataframe_copy
 
 
-def build_dataframe_based_on_set(datapath, tpu_set, selected_user_set):
+def build_dataframe_based_on_set(datapath: str, tpu_set: set, selected_user_set: set):
     """
     Build the dataframes based on the given tpu set
     :param datapath: the datapath saving the tweets posted in each tpu
@@ -283,12 +459,6 @@ def build_regress_data_three_areas_combined(kwun_tong_treatment, kwun_tong_contr
     :return: a combined dataframe which could be used for combined DID analysis
     """
     result_dataframe = pd.DataFrame()
-    kwun_tong_line_treatment_tpu_group_set = {'236', '243', '245'}
-    kwun_tong_line_control_tpu_group_set = {'247', '234', '242', '212', '235'}
-    south_horizons_treatment_tpu_group_set = {'174'}
-    south_horizons_control_tpu_group_set = {'172', '181 - 182'}
-    ocean_park_treatment_tpu_group_set = {'175 - 176'}
-    ocean_park_control_tpu_group_set = {'181 - 182', '183 - 184'}
     # build the treatment control binary variable
     kwun_tong_treatment['T_i_t'] = [1] * kwun_tong_treatment.shape[0]
     kwun_tong_treatment['Area_num'] = [1] * kwun_tong_treatment.shape[0]
@@ -331,69 +501,6 @@ def build_regress_data_three_areas_combined(kwun_tong_treatment, kwun_tong_contr
                                               opening_end_date=study_obj.open_end_date,
                                               check_window=check_window_value), axis=1)
 
-    # Construct the dictionary having the census data for the treatment area and control area
-    tpu_info_dataframe['SmallTPU'] = tpu_info_dataframe.apply(lambda row: str(row['SmallTPU']), axis=1)
-
-    kwun_tong_treatment_info_data = tpu_info_dataframe.loc[tpu_info_dataframe['SmallTPU'].isin(
-        kwun_tong_line_treatment_tpu_group_set)]
-    kwun_tong_control_info_data = tpu_info_dataframe.loc[tpu_info_dataframe['SmallTPU'].isin(
-        kwun_tong_line_control_tpu_group_set)]
-    south_horizons_treatment_info_data = tpu_info_dataframe.loc[tpu_info_dataframe['SmallTPU'].isin(
-        south_horizons_treatment_tpu_group_set)]
-    south_horizons_control_info_data = tpu_info_dataframe.loc[tpu_info_dataframe['SmallTPU'].isin(
-        south_horizons_control_tpu_group_set)]
-    ocean_park_treatment_info_data = tpu_info_dataframe.loc[tpu_info_dataframe['SmallTPU'].isin(
-        ocean_park_treatment_tpu_group_set)]
-    ocean_park_control_info_data = tpu_info_dataframe.loc[tpu_info_dataframe['SmallTPU'].isin(
-        ocean_park_control_tpu_group_set)]
-    census_dict = {}
-    for _, row in tpu_info_dataframe.iterrows():
-        census_dict[str(row['SmallTPU'])] = [row['population'], row['m_income'], row['m_income_filtered']]
-    # kwun_tong: [[pop, income, income_filtered]: treatment, [pop, income, income_filtered]: control]
-    census_dict_area = {'kwun_tong': [[0, 0, 0], [0, 0, 0]],
-                        'south_horizons': [[0, 0, 0], [0, 0, 0]],
-                        'ocean_park': [[0, 0, 0],
-                                       [0, 0, 0]]}
-    for tpu in kwun_tong_line_treatment_tpu_group_set:
-        census_dict_area['kwun_tong'][0][0] += census_dict[tpu][0]
-    for tpu in kwun_tong_line_control_tpu_group_set:
-        census_dict_area['kwun_tong'][1][0] += census_dict[tpu][0]
-    for tpu in south_horizons_treatment_tpu_group_set:
-        census_dict_area['south_horizons'][0][0] += census_dict[tpu][0]
-    for tpu in south_horizons_control_tpu_group_set:
-        census_dict_area['south_horizons'][1][0] += census_dict[tpu][0]
-    for tpu in ocean_park_treatment_tpu_group_set:
-        census_dict_area['ocean_park'][0][0] += census_dict[tpu][0]
-    for tpu in ocean_park_control_tpu_group_set:
-        census_dict_area['ocean_park'][1][0] += census_dict[tpu][0]
-    census_dict_area['kwun_tong'][0][1] = utils.weighted_average(kwun_tong_treatment_info_data,
-                                                                 value_col='m_income', weight_col='population')
-    census_dict_area['kwun_tong'][0][2] = utils.weighted_average(kwun_tong_treatment_info_data,
-                                                                 value_col='m_income_filtered', weight_col='population')
-    census_dict_area['kwun_tong'][1][1] = utils.weighted_average(kwun_tong_control_info_data,
-                                                                 value_col='m_income', weight_col='population')
-    census_dict_area['kwun_tong'][1][2] = utils.weighted_average(kwun_tong_control_info_data,
-                                                                 value_col='m_income_filtered', weight_col='population')
-    census_dict_area['south_horizons'][0][1] = utils.weighted_average(south_horizons_treatment_info_data,
-                                                                      value_col='m_income', weight_col='population')
-    census_dict_area['south_horizons'][0][2] = utils.weighted_average(south_horizons_treatment_info_data,
-                                                                      value_col='m_income_filtered',
-                                                                      weight_col='population')
-    census_dict_area['south_horizons'][1][1] = utils.weighted_average(south_horizons_control_info_data,
-                                                                      value_col='m_income', weight_col='population')
-    census_dict_area['south_horizons'][1][2] = utils.weighted_average(south_horizons_control_info_data,
-                                                                      value_col='m_income_filtered',
-                                                                      weight_col='population')
-    census_dict_area['ocean_park'][0][1] = utils.weighted_average(ocean_park_treatment_info_data,
-                                                                  value_col='m_income', weight_col='population')
-    census_dict_area['ocean_park'][0][2] = utils.weighted_average(ocean_park_treatment_info_data,
-                                                                  value_col='m_income_filtered',
-                                                                  weight_col='population')
-    census_dict_area['ocean_park'][1][1] = utils.weighted_average(ocean_park_control_info_data,
-                                                                  value_col='m_income', weight_col='population')
-    census_dict_area['ocean_park'][1][2] = utils.weighted_average(ocean_park_control_info_data,
-                                                                  value_col='m_income_filtered',
-                                                                  weight_col='population')
     # Create the tweet dataframe containing the tweets with year_month information
     combined_dataframe = pd.concat(dataframe_list, axis=0, sort=True)
     combined_dataframe = combined_dataframe.reset_index(drop=True)
@@ -452,9 +559,9 @@ def build_regress_data_three_areas_combined(kwun_tong_treatment, kwun_tong_contr
         lambda row: np.log(row['Activity']), axis=1)
     result_dataframe_copy['month'] = result_dataframe_copy.apply(lambda row: int(row['Time'][5:]), axis=1)
     dataframe_with_population = get_population_three_areas_combined(result_dataframe_copy,
-                                                                    census_dict=census_dict_area)
+                                                                    tpu_info_dataframe=tpu_info_dataframe)
     regres_dataframe = get_median_income_three_areas_combined(dataframe_with_population,
-                                                              census_dict=census_dict_area)
+                                                              tpu_info_dataframe=tpu_info_dataframe)
     # Don't consider last two months of tweet data for South Horizons & Lei Tung
     remove_mask = (regres_dataframe['Area_name'] == 'south_horizons') & (
         regres_dataframe['Time'].isin(['2018_11', '2018_12']))
@@ -463,7 +570,6 @@ def build_regress_data_three_areas_combined(kwun_tong_treatment, kwun_tong_contr
     month_counter = Counter(regres_dataframe_select['Time'])
     not_considered_months = [month for month in month_counter if month_counter[month] != 6]
     final_dataframe = regres_dataframe_select.loc[~regres_dataframe_select['Time'].isin(not_considered_months)]
-    np.save(os.path.join(data_paths.code_path, 'check_census_not_combined.npy'), census_dict_area)
     return final_dataframe.reset_index(drop=True)
 
 
@@ -538,7 +644,8 @@ def build_regress_data_three_areas_seperate(kwun_tong_treatment, kwun_tong_contr
     tpu_info_dataframe['SmallTPU'] = tpu_info_dataframe.apply(lambda row: str(row['SmallTPU']), axis=1)
     census_dict = {}  # [log(population), log(median_income), tpu_index]
     for _, row in tpu_info_dataframe.iterrows():
-        census_dict[row['SmallTPU']] = [row['population'], row['m_income'], row['m_income_filtered']]
+        census_dict[row['SmallTPU']] = [row['population_2011'], row['population_2016'],
+                                        row['m_income_2011'], row['m_income_2016']]
     # Create the tweet dataframe containing the tweets with year_month information
     dataframe_list = [kwun_tong_treatment, kwun_tong_control, south_horizons_treatment,
                       south_horizons_control, ocean_park_treatment, ocean_park_control]
@@ -602,12 +709,16 @@ def build_regress_data_three_areas_seperate(kwun_tong_treatment, kwun_tong_contr
                                         result_dataframe_copy['Neutral_count'] + \
                                         result_dataframe_copy['Negative_count']
     # Add the population, median income and tpu index information
-    result_dataframe_copy['Population'] = result_dataframe_copy.apply(
-        lambda row: census_dict[row['TPU']][0], axis=1)
-    result_dataframe_copy['Median_Income'] = result_dataframe_copy.apply(
-        lambda row: census_dict[row['TPU']][1], axis=1)
-    result_dataframe_copy['Median_Income_Filtered'] = result_dataframe_copy.apply(
-        lambda row: census_dict[row['TPU']][2], axis=1)
+    population_list, median_income_list = [], []
+    for index, row in result_dataframe_copy.iterrows():
+        if row['Post'] == 0:
+            population_list.append(census_dict[row['TPU']][0])
+            median_income_list.append(census_dict[row['TPU']][2])
+        else:
+            population_list.append(census_dict[row['TPU']][1])
+            median_income_list.append(census_dict[row['TPU']][3])
+    result_dataframe_copy['Population'] = population_list
+    result_dataframe_copy['Median_Income'] = median_income_list
     return result_dataframe_copy
 
 
@@ -673,12 +784,7 @@ def build_regress_dataframe_for_one_station_combined(treatment_dataframe, contro
     tpu_info_dataframe['SmallTPU'] = tpu_info_dataframe.apply(lambda row: str(row['SmallTPU']), axis=1)
     treatment_info_data = tpu_info_dataframe.loc[tpu_info_dataframe['SmallTPU'].isin(treatment_set)]
     control_info_data = tpu_info_dataframe.loc[tpu_info_dataframe['SmallTPU'].isin(control_set)]
-    census_dict = {'treatment': [0, 0], 'control': [0, 0]}  # [population, median_income]
-    census_dict['treatment'][0] = sum(treatment_info_data['population'])
-    census_dict['control'][0] = sum(control_info_data['population'])
-    census_dict['treatment'][1] = utils.weighted_average(treatment_info_data,
-                                                         value_col='m_income', weight_col='population')
-    census_dict['control'][1] = utils.weighted_average(control_info_data, value_col='m_income', weight_col='population')
+
     # Construct the dataframe for the DID regression analysis
     combined_dataframe = pd.concat([treatment_dataframe, control_dataframe], axis=0)
     combined_dataframe = combined_dataframe.reset_index(drop=True)
@@ -719,8 +825,12 @@ def build_regress_dataframe_for_one_station_combined(treatment_dataframe, contro
     result_dataframe_copy['Sentiment'] = sentiment_list
     result_dataframe_copy['Activity'] = activity_list
     result_dataframe_copy['log_Activity'] = activity_log_list
-    dataframe_with_population = get_population_one_area_combined(result_dataframe_copy, census_dict=census_dict)
-    final_dataframe = get_median_income_one_area_combined(dataframe_with_population, census_dict=census_dict)
+    dataframe_with_population = get_population_one_area_combined(result_dataframe_copy,
+                                                                 treatment_census_data=treatment_info_data,
+                                                                 control_census_data=control_info_data)
+    final_dataframe = get_median_income_one_area_combined(dataframe_with_population,
+                                                          treatment_census_data=treatment_info_data,
+                                                          control_census_data=control_info_data)
     if 'south_horizons' in check_area_name:  # For South Horizons & Lei Tung, do not consider the last two months
         final_dataframe = final_dataframe.loc[~final_dataframe['Time'].isin(['2018_11', '2018_12'])]
     return final_dataframe.reset_index(drop=True)
@@ -825,23 +935,25 @@ def conduct_combined_did_analysis(kwun_tong_treatment_dataframe, kwun_tong_contr
     # variable_list = ['T_i_t:Post', 'Population_log', 'Median_Income_log']
     # 'Sentiment ~ T_i_t:Post+C(Time)+C(Area_name)'
     reg_combined_sentiment = smf.ols(
-        'Sentiment ~ T_i_t:Post+T_i_t+Post+C(Area_name)',
+        'Sentiment ~ T_i_t:Post+T_i_t+Post+Population_log+Median_Income_log+C(Area_name)',
         longitudinal_dataframe).fit()
     print('----The sentiment did result-----')
     print(reg_combined_sentiment.summary())
     result_dataframe_sent = output_did_result(reg_combined_sentiment,
-                                              variable_list=['T_i_t:Post', 'T_i_t', 'Post'],
+                                              variable_list=['T_i_t:Post', 'T_i_t', 'Post',
+                                                             'Population_log', 'Median_Income_log'],
                                               time_window=check_window_value)
     # For the combined setting
     # 'log_Activity ~ T_i_t:Post+C(T_i_t)+C(Time)+Population_log+Median_Income_log'
     # 'log_Activity ~ T_i_t:Post+T_i_t+Post+Population_log+Median_Income_log'
     reg_combined_activity = smf.ols(
-        'log_Activity ~ T_i_t:Post+T_i_t+Post+C(Area_name)',
+        'log_Activity ~ T_i_t:Post+T_i_t+Post+Population_log+Median_Income_log+C(Area_name)',
         longitudinal_dataframe).fit()
     print('----The activity did result-----')
     print(reg_combined_activity.summary())
     result_dataframe_act = output_did_result(reg_combined_activity,
-                                             variable_list=['T_i_t:Post', 'T_i_t', 'Post'],
+                                             variable_list=['T_i_t:Post', 'T_i_t', 'Post',
+                                                             'Population_log', 'Median_Income_log'],
                                              time_window=check_window_value)
     if for_sentiment:
         print(result_dataframe_sent)
@@ -868,14 +980,16 @@ def conduct_did_analysis_one_area(treatment_considered_dataframe, control_consid
     # 'Sentiment ~ T_i_t:Post+T_i_t+Post+Population_log+Median_Income_log'
     # 'log_Activity ~ T_i_t:Post+T_i_t+Post+Population_log+Median_Income_log'
     combined_sentiment = smf.ols(
-        'Sentiment ~ T_i_t:Post+T_i_t+Post', constructed_dataframe).fit()
+        'Sentiment ~ T_i_t:Post+T_i_t+Post+Population_log+Median_Income_log', constructed_dataframe).fit()
     combined_activity = smf.ols(
-        'log_Activity ~ T_i_t:Post+T_i_t+Post', constructed_dataframe).fit()
+        'log_Activity ~ T_i_t:Post+T_i_t+Post+Population_log+Median_Income_log', constructed_dataframe).fit()
     result_sent = output_did_result(combined_sentiment,
-                                    variable_list=['T_i_t:Post', 'T_i_t', 'Post'],
+                                    variable_list=['T_i_t:Post', 'T_i_t', 'Post',
+                                                   'Population_log', 'Median_Income_log'],
                                     time_window=window_size_value)
     result_act = output_did_result(combined_activity,
-                                   variable_list=['T_i_t:Post', 'T_i_t', 'Post'],
+                                   variable_list=['T_i_t:Post', 'T_i_t', 'Post',
+                                                  'Population_log', 'Median_Income_log'],
                                    time_window=window_size_value)
     print('----The sentiment did result-----')
     print(combined_sentiment.summary())
@@ -888,23 +1002,10 @@ def conduct_did_analysis_one_area(treatment_considered_dataframe, control_consid
 if __name__ == '__main__':
     path = os.path.join(data_paths.tweet_combined_path, 'longitudinal_tpus')
 
-    ## TPU selection before the first review
-    # kwun_tong_line_treatment_tpu_set = {'243', '245', '236', '213'}
-    # kwun_tong_line_control_tpu_set = {'247', '234', '242', '212', '235'}
-    # south_horizons_lei_tung_treatment_tpu_set = {'174'}
-    # south_horizons_lei_tung_control_tpu_set = {'172', '182'}
-    # ocean_park_wong_chuk_hang_treatment_tpu_set = {'175'}
-    # ocean_park_wong_chuk_hang_control_tpu_set = {'184', '183', '182'}
-
-    kwun_tong_line_treatment_tpu_set = {'236', '243', '245'}
-    kwun_tong_line_control_tpu_set = {'247', '234', '242', '212', '235'}
-    south_horizons_lei_tung_treatment_tpu_set = {'174'}
-    south_horizons_lei_tung_control_tpu_set = {'172', '181', '182'}
-    ocean_park_wong_chuk_hang_treatment_tpu_set = {'175', '176'}
-    ocean_park_wong_chuk_hang_control_tpu_set = {'184', '183', '182', '181'}
-
     # load the tpu info dataframe
-    tpu_info_data = pd.read_excel(os.path.join(data_paths.tpu_info_path, 'final_data_2011.xlsx'))
+    tpu_info_data = pd.read_excel(os.path.join(data_paths.tpu_info_path, 'final_data_2011_2016.xlsx'),
+                                  dtype={'SmallTPU': str})
+    print(tpu_info_data.head())
     # Load the users not visitors
     users_not_visitors = np.load(os.path.join(
         data_paths.transit_non_transit_compare_code_path, 'users_not_visitors.npy'), allow_pickle=True).item()

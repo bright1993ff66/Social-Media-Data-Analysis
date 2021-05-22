@@ -1,3 +1,4 @@
+# Basic analysis modules
 import pandas as pd
 import numpy as np
 import os
@@ -9,6 +10,7 @@ from datetime import datetime
 import time
 import warnings
 
+# For text processing
 from nltk.tokenize import word_tokenize
 from wordcloud import WordCloud
 import gensim
@@ -17,6 +19,7 @@ import data_paths
 import utils
 from Visualization import topic_model_tweets, wordcloud_tweets
 
+# For visualization
 import matplotlib
 from matplotlib import pyplot as plt
 import matplotlib.font_manager as font_manageer
@@ -28,8 +31,7 @@ import seaborn as sns
 warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
 
 # Specify the font usage in the matplotlib
-font = {'family': 'serif',
-        'size': 25}
+font = {'family': 'serif'}
 matplotlib.rc('font', **font)
 
 # Some time attributes
@@ -49,7 +51,6 @@ month_letter_list = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov',
                      'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
                      'Sep', 'Oct', 'Nov', 'Dec']
 
-assert len(time_letter_list) == len(month_letter_list)
 
 # Hong Kong and Shanghai share the same time zone.
 # Hence, we transform the utc time in our dataset into Shanghai time
@@ -57,6 +58,7 @@ time_zone_hk = pytz.timezone('Asia/Shanghai')
 
 
 class TransitNeighborhood_Before_After(object):
+
     before_after_stations = ['Whampoa', 'Ho Man Tin', 'South Horizons', 'Wong Chuk Hang', 'Ocean Park',
                              'Lei Tung']
 
@@ -66,8 +68,6 @@ class TransitNeighborhood_Before_After(object):
         :param name: the name of the studied area
         :param tn_dataframe: the dataframe which records all the tweets posted in the TN
         :param non_tn_dataframe: the dataframe which records all the tweets posted in corresponding non_tn
-        :param treatment_not_considered_dataframe: the dataframe which records all the tweets posted in the not
-               considered TN
         :param poi_dataframe: a pandas dataframe containing the pois in the treatment group of a study area
         :param oct_open: check whether the station is opened on oct 23, 2016
         :param before_and_after: only True if the MTR station in this TN is built recently(in 2016)
@@ -96,6 +96,7 @@ class TransitNeighborhood_Before_After(object):
         result_dataframe_non_tn = pd.DataFrame(list(result_dict_non_tn.items()), columns=['Date', 'Value'])
         return result_dataframe_tn, result_dataframe_non_tn
 
+    # Compute the absolute coefficient difference
     def compute_abs_coeff_difference(self):
         # Compute the coefficient difference of sentiment against time before the treatment
         treatment_group_dataframe, control_group_dataframe = self.output_sent_act_dataframe()
@@ -142,10 +143,11 @@ class TransitNeighborhood_Before_After(object):
             slope_tn_activity, slope_non_tn_activity))
         return abs(slope_tn_sentiment - slop_non_tn_sentiment), abs(slope_tn_activity - slope_non_tn_activity)
 
+    # find the station influenced user for a study area
     def find_station_influenced_other_users(self, start_time=datetime(2016, 5, 1, 0, 0, 0, tzinfo=time_zone_hk),
                                             end_time=datetime(2018, 12, 31, 23, 59, 59, tzinfo=time_zone_hk)):
         """
-        Find the station influenced users
+        Find the station influenced users (Twitter users appear both before and after the station openning dates)
         :param start_time: the considered start time of the tweet dataframe
         :param end_time: the considered end time of the tweet dataframe
         :return: a python set containing the id of users who visited the treatment group both before and after
@@ -164,8 +166,7 @@ class TransitNeighborhood_Before_After(object):
             before_time_mask = (dataframe_copy['hk_time'] < october_1_start) & (start_time <= dataframe_copy['hk_time'])
             after_time_mask = (dataframe_copy['hk_time'] > october_31_end) & (end_time > dataframe_copy['hk_time'])
         else:
-            before_time_mask = (dataframe_copy['hk_time'] < december_1_start) & (
-                    start_time <= dataframe_copy['hk_time'])
+            before_time_mask = (dataframe_copy['hk_time'] < december_1_start) & (start_time <= dataframe_copy['hk_time'])
             after_time_mask = (dataframe_copy['hk_time'] > december_31_end) & (end_time > dataframe_copy['hk_time'])
         df_before = dataframe_copy.loc[before_time_mask]
         df_after = dataframe_copy.loc[after_time_mask]
@@ -231,13 +232,13 @@ class TransitNeighborhood_Before_After(object):
         # Specify the 'before' and 'after' & Number of tweets
         for index, ax in enumerate(axes):
             if not index & 1:
-                ax.text(805000, 840000, 'before', color='black', size=25)
+                ax.text(805000, 840000, 'before', color='black')
                 ax.text(820000, 800500, 'Number of tweets: {}'.format(before_df_plot.shape[0]),
-                        color='black', size=25)
+                        color='black')
             else:
-                ax.text(805000, 840000, 'after', size=25)
+                ax.text(805000, 840000, 'after')
                 ax.text(820000, 800500, 'Number of tweets: {}'.format(after_df_plot.shape[0]),
-                        color='black', size=25)
+                        color='black')
 
         # Turn off the axes
         for ax in axes:
@@ -461,25 +462,21 @@ class TransitNeighborhood_Before_After(object):
         """
         if self.oct_open:
             station_influenced_users, other_users = self.find_station_influenced_other_users(
-                start_time=datetime(2016, 5, 1, 0, 0, 0,
-                                    tzinfo=time_zone_hk),
-                end_time=datetime(2017, 5, 1, 0, 0, 0,
-                                  tzinfo=time_zone_hk))
+                start_time=datetime(2016, 5, 1, 0, 0, 0, tzinfo=time_zone_hk),
+                end_time=datetime(2017, 5, 1, 0, 0, 0, tzinfo=time_zone_hk))
             considered_start_time = datetime(2016, 5, 1, 0, 0, 0, tzinfo=time_zone_hk)
             considered_end_time = datetime(2017, 5, 1, 0, 0, tzinfo=time_zone_hk)
         else:
             station_influenced_users, other_users = self.find_station_influenced_other_users(
-                start_time=datetime(2016, 6, 1, 0, 0, 0,
-                                    tzinfo=time_zone_hk),
-                end_time=datetime(2017, 7, 1, 0, 0, 0,
-                                  tzinfo=time_zone_hk))
+                start_time=datetime(2016, 6, 1, 0, 0, 0, tzinfo=time_zone_hk),
+                end_time=datetime(2017, 7, 1, 0, 0, 0, tzinfo=time_zone_hk))
             considered_start_time = datetime(2016, 6, 1, 0, 0, 0, tzinfo=time_zone_hk)
             considered_end_time = datetime(2017, 7, 1, 0, 0, 0, tzinfo=time_zone_hk)
         self.tn_dataframe['user_id_str'] = self.tn_dataframe['user_id_str'].astype(float)
         self.tn_dataframe['user_id_str'] = self.tn_dataframe['user_id_str'].astype(np.int64)
         self.tn_dataframe['sentiment_vader_percent'] = self.tn_dataframe['sentiment_vader_percent'].astype(np.int)
-        data_selected = utils.get_tweets_in_time_range(self.tn_dataframe, start_time=considered_start_time,
-                                                       end_time=considered_end_time)
+        data_selected = utils.get_tweets_before_after(self.tn_dataframe, start_time=considered_start_time,
+                                                       end_time=considered_end_time, oct_open=self.oct_open)
         station_users_df = data_selected.loc[data_selected['user_id_str'].isin(station_influenced_users)]
         other_users_df = data_selected.loc[data_selected['user_id_str'].isin(other_users)]
         station_users_pos = station_users_df.loc[station_users_df['sentiment_vader_percent'] == 2]
@@ -680,7 +677,7 @@ class TransitNeighborhood_Before_After(object):
         """
         Plot the tweet time and count distribution
         :param tweet_count_dataframe: a dataframe saving the tweet count and time span information
-        :param percentile_check: a specific percentile for check: 1 < percentile_check <=100
+        :param timespan_check: a specific percentile for check: 1 < percentile_check <=100
         :return: None. The histograms are saved to a local directory
         """
 
@@ -1315,12 +1312,12 @@ if __name__ == '__main__':
     # ocean_park_wong_chuk_hang_1500_control.plot_wordclouds()
     # # =========================================================================================================
     #
-    # # ====================================Footprint Comparison=================================================
-    # print('Generating the footprints comparison plots...')
-    # kwun_tong_line_extension_1000_control.plot_footprints(tweet_dataframe=tweet_combined, hk_shape=hk_shapefile)
-    # south_horizons_lei_tung_1500_control.plot_footprints(tweet_dataframe=tweet_combined, hk_shape=hk_shapefile)
-    # ocean_park_wong_chuk_hang_1500_control.plot_footprints(tweet_dataframe=tweet_combined, hk_shape=hk_shapefile)
-    # # =========================================================================================================
+    # ====================================Footprint Comparison=================================================
+    print('Generating the footprints comparison plots...')
+    kwun_tong_line_extension_1000_control.plot_footprints(tweet_dataframe=tweet_combined, hk_shape=hk_shapefile)
+    south_horizons_lei_tung_1500_control.plot_footprints(tweet_dataframe=tweet_combined, hk_shape=hk_shapefile)
+    ocean_park_wong_chuk_hang_1500_control.plot_footprints(tweet_dataframe=tweet_combined, hk_shape=hk_shapefile)
+    # =========================================================================================================
     #
     # # ====================================Sentiment Comparison=================================================
     # print('Generating the sentiment comparison plots...')

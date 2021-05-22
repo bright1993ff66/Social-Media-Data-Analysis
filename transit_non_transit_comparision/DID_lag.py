@@ -589,12 +589,7 @@ def build_regress_data_three_areas_seperate(kwun_tong_treatment, kwun_tong_contr
     :return: a combined dataframe which could be used for combined DID analysis
     """
     result_dataframe = pd.DataFrame()
-    kwun_tong_line_treatment_tpu_set = {'236', '243', '245'}
-    kwun_tong_line_control_tpu_set = {'247', '234', '242', '212', '235'}
-    south_horizons_lei_tung_treatment_tpu_set = {'174'}
-    south_horizons_lei_tung_control_tpu_set = {'172', '181 - 182'}
-    ocean_park_wong_chuk_hang_treatment_tpu_set = {'175 - 176'}
-    ocean_park_wong_chuk_hang_control_tpu_set = {'181 - 182', '183 - 184'}
+
     treatment_set = set(list(kwun_tong_line_treatment_tpu_set) + list(south_horizons_lei_tung_treatment_tpu_set) +
                         list(ocean_park_wong_chuk_hang_treatment_tpu_set))
     control_set = set(list(kwun_tong_line_control_tpu_set) + list(south_horizons_lei_tung_control_tpu_set) +
@@ -916,20 +911,20 @@ def create_dummy(dataframe):
     return dataframe_copy
 
 
-def conduct_combined_did_analysis(kwun_tong_treatment_dataframe, kwun_tong_control_dataframe,
-                                  south_horizons_treatment_dataframe, south_horizons_control_dataframe,
-                                  ocean_park_treatment_dataframe, ocean_park_control_dataframe,
-                                  dataframe_saving_path, filename, tpu_info_data,
+def conduct_combined_did_analysis(kwun_tong_treatment_data, kwun_tong_control_data,
+                                  south_horizons_treatment_data, south_horizons_control_data,
+                                  ocean_park_treatment_data, ocean_park_control_data,
+                                  did_data_saving_path, filename, tpu_info_dataframe,
                                   check_window_value=0, check_lag=True, for_sentiment=True):
     longitudinal_dataframe = build_regress_data_three_areas_combined(
-        kwun_tong_treatment=kwun_tong_treatment_dataframe,
-        kwun_tong_control=kwun_tong_control_dataframe,
-        south_horizons_treatment=south_horizons_treatment_dataframe,
-        south_horizons_control=south_horizons_control_dataframe, ocean_park_treatment=ocean_park_treatment_dataframe,
-        ocean_park_control=ocean_park_control_dataframe, tpu_info_dataframe=tpu_info_data,
+        kwun_tong_treatment=kwun_tong_treatment_data,
+        kwun_tong_control=kwun_tong_control_data,
+        south_horizons_treatment=south_horizons_treatment_data,
+        south_horizons_control=south_horizons_control_data, ocean_park_treatment=ocean_park_treatment_data,
+        ocean_park_control=ocean_park_control_data, tpu_info_dataframe=tpu_info_dataframe,
         check_window_value=check_window_value,
         consider_lag_effect=check_lag)
-    longitudinal_dataframe.to_csv(os.path.join(dataframe_saving_path, filename))
+    longitudinal_dataframe.to_csv(os.path.join(did_data_saving_path, filename))
     # For the combined setting...
     # 'Sentiment ~ T_i_t:Post+T_i_t+Post+Population_log+Median_Income_log+C(Area_name)'
     # variable_list = ['T_i_t:Post', 'Population_log', 'Median_Income_log']
@@ -964,13 +959,14 @@ def conduct_combined_did_analysis(kwun_tong_treatment_dataframe, kwun_tong_contr
 
 
 def conduct_did_analysis_one_area(treatment_considered_dataframe, control_considered_dataframe, opening_start_date,
-                                  opening_end_date, open_year_month, window_size_value, tpu_info_data,
+                                  opening_end_date, open_year_month, window_size_value, tpu_info_dataframe,
                                   file_path, filename, check_lag=True):
     constructed_dataframe = build_regress_dataframe_for_one_station_combined(
         treatment_dataframe=treatment_considered_dataframe,
         control_dataframe=control_considered_dataframe,
         station_open_month_start=opening_start_date,
-        station_open_month_end=opening_end_date, tpu_info_dataframe=tpu_info_data,
+        station_open_month_end=opening_end_date,
+        tpu_info_dataframe=tpu_info_dataframe,
         open_year_plus_month=open_year_month,
         check_window_value=window_size_value,
         check_area_name=filename,
@@ -1066,59 +1062,62 @@ if __name__ == '__main__':
     dataframe_lag_effect_path = os.path.join(data_paths.tweet_combined_path, 'longitudinal_lag_effect_data')
     print('For Sentiment...')
     print('Overall Treatment and Control Comparison for sentiment(0 months)...')
-    sent_0_month = conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,
-                                                 kwun_tong_control_dataframe=kwun_tong_line_control_dataframe,
-                                                 south_horizons_treatment_dataframe=south_horizons_treatment_dataframe,
-                                                 south_horizons_control_dataframe=south_horizons_control_dataframe,
-                                                 ocean_park_treatment_dataframe=ocean_park_treatment_dataframe,
-                                                 ocean_park_control_dataframe=ocean_park_control_dataframe,
-                                                 dataframe_saving_path=dataframe_lag_effect_path,
+    sent_0_month = conduct_combined_did_analysis(kwun_tong_treatment_data=kwun_tong_line_treatment_dataframe,
+                                                 kwun_tong_control_data=kwun_tong_line_control_dataframe,
+                                                 south_horizons_treatment_data=south_horizons_treatment_dataframe,
+                                                 south_horizons_control_data=south_horizons_control_dataframe,
+                                                 ocean_park_treatment_data=ocean_park_treatment_dataframe,
+                                                 ocean_park_control_data=ocean_park_control_dataframe,
+                                                 did_data_saving_path=dataframe_lag_effect_path,
                                                  filename='longitudinal_did_dataframe_0_months_sentiment.csv',
-                                                 check_window_value=0, tpu_info_data=tpu_info_data,
+                                                 check_window_value=0, tpu_info_dataframe=tpu_info_data,
                                                  for_sentiment=True, check_lag=True)
     print('Overall Treatment and Control Comparison for sentiment(3 months)...')
-    sent_3_month = conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,
-                                                 kwun_tong_control_dataframe=kwun_tong_line_control_dataframe,
-                                                 south_horizons_treatment_dataframe=south_horizons_treatment_dataframe,
-                                                 south_horizons_control_dataframe=south_horizons_control_dataframe,
-                                                 ocean_park_treatment_dataframe=ocean_park_treatment_dataframe,
-                                                 ocean_park_control_dataframe=ocean_park_control_dataframe,
-                                                 dataframe_saving_path=dataframe_lag_effect_path,
+    sent_3_month = conduct_combined_did_analysis(kwun_tong_treatment_data=kwun_tong_line_treatment_dataframe,
+                                                 kwun_tong_control_data=kwun_tong_line_control_dataframe,
+                                                 south_horizons_treatment_data=south_horizons_treatment_dataframe,
+                                                 south_horizons_control_data=south_horizons_control_dataframe,
+                                                 ocean_park_treatment_data=ocean_park_treatment_dataframe,
+                                                 ocean_park_control_data=ocean_park_control_dataframe,
+                                                 did_data_saving_path=dataframe_lag_effect_path,
                                                  filename='longitudinal_did_dataframe_3_months_sentiment.csv',
-                                                 check_window_value=3, tpu_info_data=tpu_info_data, for_sentiment=True,
+                                                 check_window_value=3, tpu_info_dataframe=tpu_info_data,
+                                                 for_sentiment=True,
                                                  check_lag=True)
     print('Overall Treatment and Control Comparison for sentiment(6 months)...')
-    sent_6_month = conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,
-                                                 kwun_tong_control_dataframe=kwun_tong_line_control_dataframe,
-                                                 south_horizons_treatment_dataframe=south_horizons_treatment_dataframe,
-                                                 south_horizons_control_dataframe=south_horizons_control_dataframe,
-                                                 ocean_park_treatment_dataframe=ocean_park_treatment_dataframe,
-                                                 ocean_park_control_dataframe=ocean_park_control_dataframe,
-                                                 dataframe_saving_path=dataframe_lag_effect_path,
+    sent_6_month = conduct_combined_did_analysis(kwun_tong_treatment_data=kwun_tong_line_treatment_dataframe,
+                                                 kwun_tong_control_data=kwun_tong_line_control_dataframe,
+                                                 south_horizons_treatment_data=south_horizons_treatment_dataframe,
+                                                 south_horizons_control_data=south_horizons_control_dataframe,
+                                                 ocean_park_treatment_data=ocean_park_treatment_dataframe,
+                                                 ocean_park_control_data=ocean_park_control_dataframe,
+                                                 did_data_saving_path=dataframe_lag_effect_path,
                                                  filename='longitudinal_did_dataframe_6_months_sentiment.csv',
-                                                 check_window_value=6, tpu_info_data=tpu_info_data, for_sentiment=True,
+                                                 check_window_value=6, tpu_info_dataframe=tpu_info_data,
+                                                 for_sentiment=True,
                                                  check_lag=True)
     print('Overall Treatment and Control Comparison for sentiment(12 months)...')
-    sent_12_month = conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,
-                                                  kwun_tong_control_dataframe=kwun_tong_line_control_dataframe,
-                                                  south_horizons_treatment_dataframe=south_horizons_treatment_dataframe,
-                                                  south_horizons_control_dataframe=south_horizons_control_dataframe,
-                                                  ocean_park_treatment_dataframe=ocean_park_treatment_dataframe,
-                                                  ocean_park_control_dataframe=ocean_park_control_dataframe,
-                                                  dataframe_saving_path=dataframe_lag_effect_path,
+    sent_12_month = conduct_combined_did_analysis(kwun_tong_treatment_data=kwun_tong_line_treatment_dataframe,
+                                                  kwun_tong_control_data=kwun_tong_line_control_dataframe,
+                                                  south_horizons_treatment_data=south_horizons_treatment_dataframe,
+                                                  south_horizons_control_data=south_horizons_control_dataframe,
+                                                  ocean_park_treatment_data=ocean_park_treatment_dataframe,
+                                                  ocean_park_control_data=ocean_park_control_dataframe,
+                                                  did_data_saving_path=dataframe_lag_effect_path,
                                                   filename='longitudinal_did_dataframe_12_months_sentiment.csv',
-                                                  check_window_value=12, tpu_info_data=tpu_info_data,
+                                                  check_window_value=12, tpu_info_dataframe=tpu_info_data,
                                                   for_sentiment=True, check_lag=True)
     print('Overall Treatment and Control Comparison(sentiment)...')
-    sent_all = conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,
-                                             kwun_tong_control_dataframe=kwun_tong_line_control_dataframe,
-                                             south_horizons_treatment_dataframe=south_horizons_treatment_dataframe,
-                                             south_horizons_control_dataframe=south_horizons_control_dataframe,
-                                             ocean_park_treatment_dataframe=ocean_park_treatment_dataframe,
-                                             ocean_park_control_dataframe=ocean_park_control_dataframe,
-                                             dataframe_saving_path=dataframe_lag_effect_path,
+    sent_all = conduct_combined_did_analysis(kwun_tong_treatment_data=kwun_tong_line_treatment_dataframe,
+                                             kwun_tong_control_data=kwun_tong_line_control_dataframe,
+                                             south_horizons_treatment_data=south_horizons_treatment_dataframe,
+                                             south_horizons_control_data=south_horizons_control_dataframe,
+                                             ocean_park_treatment_data=ocean_park_treatment_dataframe,
+                                             ocean_park_control_data=ocean_park_control_dataframe,
+                                             did_data_saving_path=dataframe_lag_effect_path,
                                              filename='longitudinal_did_dataframe_all_sentiment.csv',
-                                             check_window_value=np.inf, tpu_info_data=tpu_info_data, for_sentiment=True,
+                                             check_window_value=np.inf, tpu_info_dataframe=tpu_info_data,
+                                             for_sentiment=True,
                                              check_lag=True)
 
     sent_result_data = pd.concat([sent_0_month, sent_3_month, sent_6_month, sent_12_month, sent_all], axis=1)
@@ -1126,60 +1125,60 @@ if __name__ == '__main__':
                                            'overall_sentiment_did_combined_tit_post.xlsx'), encoding='utf-8')
     print('For Activity...')
     print('Overall Treatment and Control Comparison for activity(0 months)...')
-    act_0_month = conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,
-                                                kwun_tong_control_dataframe=kwun_tong_line_control_dataframe,
-                                                south_horizons_treatment_dataframe=south_horizons_treatment_dataframe,
-                                                south_horizons_control_dataframe=south_horizons_control_dataframe,
-                                                ocean_park_treatment_dataframe=ocean_park_treatment_dataframe,
-                                                ocean_park_control_dataframe=ocean_park_control_dataframe,
-                                                dataframe_saving_path=dataframe_lag_effect_path,
+    act_0_month = conduct_combined_did_analysis(kwun_tong_treatment_data=kwun_tong_line_treatment_dataframe,
+                                                kwun_tong_control_data=kwun_tong_line_control_dataframe,
+                                                south_horizons_treatment_data=south_horizons_treatment_dataframe,
+                                                south_horizons_control_data=south_horizons_control_dataframe,
+                                                ocean_park_treatment_data=ocean_park_treatment_dataframe,
+                                                ocean_park_control_data=ocean_park_control_dataframe,
+                                                did_data_saving_path=dataframe_lag_effect_path,
                                                 filename='longitudinal_did_dataframe_0_months_activity.csv',
                                                 check_window_value=0, for_sentiment=False,
-                                                tpu_info_data=tpu_info_data, check_lag=True)
+                                                tpu_info_dataframe=tpu_info_data, check_lag=True)
     print('Overall Treatment and Control Comparison for activity(3 months)...')
-    act_3_month = conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,
-                                                kwun_tong_control_dataframe=kwun_tong_line_control_dataframe,
-                                                south_horizons_treatment_dataframe=south_horizons_treatment_dataframe,
-                                                south_horizons_control_dataframe=south_horizons_control_dataframe,
-                                                ocean_park_treatment_dataframe=ocean_park_treatment_dataframe,
-                                                ocean_park_control_dataframe=ocean_park_control_dataframe,
-                                                dataframe_saving_path=dataframe_lag_effect_path,
+    act_3_month = conduct_combined_did_analysis(kwun_tong_treatment_data=kwun_tong_line_treatment_dataframe,
+                                                kwun_tong_control_data=kwun_tong_line_control_dataframe,
+                                                south_horizons_treatment_data=south_horizons_treatment_dataframe,
+                                                south_horizons_control_data=south_horizons_control_dataframe,
+                                                ocean_park_treatment_data=ocean_park_treatment_dataframe,
+                                                ocean_park_control_data=ocean_park_control_dataframe,
+                                                did_data_saving_path=dataframe_lag_effect_path,
                                                 filename='longitudinal_did_dataframe_3_months_activity.csv',
                                                 check_window_value=3, for_sentiment=False,
-                                                tpu_info_data=tpu_info_data, check_lag=True)
+                                                tpu_info_dataframe=tpu_info_data, check_lag=True)
     print('Overall Treatment and Control Comparison for activity(6 months)...')
-    act_6_month = conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,
-                                                kwun_tong_control_dataframe=kwun_tong_line_control_dataframe,
-                                                south_horizons_treatment_dataframe=south_horizons_treatment_dataframe,
-                                                south_horizons_control_dataframe=south_horizons_control_dataframe,
-                                                ocean_park_treatment_dataframe=ocean_park_treatment_dataframe,
-                                                ocean_park_control_dataframe=ocean_park_control_dataframe,
-                                                dataframe_saving_path=dataframe_lag_effect_path,
+    act_6_month = conduct_combined_did_analysis(kwun_tong_treatment_data=kwun_tong_line_treatment_dataframe,
+                                                kwun_tong_control_data=kwun_tong_line_control_dataframe,
+                                                south_horizons_treatment_data=south_horizons_treatment_dataframe,
+                                                south_horizons_control_data=south_horizons_control_dataframe,
+                                                ocean_park_treatment_data=ocean_park_treatment_dataframe,
+                                                ocean_park_control_data=ocean_park_control_dataframe,
+                                                did_data_saving_path=dataframe_lag_effect_path,
                                                 filename='longitudinal_did_dataframe_6_months_activity.csv',
                                                 check_window_value=6, for_sentiment=False,
-                                                tpu_info_data=tpu_info_data, check_lag=True)
+                                                tpu_info_dataframe=tpu_info_data, check_lag=True)
     print('Overall Treatment and Control Comparison for activity(12 months)...')
-    act_12_month = conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,
-                                                 kwun_tong_control_dataframe=kwun_tong_line_control_dataframe,
-                                                 south_horizons_treatment_dataframe=south_horizons_treatment_dataframe,
-                                                 south_horizons_control_dataframe=south_horizons_control_dataframe,
-                                                 ocean_park_treatment_dataframe=ocean_park_treatment_dataframe,
-                                                 ocean_park_control_dataframe=ocean_park_control_dataframe,
-                                                 dataframe_saving_path=dataframe_lag_effect_path,
+    act_12_month = conduct_combined_did_analysis(kwun_tong_treatment_data=kwun_tong_line_treatment_dataframe,
+                                                 kwun_tong_control_data=kwun_tong_line_control_dataframe,
+                                                 south_horizons_treatment_data=south_horizons_treatment_dataframe,
+                                                 south_horizons_control_data=south_horizons_control_dataframe,
+                                                 ocean_park_treatment_data=ocean_park_treatment_dataframe,
+                                                 ocean_park_control_data=ocean_park_control_dataframe,
+                                                 did_data_saving_path=dataframe_lag_effect_path,
                                                  filename='longitudinal_did_dataframe_12_months_activity.csv',
                                                  check_window_value=12, for_sentiment=False,
-                                                 tpu_info_data=tpu_info_data, check_lag=True)
+                                                 tpu_info_dataframe=tpu_info_data, check_lag=True)
     print('Overall Treatment and Control Comparison(activity)...')
-    act_all = conduct_combined_did_analysis(kwun_tong_treatment_dataframe=kwun_tong_line_treatment_dataframe,
-                                            kwun_tong_control_dataframe=kwun_tong_line_control_dataframe,
-                                            south_horizons_treatment_dataframe=south_horizons_treatment_dataframe,
-                                            south_horizons_control_dataframe=south_horizons_control_dataframe,
-                                            ocean_park_treatment_dataframe=ocean_park_treatment_dataframe,
-                                            ocean_park_control_dataframe=ocean_park_control_dataframe,
-                                            dataframe_saving_path=dataframe_lag_effect_path,
+    act_all = conduct_combined_did_analysis(kwun_tong_treatment_data=kwun_tong_line_treatment_dataframe,
+                                            kwun_tong_control_data=kwun_tong_line_control_dataframe,
+                                            south_horizons_treatment_data=south_horizons_treatment_dataframe,
+                                            south_horizons_control_data=south_horizons_control_dataframe,
+                                            ocean_park_treatment_data=ocean_park_treatment_dataframe,
+                                            ocean_park_control_data=ocean_park_control_dataframe,
+                                            did_data_saving_path=dataframe_lag_effect_path,
                                             filename='longitudinal_did_dataframe_all_activity.csv',
                                             check_window_value=np.inf, for_sentiment=False,
-                                            tpu_info_data=tpu_info_data, check_lag=True)
+                                            tpu_info_dataframe=tpu_info_data, check_lag=True)
     act_result_data = pd.concat([act_0_month, act_3_month, act_6_month, act_12_month, act_all], axis=1)
     act_result_data.to_excel(os.path.join(data_paths.did_result_lag_path,
                                           'overall_activity_did_combined_tit_post.xlsx'), encoding='utf-8')
@@ -1191,35 +1190,35 @@ if __name__ == '__main__':
         control_considered_dataframe=kwun_tong_line_control_dataframe,
         opening_start_date=october_1_start, opening_end_date=october_31_end,
         open_year_month='2016_10', window_size_value=0, file_path=dataframe_lag_effect_path,
-        filename='kwun_tong_did_0_months.csv', tpu_info_data=tpu_info_data, check_lag=True)
+        filename='kwun_tong_did_0_months.csv', tpu_info_dataframe=tpu_info_data, check_lag=True)
     print('For 3 months...')
     kwun_tong_did_sent_3, kwun_tong_did_act_3 = conduct_did_analysis_one_area(
         treatment_considered_dataframe=kwun_tong_line_treatment_dataframe,
         control_considered_dataframe=kwun_tong_line_control_dataframe,
         opening_start_date=october_1_start, opening_end_date=october_31_end,
         open_year_month='2016_10', window_size_value=3, file_path=dataframe_lag_effect_path,
-        filename='kwun_tong_did_3_months.csv', tpu_info_data=tpu_info_data, check_lag=True)
+        filename='kwun_tong_did_3_months.csv', tpu_info_dataframe=tpu_info_data, check_lag=True)
     print('For 6 months...')
     kwun_tong_did_sent_6, kwun_tong_did_act_6 = conduct_did_analysis_one_area(
         treatment_considered_dataframe=kwun_tong_line_treatment_dataframe,
         control_considered_dataframe=kwun_tong_line_control_dataframe,
         opening_start_date=october_1_start, opening_end_date=october_31_end,
         open_year_month='2016_10', window_size_value=6, file_path=dataframe_lag_effect_path,
-        filename='kwun_tong_did_6_months.csv', tpu_info_data=tpu_info_data, check_lag=True)
+        filename='kwun_tong_did_6_months.csv', tpu_info_dataframe=tpu_info_data, check_lag=True)
     print('For 12 months...')
     kwun_tong_did_sent_12, kwun_tong_did_act_12 = conduct_did_analysis_one_area(
         treatment_considered_dataframe=kwun_tong_line_treatment_dataframe,
         control_considered_dataframe=kwun_tong_line_control_dataframe,
         opening_start_date=october_1_start, opening_end_date=october_31_end,
         open_year_month='2016_10', window_size_value=12, file_path=dataframe_lag_effect_path,
-        filename='kwun_tong_did_12_months.csv', tpu_info_data=tpu_info_data, check_lag=True)
+        filename='kwun_tong_did_12_months.csv', tpu_info_dataframe=tpu_info_data, check_lag=True)
     print('For all combined did analysis....')
     kwun_tong_did_sent_all, kwun_tong_did_act_all = conduct_did_analysis_one_area(
         treatment_considered_dataframe=kwun_tong_line_treatment_dataframe,
         control_considered_dataframe=kwun_tong_line_control_dataframe,
         opening_start_date=october_1_start, opening_end_date=october_31_end,
         open_year_month='2016_10', window_size_value=np.inf, file_path=dataframe_lag_effect_path,
-        filename='kwun_tong_did_all_months.csv', tpu_info_data=tpu_info_data, check_lag=True)
+        filename='kwun_tong_did_all_months.csv', tpu_info_dataframe=tpu_info_data, check_lag=True)
     kwun_tong_sent_did_combined = pd.concat([kwun_tong_did_sent_0, kwun_tong_did_sent_3, kwun_tong_did_sent_6,
                                              kwun_tong_did_sent_12, kwun_tong_did_sent_all], axis=1)
     kwun_tong_act_did_combined = pd.concat([kwun_tong_did_act_0, kwun_tong_did_act_3, kwun_tong_did_act_6,
@@ -1237,35 +1236,35 @@ if __name__ == '__main__':
         control_considered_dataframe=south_horizons_control_dataframe,
         opening_start_date=december_1_start, opening_end_date=december_31_end,
         open_year_month='2016_12', window_size_value=0, file_path=dataframe_lag_effect_path,
-        filename='south_horizons_did_0_months.csv', tpu_info_data=tpu_info_data, check_lag=True)
+        filename='south_horizons_did_0_months.csv', tpu_info_dataframe=tpu_info_data, check_lag=True)
     print('For 3 months....')
     south_horizons_did_sent_3, south_horizons_did_act_3 = conduct_did_analysis_one_area(
         treatment_considered_dataframe=south_horizons_treatment_dataframe,
         control_considered_dataframe=south_horizons_control_dataframe,
         opening_start_date=december_1_start, opening_end_date=december_31_end,
         open_year_month='2016_12', window_size_value=3, file_path=dataframe_lag_effect_path,
-        filename='south_horizons_did_3_months.csv', tpu_info_data=tpu_info_data, check_lag=True)
+        filename='south_horizons_did_3_months.csv', tpu_info_dataframe=tpu_info_data, check_lag=True)
     print('For 6 months....')
     south_horizons_did_sent_6, south_horizons_did_act_6 = conduct_did_analysis_one_area(
         treatment_considered_dataframe=south_horizons_treatment_dataframe,
         control_considered_dataframe=south_horizons_control_dataframe,
         opening_start_date=december_1_start, opening_end_date=december_31_end,
         open_year_month='2016_12', window_size_value=6, file_path=dataframe_lag_effect_path,
-        filename='south_horizons_did_6_months.csv', tpu_info_data=tpu_info_data, check_lag=True)
+        filename='south_horizons_did_6_months.csv', tpu_info_dataframe=tpu_info_data, check_lag=True)
     print('For 12 months....')
     south_horizons_did_sent_12, south_horizons_did_act_12 = conduct_did_analysis_one_area(
         treatment_considered_dataframe=south_horizons_treatment_dataframe,
         control_considered_dataframe=south_horizons_control_dataframe,
         opening_start_date=december_1_start, opening_end_date=december_31_end,
         open_year_month='2016_12', window_size_value=12, file_path=dataframe_lag_effect_path,
-        filename='south_horizons_did_12_months.csv', tpu_info_data=tpu_info_data, check_lag=True)
+        filename='south_horizons_did_12_months.csv', tpu_info_dataframe=tpu_info_data, check_lag=True)
     print('For all combined did analysis....')
     south_horizons_did_sent_all, south_horizons_did_act_all = conduct_did_analysis_one_area(
         treatment_considered_dataframe=south_horizons_treatment_dataframe,
         control_considered_dataframe=south_horizons_control_dataframe,
         opening_start_date=december_1_start, opening_end_date=december_31_end,
         open_year_month='2016_12', window_size_value=np.inf, file_path=dataframe_lag_effect_path,
-        filename='south_horizons_did_all.csv', tpu_info_data=tpu_info_data, check_lag=True)
+        filename='south_horizons_did_all.csv', tpu_info_dataframe=tpu_info_data, check_lag=True)
     south_horizons_sent_did_combined = pd.concat([south_horizons_did_sent_0, south_horizons_did_sent_3,
                                                   south_horizons_did_sent_6, south_horizons_did_sent_12,
                                                   south_horizons_did_sent_all], axis=1)
@@ -1285,35 +1284,35 @@ if __name__ == '__main__':
         control_considered_dataframe=ocean_park_control_dataframe,
         opening_start_date=december_1_start, opening_end_date=december_31_end,
         open_year_month='2016_12', window_size_value=0, file_path=dataframe_lag_effect_path,
-        filename='ocean_park_did_0_months.csv', tpu_info_data=tpu_info_data, check_lag=True)
+        filename='ocean_park_did_0_months.csv', tpu_info_dataframe=tpu_info_data, check_lag=True)
     print('For 3 months....')
     ocean_park_did_sent_3, ocean_park_did_act_3 = conduct_did_analysis_one_area(
         treatment_considered_dataframe=ocean_park_treatment_dataframe,
         control_considered_dataframe=ocean_park_control_dataframe,
         opening_start_date=december_1_start, opening_end_date=december_31_end,
         open_year_month='2016_12', window_size_value=3, file_path=dataframe_lag_effect_path,
-        filename='ocean_park_did_3_months.csv', tpu_info_data=tpu_info_data, check_lag=True)
+        filename='ocean_park_did_3_months.csv', tpu_info_dataframe=tpu_info_data, check_lag=True)
     print('For 6 months....')
     ocean_park_did_sent_6, ocean_park_did_act_6 = conduct_did_analysis_one_area(
         treatment_considered_dataframe=ocean_park_treatment_dataframe,
         control_considered_dataframe=ocean_park_control_dataframe,
         opening_start_date=december_1_start, opening_end_date=december_31_end,
         open_year_month='2016_12', window_size_value=6, file_path=dataframe_lag_effect_path,
-        filename='ocean_park_did_6_months.csv', tpu_info_data=tpu_info_data, check_lag=True)
+        filename='ocean_park_did_6_months.csv', tpu_info_dataframe=tpu_info_data, check_lag=True)
     print('For 12 months....')
     ocean_park_did_sent_12, ocean_park_did_act_12 = conduct_did_analysis_one_area(
         treatment_considered_dataframe=ocean_park_treatment_dataframe,
         control_considered_dataframe=ocean_park_control_dataframe,
         opening_start_date=december_1_start, opening_end_date=december_31_end,
         open_year_month='2016_12', window_size_value=12, file_path=dataframe_lag_effect_path,
-        filename='ocean_park_did_12_months.csv', tpu_info_data=tpu_info_data, check_lag=True)
+        filename='ocean_park_did_12_months.csv', tpu_info_dataframe=tpu_info_data, check_lag=True)
     print('For all combined did analysis....')
     ocean_park_did_sent_all, ocean_park_did_act_all = conduct_did_analysis_one_area(
         treatment_considered_dataframe=ocean_park_treatment_dataframe,
         control_considered_dataframe=ocean_park_control_dataframe,
         opening_start_date=december_1_start, opening_end_date=december_31_end,
         open_year_month='2016_12', window_size_value=np.inf, file_path=dataframe_lag_effect_path,
-        filename='ocean_park_did_all.csv', tpu_info_data=tpu_info_data, check_lag=True)
+        filename='ocean_park_did_all.csv', tpu_info_dataframe=tpu_info_data, check_lag=True)
     ocean_park_sent_did_combined = pd.concat([ocean_park_did_sent_0, ocean_park_did_sent_3, ocean_park_did_sent_6,
                                               ocean_park_did_sent_12, ocean_park_did_sent_all], axis=1)
     ocean_park_act_did_combined = pd.concat([ocean_park_did_act_0, ocean_park_did_act_3, ocean_park_did_act_6,

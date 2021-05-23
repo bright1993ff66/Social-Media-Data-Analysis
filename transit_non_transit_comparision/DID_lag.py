@@ -5,6 +5,7 @@ import numpy as np
 import csv
 import os
 from collections import Counter
+from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 import pytz
 from datetime import datetime
@@ -72,6 +73,49 @@ def transform_string_time_to_datetime(string):
     datetime_object = datetime.strptime(string, '%Y-%m-%d %H:%M:%S+08:00')
     final_time_object = datetime_object.replace(tzinfo=time_zone_hk)
     return final_time_object
+
+
+def compute_corr(dataframe: pd.DataFrame, select_column_list: list, corr_method: str = 'spearman'):
+    """
+    Compute the correlation between variables in a pandas dataframe
+    :param dataframe: a pandas dataframe saving the dependent and independent variables
+    :param select_column_list: a list saving the considered column names
+    :param corr_method: the correlation method. In this study, the default is set to 'spearman'
+    :return: a pandas dataframe presenting the correlation coefficient between the interested variables
+    """
+    dataframe_copy = dataframe.copy()
+    if 'T_Post' not in dataframe_copy:
+        dataframe_copy['T_Post'] = dataframe_copy.apply(lambda row: row['Treatment'] * row['Post'], axis=1)
+    else:
+        pass
+    select_column_list.append('T_Post')
+    dataframe_select = dataframe_copy[select_column_list]
+    return dataframe_select.corr(method=corr_method).round(2)
+
+
+def compute_vif(dataframe, select_column_list):
+    """
+    Compute the Variance Inflation Factor (VIF) between interested variables
+    :param dataframe: a pandas dataframe saving the dependent and independent variables
+    :param select_column_list: a list saving the considered column names
+    :return: a pandas dataframe saving the VIF values between the interested variables
+    """
+    dataframe_copy = dataframe.copy()
+    if 'T_Post' not in dataframe_copy:
+        dataframe_copy['T_Post'] = dataframe_copy.apply(lambda row: row['Treatment'] * row['Post'], axis=1)
+    else:
+        pass
+    select_column_list.append('T_Post')
+    X = dataframe_copy[select_column_list]
+
+    # VIF dataframe
+    vif_data = pd.DataFrame()
+    vif_data["feature"] = X.columns
+
+    # calculating VIF for each feature
+    vif_data["VIF"] = [variance_inflation_factor(X.values, i) for i in range(len(X.columns))]
+
+    return vif_data
 
 
 def add_post_variable(string, opening_start_date, opening_end_date, check_window=0):

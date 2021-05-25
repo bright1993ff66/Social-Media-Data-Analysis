@@ -165,28 +165,6 @@ def build_dataframe_for_urban_rate(source_dataframe):
     return result_dataframe
 
 
-def build_line_graph_urban_rate(dataframe):
-    x = list(dataframe['Year'])
-    y_china = list(dataframe['China'])
-    y_us = list(dataframe['US'])
-    y_world = list(dataframe['World'])
-
-    figure, ax = plt.subplots(1, 1, figsize=(20, 10))
-    lns1 = ax.plot(x, y_world, 'k-', label='World', linestyle='--', marker='o')
-    lns2 = ax.plot(x, y_china, 'y-', label='China', linestyle='--', marker='^')
-    lns3 = ax.plot(x, y_us, 'b-', label='US', linestyle='--', marker='^')
-
-    lns = lns1 + lns2 + lns3
-    labs = [l.get_label() for l in lns]
-    ax.legend(lns, labs)
-
-    ax.set_xlabel('Time')
-    ax.set_ylabel('Urban Population Rate %')
-    ax.set_title('Urban Population Rate for US, China and World from 1960 to 2018')
-    plt.savefig(os.path.join(data_paths.plot_path_2017, 'urban_rate_plot.png'))
-    plt.show()
-
-
 def build_bar_plot_distribution_comparison(**key_list_dict: dict):
     """
     Build the bar plot showing the sentiment distribution
@@ -233,11 +211,6 @@ def classifiers_performance_compare(filename):
                 palette=["#6553FF", "#E8417D", "#FFAC42", '#A5FF47'])
     fig_classifier_compare.savefig(os.path.join(data_paths.human_review_result_path, filename))
     plt.show()
-
-
-def draw_urban_rate_main(dataframe):
-    data_for_plot = build_dataframe_for_urban_rate(dataframe)
-    build_line_graph_urban_rate(dataframe=data_for_plot)
 
 
 def general_info_of_tweet_dataset(df, study_area: str):
@@ -291,31 +264,3 @@ def get_tweets_before_after(df: pd.DataFrame, oct_open: bool,
     df_before = df_copy_sorted.loc[before_time_mask]
     df_after = df_copy_sorted.loc[after_time_mask]
     return df_before, df_after
-
-
-if __name__ == '__main__':
-    urban_rate_dataframe = pd.read_csv(os.path.join(data_paths.datasets, 'urban_rate.csv'), encoding='latin-1',
-                                       dtype=str)
-    draw_urban_rate_main(urban_rate_dataframe)
-
-    # draw the barplot which shows the distribution of sentiment label
-    build_bar_plot_distribution_comparison(**{'total_sentiment_label_comparison': [1942, 2920, 137]})
-
-    # draw bar plot which show the performance of various algorithms
-    classifiers_performance_compare(filename='classifier_performance_compare.png')
-
-    # Output general information of the dataframes involved in the longitudinal study
-    treatment_control_saving_path = os.path.join(data_paths.transit_non_transit_comparison_before_after,
-                                                 'three_areas_longitudinal_analysis')
-    kwun_tong_line_treatment_dataframe = read_local_csv_file(filename='kwun_tong_line_treatment.csv',
-                                                             path=treatment_control_saving_path, dtype_str=False)
-    kwun_tong_line_control_dataframe = read_local_csv_file(filename='kwun_tong_line_control_1000.csv',
-                                                           path=treatment_control_saving_path, dtype_str=False)
-    south_horizons_treatment_dataframe = read_local_csv_file(filename='south_horizons_lei_tung_treatment.csv',
-                                                             path=treatment_control_saving_path, dtype_str=False)
-    south_horizons_control_dataframe = read_local_csv_file(filename='south_horizons_lei_tung_control_1500.csv',
-                                                           path=treatment_control_saving_path, dtype_str=False)
-    ocean_park_treatment_dataframe = read_local_csv_file(filename='ocean_park_wong_chuk_hang_treatment.csv',
-                                                         path=treatment_control_saving_path, dtype_str=False)
-    ocean_park_control_dataframe = read_local_csv_file(filename='ocean_park_wong_chuk_hang_control_1500.csv',
-                                                       path=treatment_control_saving_path, dtype_str=False)

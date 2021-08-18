@@ -321,12 +321,14 @@ def get_population_three_areas_combined(dataframe: pd.DataFrame, tpu_info_datafr
         elif (row['T_i_t'] == 1) and (row['Area_name'] == 'south_horizons') and (row['Post'] == 0):
             select_columns = [col for col in tpu_info_dataframe if '2011' in col] + ['SmallTPU']
             select_dataframe = tpu_info_dataframe[select_columns]
-            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(south_horizons_treatment_tpu_group_set)]
+            select_rows = select_dataframe.loc[
+                select_dataframe['SmallTPU'].isin(south_horizons_treatment_tpu_group_set)]
             result_population_list.append(sum(select_rows['population_2011']))
         elif (row['T_i_t'] == 1) and (row['Area_name'] == 'south_horizons') and (row['Post'] == 1):
             select_columns = [col for col in tpu_info_dataframe if '2016' in col] + ['SmallTPU']
             select_dataframe = tpu_info_dataframe[select_columns]
-            select_rows = select_dataframe.loc[select_dataframe['SmallTPU'].isin(south_horizons_treatment_tpu_group_set)]
+            select_rows = select_dataframe.loc[
+                select_dataframe['SmallTPU'].isin(south_horizons_treatment_tpu_group_set)]
             result_population_list.append(sum(select_rows['population_2016']))
         elif (row['T_i_t'] == 0) and (row['Area_name'] == 'south_horizons') and (row['Post'] == 0):
             select_columns = [col for col in tpu_info_dataframe if '2011' in col] + ['SmallTPU']
@@ -708,19 +710,20 @@ def build_regress_data_three_areas_seperate(kwun_tong_treatment, kwun_tong_contr
     pos_dict, neutral_dict, neg_dict = {}, {}, {}
     for _, dataframe in combined_data_copy.groupby(['TPU_cross_sectional', 'month_plus_year', 'T_i_t', 'Post',
                                                     'Area_name']):
-        time = str(list(dataframe['month_plus_year'])[0])
-        t_i_t = str(list(dataframe['T_i_t'])[0])
-        post = str(list(dataframe['Post'])[0])
-        tpu_info = str(list(dataframe['TPU_cross_sectional'])[0])
-        area_name = str(list(dataframe['Area_name'])[0])
-        sentiment_dict[time + '+' + t_i_t + '+' + post + '+' + tpu_info + '+' + area_name] = \
-            pos_percent_minus_neg_percent(dataframe)
-        pos_dict[time + '+' + t_i_t + '+' + post + '+' + tpu_info + '+' + area_name] = dataframe.loc[
-            dataframe['sentiment_vader_percent'] == 2].shape[0]
-        neutral_dict[time + '+' + t_i_t + '+' + post + '+' + tpu_info + '+' + area_name] = dataframe.loc[
-            dataframe['sentiment_vader_percent'] == 1].shape[0]
-        neg_dict[time + '+' + t_i_t + '+' + post + '+' + tpu_info + '+' + area_name] = dataframe.loc[
-            dataframe['sentiment_vader_percent'] == 0].shape[0]
+        if dataframe.shape[0] != 0:
+            time = str(list(dataframe['month_plus_year'])[0])
+            t_i_t = str(list(dataframe['T_i_t'])[0])
+            post = str(list(dataframe['Post'])[0])
+            tpu_info = str(list(dataframe['TPU_cross_sectional'])[0])
+            area_name = str(list(dataframe['Area_name'])[0])
+            sentiment_dict[time + '+' + t_i_t + '+' + post + '+' + tpu_info + '+' + area_name] = \
+                pos_percent_minus_neg_percent(dataframe)
+            pos_dict[time + '+' + t_i_t + '+' + post + '+' + tpu_info + '+' + area_name] = dataframe.loc[
+                dataframe['sentiment_vader_percent'] == 2].shape[0]
+            neutral_dict[time + '+' + t_i_t + '+' + post + '+' + tpu_info + '+' + area_name] = dataframe.loc[
+                dataframe['sentiment_vader_percent'] == 1].shape[0]
+            neg_dict[time + '+' + t_i_t + '+' + post + '+' + tpu_info + '+' + area_name] = dataframe.loc[
+                dataframe['sentiment_vader_percent'] == 0].shape[0]
     for key in list(sentiment_dict.keys()):
         # don't consider the tweets posted in 2016_10(for Whampoa and Ho Man Tin) or 2016_12(for other stations)
         info_list = key.split('+')
@@ -750,10 +753,10 @@ def build_regress_data_three_areas_seperate(kwun_tong_treatment, kwun_tong_contr
     # Add the population, median income and tpu index information
     population_list, median_income_list = [], []
     for index, row in result_dataframe_copy.iterrows():
-        if row['Post'] == 0:
+        if row['Post'] == 0:  # Use the census 2011 data
             population_list.append(census_dict[row['TPU']][0])
             median_income_list.append(census_dict[row['TPU']][2])
-        else:
+        else:  # Use the census 2016 data
             population_list.append(census_dict[row['TPU']][1])
             median_income_list.append(census_dict[row['TPU']][3])
     result_dataframe_copy['Population'] = population_list
@@ -925,36 +928,6 @@ def output_did_result(ols_model, variable_list: list, time_window):
     return result_data_reindex
 
 
-def determine_dummy(source_string, target_string):
-    """
-    Check whether two string match.
-    True return 1; False return 0
-    :param source_string:
-    :param target_string:
-    :return:
-    """
-    if source_string == target_string:
-        return 1
-    else:
-        return 0
-
-
-def create_dummy(dataframe):
-    """
-    Create the dummy variable for the regression dataframe
-    :param dataframe: the pandas dataframe to conduct regression
-    :return: a pandas dataframe with dummy variables
-    """
-    assert 'Area_name' in dataframe, "The dataframe should contain a column named 'Area_name'"
-    dataframe_copy = dataframe.copy()
-    dataframe_copy['whampoa'] = dataframe_copy.apply(lambda row: determine_dummy(row['Area_name'], 'kwun_tong'), axis=1)
-    dataframe_copy['south_horizons'] = dataframe_copy.apply(
-        lambda row: determine_dummy(row['Area_name'], 'south_horizons'), axis=1)
-    dataframe_copy['ocean_park'] = dataframe_copy.apply(lambda row: determine_dummy(row['Area_name'], 'ocean_park'),
-                                                        axis=1)
-    return dataframe_copy
-
-
 def conduct_combined_did_analysis(kwun_tong_treatment_data, kwun_tong_control_data,
                                   south_horizons_treatment_data, south_horizons_control_data,
                                   ocean_park_treatment_data, ocean_park_control_data,
@@ -974,25 +947,24 @@ def conduct_combined_did_analysis(kwun_tong_treatment_data, kwun_tong_control_da
     # variable_list = ['T_i_t:Post', 'Population_log', 'Median_Income_log']
     # 'Sentiment ~ T_i_t:Post+C(Time)+C(Area_name)'
     reg_combined_sentiment = smf.ols(
-        'Sentiment ~ T_i_t:Post+T_i_t+Post+Population_log+Median_Income_log+C(Area_name)',
+        'Sentiment ~ T_i_t:Post+T_i_t+Post+Median_Income_log+C(Area_name)',
         longitudinal_dataframe).fit()
     print('----The sentiment did result-----')
     print(reg_combined_sentiment.summary())
     result_dataframe_sent = output_did_result(reg_combined_sentiment,
-                                              variable_list=['T_i_t:Post', 'T_i_t', 'Post',
-                                                             'Population_log', 'Median_Income_log'],
+                                              variable_list=['T_i_t:Post', 'T_i_t', 'Post', 'Median_Income_log'],
                                               time_window=check_window_value)
     # For the combined setting
     # 'log_Activity ~ T_i_t:Post+C(T_i_t)+C(Time)+Population_log+Median_Income_log'
     # 'log_Activity ~ T_i_t:Post+T_i_t+Post+Population_log+Median_Income_log'
     reg_combined_activity = smf.ols(
-        'log_Activity ~ T_i_t:Post+T_i_t+Post+Population_log+Median_Income_log+C(Area_name)',
+        'log_Activity ~ T_i_t:Post+T_i_t+Post+Population_log+C(Area_name)',
         longitudinal_dataframe).fit()
     print('----The activity did result-----')
     print(reg_combined_activity.summary())
     result_dataframe_act = output_did_result(reg_combined_activity,
                                              variable_list=['T_i_t:Post', 'T_i_t', 'Post',
-                                                             'Population_log', 'Median_Income_log'],
+                                                            'Population_log'],
                                              time_window=check_window_value)
     if for_sentiment:
         print(result_dataframe_sent)
@@ -1020,16 +992,14 @@ def conduct_did_analysis_one_area(treatment_considered_dataframe, control_consid
     # 'Sentiment ~ T_i_t:Post+T_i_t+Post+Population_log+Median_Income_log'
     # 'log_Activity ~ T_i_t:Post+T_i_t+Post+Population_log+Median_Income_log'
     combined_sentiment = smf.ols(
-        'Sentiment ~ T_i_t:Post+T_i_t+Post+Population_log+Median_Income_log', constructed_dataframe).fit()
+        'Sentiment ~ T_i_t:Post+T_i_t+Post', constructed_dataframe).fit()
     combined_activity = smf.ols(
-        'log_Activity ~ T_i_t:Post+T_i_t+Post+Population_log+Median_Income_log', constructed_dataframe).fit()
+        'log_Activity ~ T_i_t:Post+T_i_t+Post', constructed_dataframe).fit()
     result_sent = output_did_result(combined_sentiment,
-                                    variable_list=['T_i_t:Post', 'T_i_t', 'Post',
-                                                   'Population_log', 'Median_Income_log'],
+                                    variable_list=['T_i_t:Post', 'T_i_t', 'Post'],
                                     time_window=window_size_value)
     result_act = output_did_result(combined_activity,
-                                   variable_list=['T_i_t:Post', 'T_i_t', 'Post',
-                                                  'Population_log', 'Median_Income_log'],
+                                   variable_list=['T_i_t:Post', 'T_i_t', 'Post'],
                                    time_window=window_size_value)
     print('----The sentiment did result-----')
     print(combined_sentiment.summary())

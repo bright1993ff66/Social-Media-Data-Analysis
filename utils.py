@@ -1,3 +1,4 @@
+# basics
 import re
 import os
 import numpy as np
@@ -11,6 +12,7 @@ from collections import Counter
 from matplotlib import pyplot as plt
 import seaborn as sns
 
+# Load the paths
 import data_paths
 
 time_zone_hk = pytz.timezone('Asia/Shanghai')

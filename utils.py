@@ -85,17 +85,24 @@ def weighted_average(group: pd.DataFrame, value_col: str, weight_col: str) -> fl
 
 
 def read_local_csv_file(path, filename, dtype_str=True):
+    """
+    Read local csv file
+    :param path: a path containing the desired csv file
+    :param filename: the name of the desired csv file
+    :param dtype_str: whether read each column as string or not
+    :return: a loaded pandas dataframe
+    """
     if dtype_str:
-        dataframe = pd.read_csv(os.path.join(path, filename), encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC,
-                                dtype='str', index_col=0)
+        dataframe = pd.read_csv(open(os.path.join(path, filename), errors='ignore', encoding='utf-8'), index_col=0)
     else:
-        dataframe = pd.read_csv(os.path.join(path, filename), encoding='utf-8', quoting=csv.QUOTE_NONNUMERIC,
-                                index_col=0)
+        dataframe = pd.read_csv(open(os.path.join(path, filename), errors='ignore', encoding='utf-8'), index_col=0,
+                                dtype='str')
     return dataframe
 
 
 def transform_string_time_to_datetime(string):
     """
+    Transform the string like "2018-05-30 15:30:26+8:00" to a datetime object
     :param string: the string which records the time of the posted tweets(this string's timezone is HK time)
     :return: a datetime object which could get access to the year, month, day easily
     """
@@ -119,31 +126,13 @@ def number_of_tweet_user(df: pd.DataFrame, print_values=False):
         return tweet_num, user_num
 
 
-# Use this function to select the MTR-related tweets
-def find_tweet(keywords, tweet):
-    result = ''
-    for word in tweet:
-        if word in keywords:
-            result = True
-        else:
-            result = False
-    return result
-
-
-# get the hk_time column based on the created_at column
-def get_hk_time(df):
-    changed_time_list = []
-    for _, row in df.iterrows():
-        time_to_change = datetime.strptime(row['created_at'], '%a %b %d %H:%M:%S %z %Y')
-        # get the hk time
-        changed_time = time_to_change.astimezone(time_zone_hk)
-        changed_time_list.append(changed_time)
-    df['hk_time'] = changed_time_list
-    return df
-
-
-# get the year, month, day information of based on any tweet dataframe
 def get_year_month_day(df):
+    """
+    Get the year, month, and day information
+    :param df: a pandas dataframe saving the tweets
+    :return: a tweet dataframe with year, month, and day information
+    """
+    assert 'hk_time' in df, "The dataframe should have a column named hk_time"
     df_copy = df.copy()
     df_copy['year'] = df_copy.apply(lambda row: row['hk_time'].year, axis=1)
     df_copy['month'] = df_copy.apply(lambda row: row['hk_time'].month, axis=1)
@@ -160,89 +149,31 @@ def read_text_from_multi_csvs(path: str) -> pd.DataFrame:
     all_csv_files = os.listdir(path)
     dataframes = []
     for file in all_csv_files:
-        dataframe = pd.read_csv(os.path.join(path, file), encoding='latin-1', dtype='str',
-                                quoting=csv.QUOTE_NONNUMERIC)
+        dataframe = pd.read_csv(open(os.path.join(path, file), errors='ignore', encoding='utf-8'), index_col=0,
+                                dtype='str')
         dataframes.append(dataframe)
     combined_dataframes = pd.concat(dataframes, sort=True)
-    return combined_dataframes
-
-
-def build_dataframe_for_urban_rate(source_dataframe):
-    result_dataframe = pd.DataFrame(columns=['Year', 'US', 'China', 'World'])
-    China_dataframe = source_dataframe.loc[source_dataframe['Country Name'] == 'China']
-    us_dataframe = source_dataframe.loc[source_dataframe['Country Name'] == 'United States']
-    World_dataframe = source_dataframe.loc[source_dataframe['Country Name'] == 'World']
-    year_list = list(range(1960, 2019, 1))
-    result_dataframe['Year'] = year_list
-    result_dataframe['US'] = us_dataframe.values[0][4:]
-    result_dataframe['China'] = China_dataframe.values[0][4:]
-    result_dataframe['World'] = World_dataframe.values[0][4:]
-    return result_dataframe
-
-
-def build_bar_plot_distribution_comparison(**key_list_dict: dict):
-    """
-    Build the bar plot showing the sentiment distribution
-    :param key_list_dict: a dictionary containing the number of tweets for each sentiment category
-    :return:
-    """
-    name_list = list(key_list_dict.keys())
-    if len(name_list) == 1:
-        value_list = key_list_dict[name_list[0]]
-    else:
-        return 'Not Worked Out'
-    sentiment_tag = ['Positive', 'Neutral', 'Negative']
-    x_values_for_plot = list(range(len(sentiment_tag)))
-    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
-
-    ax.bar(x_values_for_plot, value_list, color='red')
-    ax.set_xticks(x_values_for_plot)
-    ax.set_xticklabels(sentiment_tag)
-    filename = name_list[0] + '_distribution'
-    fig.savefig(os.path.join(data_paths.human_review_result_path, filename))
-    plt.show()
-
-
-def classifiers_performance_compare(filename):
-    result_dataframe = pd.DataFrame(columns=['metrics', 'performance', 'Classifiers'])
-
-    accuracy_list = [0.64, 0.70, 0.70, 0.67]
-    precision_list = [0.48, 0.47, 0.51, 0.52]
-    recall_list = [0.50, 0.48, 0.51, 0.54]
-    f1_list = [0.47, 0.47, 0.51, 0.50]
-
-    performance_list = accuracy_list + precision_list + recall_list + f1_list
-    metrics_list = ['Accuracy'] * 4 + ['Precision'] * 4 + ['Recall'] * 4 + ['F1 Score'] * 4
-    classifier_list = ['Decision Tree', 'Random Forest', 'SVM', 'Neural Net'] * 4
-
-    result_dataframe['metrics'] = metrics_list
-    result_dataframe['performance'] = performance_list
-    result_dataframe['Classifiers'] = classifier_list
-
-    fig_classifier_compare, ax = plt.subplots(1, 1, figsize=(10, 8))
-    # qualitative_colors = sns.color_palette("Set1", 4)
-    # sns.set_palette(qualitative_colors)
-    sns.barplot(x="metrics", y="performance", hue="Classifiers", data=result_dataframe, ax=ax,
-                palette=["#6553FF", "#E8417D", "#FFAC42", '#A5FF47'])
-    fig_classifier_compare.savefig(os.path.join(data_paths.human_review_result_path, filename))
-    plt.show()
+    combined_dataframes_reindex = combined_dataframes.reset_index(drop=True)
+    return combined_dataframes_reindex
 
 
 def general_info_of_tweet_dataset(df, study_area: str):
     """
     Get the general info of a tweet dataframe
-    :param df: a pandas tweet dataframe having been sorted by time
+    :param df: a pandas tweet dataframe
     :param study_area: a string describing the study area
     :return: None. A short description of the tweet dataframe is given, including user number, tweet number,
     average number of tweets per day, language distribution and sentiment distribution
     """
-    user_number = len(set(list(df['user_id_str'])))
-    tweet_number = df.shape[0]
-    starting_time = list(df['hk_time'])[0]
-    ending_time = list(df['hk_time'])[-1]
-    daily_tweet_count = df.shape[0] / (ending_time - starting_time).days
-    language_dist_dict = Counter(df['lang'])
-    sentiment_dist_dict = Counter(df['sentiment'])
+    assert 'hk_time' in df, "Make sure that the dataframe has a column named hk_time"
+    df_sorted = df.sort_values(by='hk_time')
+    user_number = len(set(list(df_sorted['user_id_str'])))
+    tweet_number = df_sorted.shape[0]
+    starting_time = list(df_sorted['hk_time'])[0]
+    ending_time = list(df_sorted['hk_time'])[-1]
+    daily_tweet_count = df_sorted.shape[0] / (ending_time - starting_time).days
+    language_dist_dict = Counter(df_sorted['lang'])
+    sentiment_dist_dict = Counter(df_sorted['sentiment'])
     print('For {}, number of users: {}; number of tweets: {}; average daily number of tweets: {}; '
           'language distribution: {}; sentiment distribution: {}'.format(study_area, user_number,
                                                                          tweet_number,

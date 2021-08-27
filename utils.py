@@ -15,11 +15,13 @@ import seaborn as sns
 # Load the paths
 import data_paths
 
+# Specify the timezone of Hong Kong
+# No time difference between Shanghai and Hong Kong
 time_zone_hk = pytz.timezone('Asia/Shanghai')
 
 # For instance, if we want to compare the sentiment and activity level before and after the
-# openning date of the Whampoa MTR railway station in Hong Kong, since the station is opened on 23 Oct 2016,
-# we could specify the openning date using datatime package and output before and after dataframes
+# opening date of the Whampoa MTR railway station in Hong Kong, since the station is opened on 23 Oct 2016,
+# we could specify the opening date using datetime package and output before and after dataframes
 october_1_start = datetime(2016, 10, 1, 0, 0, 0, tzinfo=time_zone_hk)
 october_31_end = datetime(2016, 10, 31, 23, 59, 59, tzinfo=time_zone_hk)
 december_1_start = datetime(2016, 12, 1, 0, 0, 0, tzinfo=time_zone_hk)
@@ -27,34 +29,45 @@ december_31_end = datetime(2016, 12, 31, 23, 59, 59, tzinfo=time_zone_hk)
 start_date = datetime(2016, 5, 7, 0, 0, 0, tzinfo=time_zone_hk)
 end_date = datetime(2018, 12, 18, 23, 59, 59, tzinfo=time_zone_hk)
 
-# The replacement patterns used in cleaning the raw text data
-replacement_patterns = [
-    (r"won\'t", "will not"),
-    (r"[^A-Za-z0-9^,!.\/'+-=]", " "),
-    (r"can\'t", "cannot"),
-    (r"I\'m", "I am"),
-    (r"ain\'t", 'is not'),
-    (r"(\d+)(k)", r"\g<1>000"),
-    # \g<1> are using back-references to capture part of the matched pattern
-    # \g means referencing group content in the previous pattern. <1> means the first group. In the following case, the first group is w+
-    (r"(\w+)\'ll", "\g<1> will"),
-    (r"(\w+)n\'t", "\g<1> not"),
-    (r"(\w+)\'ve", "\g<1> have"),
-    (r"(\w+)\'s", "\g<1> is"),
-    (r"(\w+)\'re", "\g<1> are"),
-    (r"(\w+)\'d", "\g<1> would")
-]
-
 
 # A RegexpReplacer to clean some texts based on specified patterns
 class RegexpReplacer(object):
+
+    """
+    Replace strings like "I'm, We won't" to "I am and we will not"
+    """
+
+    # The replacement patterns used in cleaning the raw text data
+    replacement_patterns = [
+        (r"won\'t", "will not"),
+        (r"[^A-Za-z0-9^,!.\/'+-=]", " "),
+        (r"can\'t", "cannot"),
+        (r"I\'m", "I am"),
+        (r"ain\'t", 'is not'),
+        (r"(\d+)(k)", r"\g<1>000"),
+        # \g<1> are using back-references to capture part of the matched pattern
+        # \g means referencing group content in the previous pattern. <1> means the first group.
+        # In the following case, the first group is w+
+        (r"(\w+)\'ll", "\g<1> will"),
+        (r"(\w+)n\'t", "\g<1> not"),
+        (r"(\w+)\'ve", "\g<1> have"),
+        (r"(\w+)\'s", "\g<1> is"),
+        (r"(\w+)\'re", "\g<1> are"),
+        (r"(\w+)\'d", "\g<1> would")
+    ]
+
     def __init__(self, patterns):
-        self.patterns = [(re.compile(regex), repl) for (regex, repl) in replacement_patterns]
+        self.patterns = [(re.compile(regex), replace) for (regex, replace) in RegexpReplacer.replacement_patterns]
 
     def replace(self, text):
+        """
+        Replace the text given the regex expression
+        :param text: a text string
+        :return: the replaced text
+        """
         s = text
-        for (pattern, repl) in self.patterns:
-            s = re.sub(pattern=pattern, repl=repl, string=s)  # subn returns the times of replacement
+        for (pattern, replace) in self.patterns:
+            s = re.sub(pattern=pattern, repl=replace, string=s)  # subn returns the times of replacement
         return s
 
 

@@ -28,7 +28,7 @@ october_31_end = datetime(2016, 10, 31, 23, 59, 59, tzinfo=time_zone_hk)
 december_1_start = datetime(2016, 12, 1, 0, 0, 0, tzinfo=time_zone_hk)
 december_31_end = datetime(2016, 12, 31, 23, 59, 59, tzinfo=time_zone_hk)
 
-## TPU selection before the first review
+# TPU selection before the first review
 # kwun_tong_line_treatment_tpu_set = {'243', '245', '236', '213'}
 # kwun_tong_line_control_tpu_set = {'247', '234', '242', '212', '235'}
 # south_horizons_lei_tung_treatment_tpu_set = {'174'}

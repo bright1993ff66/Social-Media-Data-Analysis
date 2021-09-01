@@ -3,17 +3,9 @@ import re
 import os
 import numpy as np
 import pandas as pd
-import csv
 import pytz
 from datetime import datetime
 from collections import Counter
-
-# For plots
-from matplotlib import pyplot as plt
-import seaborn as sns
-
-# Load the paths
-import data_paths
 
 # Specify the timezone of Hong Kong
 # No time difference between Shanghai and Hong Kong

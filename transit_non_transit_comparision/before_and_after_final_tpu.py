@@ -14,27 +14,29 @@ import warnings
 from nltk.tokenize import word_tokenize
 from wordcloud import WordCloud
 import gensim
-
-import data_paths
-import utils
 from Visualization import topic_model_tweets, wordcloud_tweets
 
 # For visualization
 import matplotlib
 from matplotlib import pyplot as plt
-import matplotlib.font_manager as font_manageer
+import matplotlib.font_manager as font_manager
 import matplotlib.ticker as mtick
 import geopandas as gpd
 import seaborn as sns
+
+# Load the paths and utils
+import data_paths
+import utils
 
 # Ignore the warnings produced by the gensim package
 warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
 
 # Specify the font usage in the matplotlib
-font = {'family': 'serif'}
+font = {'family': 'serif', 'size': 20}
 matplotlib.rc('font', **font)
+matplotlib.rc('figure', max_open_warning = 0)
 
-# Some time attributes
+# List some time attributes for dataframe and plot generation
 months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 time_list = ['2016_5', '2016_6', '2016_7', '2016_8', '2016_9', '2016_10', '2016_11', '2016_12', '2017_1',
              '2017_2', '2017_3', '2017_4', '2017_5', '2017_6', '2017_7', '2017_8', '2017_9', '2017_10',
@@ -59,18 +61,14 @@ time_zone_hk = pytz.timezone('Asia/Shanghai')
 
 class TransitNeighborhood_Before_After(object):
 
-    before_after_stations = ['Whampoa', 'Ho Man Tin', 'South Horizons', 'Wong Chuk Hang', 'Ocean Park',
-                             'Lei Tung']
-
     def __init__(self, name, tn_dataframe, non_tn_dataframe, poi_dataframe,
-                 oct_open: bool, before_and_after: bool, compute_positive: bool, compute_negative: bool):
+                 oct_open: bool, compute_positive: bool, compute_negative: bool):
         """
         :param name: the name of the studied area
         :param tn_dataframe: the dataframe which records all the tweets posted in the TN
         :param non_tn_dataframe: the dataframe which records all the tweets posted in corresponding non_tn
-        :param poi_dataframe: a pandas dataframe containing the pois in the treatment group of a study area
+        :param poi_dataframe: a pandas dataframe containing the POIs in the treatment group of a study area
         :param oct_open: check whether the station is opened on oct 23, 2016
-        :param before_and_after: only True if the MTR station in this TN is built recently(in 2016)
         :param compute_positive: True if use positive percent as the sentiment metric
         :param compute_negative: True if use negative percent as the sentiment metric
         """
@@ -79,14 +77,15 @@ class TransitNeighborhood_Before_After(object):
         self.non_tn_dataframe = non_tn_dataframe
         self.poi_dataframe = poi_dataframe
         self.oct_open = oct_open
-        self.before_and_after = before_and_after
         self.compute_positive = compute_positive
         self.compute_negative = compute_negative
 
-    # Based on the dataframes for treatment, not considerd treatment, and control group, output dataframes which
-    # record the sentiment and activity over the study period
     def output_sent_act_dataframe(self):
-        # Construct the monthly sentiment dictionary for TN datafrane
+        """
+        Output the sentiment and activity dataframe for a study area
+        :return: the tweet sentiment and tweet activity of each study area in each month
+        """
+        # Construct the monthly sentiment dictionary for TN dataframe
         result_dict_tn = sentiment_by_month(self.tn_dataframe, compute_positive_percent=self.compute_positive,
                                             compute_negative_percent=self.compute_negative)
         # Compute the monthly sentiment dictionary for non-TN dataframe
@@ -96,9 +95,13 @@ class TransitNeighborhood_Before_After(object):
         result_dataframe_non_tn = pd.DataFrame(list(result_dict_non_tn.items()), columns=['Date', 'Value'])
         return result_dataframe_tn, result_dataframe_non_tn
 
-    # Compute the absolute coefficient difference
     def compute_abs_coeff_difference(self):
-        # Compute the coefficient difference of sentiment against time before the treatment
+        """
+        Compute the coefficient difference of sentiment & activity against time before the treatment
+        print the absolute slope difference
+        :return: the previous time list, sentiment for transit neighborhood, sentiment for non tranist neighborhood
+        activity for transit neighborhood, activity for non transit neighborhood
+        """
         treatment_group_dataframe, control_group_dataframe = self.output_sent_act_dataframe()
         tn_dataframe_with_sentiment_activity = treatment_group_dataframe.set_index('Date')
         tn_dataframe_for_plot = tn_dataframe_with_sentiment_activity.loc[time_list]
@@ -128,6 +131,9 @@ class TransitNeighborhood_Before_After(object):
             lambda row: row['Value'][1], axis=1)
         non_tn_dataframe_compute_diff_copy['activity'] = non_tn_dataframe_compute_diff_copy.apply(
             lambda row: row['Value'][1], axis=1)
+        print('The activity list for treatment group: {}'.format(list(tn_dataframe_compute_diff_copy['activity'])))
+        print('The activity list for candidate control group: {}'.format(
+            list(non_tn_dataframe_compute_diff_copy['activity'])))
         selected_time_value = list(tn_dataframe_compute_diff_copy['time'])
         tn_dataframe_sentiment_list = list(tn_dataframe_compute_diff_copy['sentiment'])
         non_tn_dataframe_sentiment_list = list(non_tn_dataframe_compute_diff_copy['sentiment'])
@@ -141,17 +147,19 @@ class TransitNeighborhood_Before_After(object):
             slope_tn_sentiment, slop_non_tn_sentiment))
         print('For activity: The slope value for tn is: {} while for non-tn the value is: {}'.format(
             slope_tn_activity, slope_non_tn_activity))
-        return abs(slope_tn_sentiment - slop_non_tn_sentiment), abs(slope_tn_activity - slope_non_tn_activity)
+        return selected_time_value, tn_dataframe_sentiment_list, non_tn_dataframe_sentiment_list, \
+               tn_dataframe_activity_list, non_tn_dataframe_activity_list
 
-    # find the station influenced user for a study area
-    def find_station_influenced_other_users(self, start_time=datetime(2016, 5, 1, 0, 0, 0, tzinfo=time_zone_hk),
-                                            end_time=datetime(2018, 12, 31, 23, 59, 59, tzinfo=time_zone_hk)):
+    # find the sustaining users for a study area
+    def find_sustaining_other_users(self, start_time=datetime(2016, 5, 1, 0, 0, 0, tzinfo=time_zone_hk),
+                                    end_time=datetime(2018, 12, 31, 23, 59, 59, tzinfo=time_zone_hk)):
         """
-        Find the station influenced users (Twitter users appear both before and after the station openning dates)
+        Find the sustaining users (Twitter users appear both **before and after** the station opening dates in the
+        transit neighborhood) and other users (Twitter users appear both **before or after** the station opening dates
+        in the transit neighborhood)
         :param start_time: the considered start time of the tweet dataframe
         :param end_time: the considered end time of the tweet dataframe
-        :return: a python set containing the id of users who visited the treatment group both before and after
-        the introduction of MTR stations
+        :return: a python set containing the sustaining users and other users
         """
         assert 'hk_time' in self.tn_dataframe, 'The tweet dataframe should contain hk_time...'
         if isinstance(list(self.tn_dataframe['hk_time'])[0], str):
@@ -174,20 +182,20 @@ class TransitNeighborhood_Before_After(object):
         user_after = set(df_after['user_id_str'])
         station_influenced_users = user_before.intersection(user_after)
         other_users = user_before.symmetric_difference(user_after)
-        print('For {}, we find {} station influenced users, {} other users.'.format(
+        print('For {}, we find {} sustaining users, {} other users.'.format(
             self.name, len(station_influenced_users), len(other_users)))
         return station_influenced_users, other_users
 
     def plot_footprints(self, tweet_dataframe, hk_shape):
         """
-        Plot the footprints of station influenced users
+        Plot the footprints of sustaining users
         :param tweet_dataframe: the pandas dataframe containing all the tweets posted in HK
         :param hk_shape: the shapefile of the whole Hong Kong
         :return: None. The created figure is saved to local
         """
 
         if self.oct_open:
-            station_influenced_users, _ = self.find_station_influenced_other_users(
+            sustaining_users, _ = self.find_sustaining_other_users(
                 start_time=datetime(2016, 5, 1, 0, 0, 0,
                                     tzinfo=time_zone_hk),
                 end_time=datetime(2017, 5, 1, 0, 0, 0,
@@ -198,7 +206,7 @@ class TransitNeighborhood_Before_After(object):
                                                                           end_time=datetime(2017, 5, 1, 0, 0, 0,
                                                                                             tzinfo=time_zone_hk))
         else:
-            station_influenced_users, _ = self.find_station_influenced_other_users(
+            sustaining_users, _ = self.find_sustaining_other_users(
                 start_time=datetime(2016, 6, 1, 0, 0, 0,
                                     tzinfo=time_zone_hk),
                 end_time=datetime(2017, 7, 1, 0, 0, 0,
@@ -208,8 +216,8 @@ class TransitNeighborhood_Before_After(object):
                                                                                               tzinfo=time_zone_hk),
                                                                           end_time=datetime(2017, 7, 1, 0, 0, 0,
                                                                                             tzinfo=time_zone_hk))
-        before_df_plot = before_df_plot.loc[before_df_plot['user_id_str'].isin(station_influenced_users)]
-        after_df_plot = after_df_plot.loc[after_df_plot['user_id_str'].isin(station_influenced_users)]
+        before_df_plot = before_df_plot.loc[before_df_plot['user_id_str'].isin(sustaining_users)]
+        after_df_plot = after_df_plot.loc[after_df_plot['user_id_str'].isin(sustaining_users)]
         before_gpd = gpd.GeoDataFrame(before_df_plot,
                                       geometry=gpd.points_from_xy(before_df_plot.lon, before_df_plot.lat))
         before_gpd_proj = before_gpd.set_crs(epsg=4326).to_crs(2326)
@@ -232,13 +240,13 @@ class TransitNeighborhood_Before_After(object):
         # Specify the 'before' and 'after' & Number of tweets
         for index, ax in enumerate(axes):
             if not index & 1:
-                ax.text(805000, 840000, 'before', color='black')
+                ax.text(805000, 840000, 'before', color='black', size=15)
                 ax.text(820000, 800500, 'Number of tweets: {}'.format(before_df_plot.shape[0]),
-                        color='black')
+                        color='black', size=10)
             else:
-                ax.text(805000, 840000, 'after')
+                ax.text(805000, 840000, 'after', size=15)
                 ax.text(820000, 800500, 'Number of tweets: {}'.format(after_df_plot.shape[0]),
-                        color='black')
+                        color='black', size=10)
 
         # Turn off the axes
         for ax in axes:
@@ -252,11 +260,11 @@ class TransitNeighborhood_Before_After(object):
 
     def plot_sentiment_comparison(self):
         """
-        Plot the sentiment comparison figures for the station influenced users and other users
+        Plot the sentiment comparison figures for the sustaining users and other users
         :return: the sentiment comparison plot for one study area
         """
         if self.oct_open:
-            station_influenced_users, other_users = self.find_station_influenced_other_users(
+            sustaining_users, other_users = self.find_sustaining_other_users(
                 start_time=datetime(2016, 5, 1, 0, 0, 0,
                                     tzinfo=time_zone_hk),
                 end_time=datetime(2017, 5, 1, 0, 0, 0,
@@ -264,7 +272,7 @@ class TransitNeighborhood_Before_After(object):
             considered_start_time = datetime(2016, 5, 1, 0, 0, 0, tzinfo=time_zone_hk)
             considered_end_time = datetime(2017, 5, 1, 0, 0, tzinfo=time_zone_hk)
         else:
-            station_influenced_users, other_users = self.find_station_influenced_other_users(
+            sustaining_users, other_users = self.find_sustaining_other_users(
                 start_time=datetime(2016, 6, 1, 0, 0, 0,
                                     tzinfo=time_zone_hk),
                 end_time=datetime(2017, 7, 1, 0, 0, 0,
@@ -276,9 +284,9 @@ class TransitNeighborhood_Before_After(object):
                                                             end_time=considered_end_time)
         before_df['sentiment_vader_percent'] = before_df['sentiment_vader_percent'].astype(np.int)
         after_df['sentiment_vader_percent'] = after_df['sentiment_vader_percent'].astype(np.int)
-        before_station_users_df = before_df.loc[before_df['user_id_str'].isin(station_influenced_users)]
+        before_station_users_df = before_df.loc[before_df['user_id_str'].isin(sustaining_users)]
         before_other_users_df = before_df.loc[before_df['user_id_str'].isin(other_users)]
-        after_station_users_df = after_df.loc[after_df['user_id_str'].isin(station_influenced_users)]
+        after_station_users_df = after_df.loc[after_df['user_id_str'].isin(sustaining_users)]
         after_other_users_df = after_df.loc[after_df['user_id_str'].isin(other_users)]
         before_station_users_counter = Counter(before_station_users_df['sentiment_vader_percent'])
         before_station_users_sum = sum(before_station_users_counter.values())
@@ -309,8 +317,10 @@ class TransitNeighborhood_Before_After(object):
 
         figure, axes = plt.subplots(1, 2, figsize=(20, 8), dpi=300)
 
-        # font = font_manageer.FontProperties(size=25)
+        # Create the tick vals for y label
+        ytick_vals = [0, 20, 40, 60, 80, 100]
 
+        # Draw the bars and edit the x-axis and y-axis
         axes[0].bar(pos_arrays - 0.1, before_station_users_props, width=0.2, color='#5B9BD5', align='center',
                     label='before: {}'.format(np.sum(before_station_users_vals)))
         axes[0].bar(pos_arrays + 0.1, after_station_users_props, width=0.2, color='#ED7D31', align='center',
@@ -318,7 +328,9 @@ class TransitNeighborhood_Before_After(object):
         axes[0].set_ylabel('Percentage (%)')
         axes[0].set_xticks(pos_arrays)
         axes[0].set_xticklabels(['Positive', 'Neutral', 'Negative'], size=20)
-        axes[0].set_title('Station Influenced Users\n(Number of Users: {})'.format(len(station_influenced_users)),
+        # axes[0].set_yticks(ytick_vals)
+        # axes[0].set_yticklabels([str(val) for val in ytick_vals], size=20)
+        axes[0].set_title('Sustaining Users\n(Number of Users: {})'.format(len(sustaining_users)),
                           size=23)
         axes[0].spines['right'].set_visible(False)
         axes[0].spines['top'].set_visible(False)
@@ -330,6 +342,8 @@ class TransitNeighborhood_Before_After(object):
         axes[1].set_ylabel('Percentage (%)')
         axes[1].set_xticks(pos_arrays)
         axes[1].set_xticklabels(['Positive', 'Neutral', 'Negative'], size=20)
+        # axes[1].set_yticks(ytick_vals)
+        # axes[1].set_yticklabels([str(val) for val in ytick_vals], size=20)
         axes[1].set_title('Other Users\n(Number of Users: {})'.format(len(other_users)), size=23)
         axes[1].spines['right'].set_visible(False)
         axes[1].spines['top'].set_visible(False)
@@ -347,10 +361,10 @@ class TransitNeighborhood_Before_After(object):
 
         figure.savefig(os.path.join(data_paths.plot_path, self.name + '_sentiment_compare.tif'), bbox_inches='tight')
 
-    # Function used to create plot for one TN and the control group
     def line_map_comparison(self, fig, ax, line_labels: tuple, ylabel: str, plot_title_name: str,
                             draw_sentiment: bool = True):
         """
+        Function used to create plot for one TN and the control group
         :param fig: the matplotlib figure
         :param ax: the matplotlib axis
         :param line_labels: a tuple which records the line labels in the line graph
@@ -374,9 +388,9 @@ class TransitNeighborhood_Before_After(object):
             y3 = np.array([value[0] for value in list(non_tn_dataframe_for_plot['Value'])])
         else:
             if 'Kwun Tong' in plot_title_name:
-                y1 = np.array([value[1] / 1152801 for value in list(tn_dataframe_for_plot['Value'])])
+                y1 = np.array([value[1] / 1152802 for value in list(tn_dataframe_for_plot['Value'])])
                 # y2 = [value[1]/2573440.774 for value in list(tn_not_considered_dataframe_for_plot['Value'])]
-                y3 = np.array([value[1] / 1602812 for value in list(non_tn_dataframe_for_plot['Value'])])
+                y3 = np.array([value[1] / 1602811 for value in list(non_tn_dataframe_for_plot['Value'])])
             elif 'South Horizons' in plot_title_name:
                 y1 = np.array([value[1] / 1398085 for value in list(tn_dataframe_for_plot['Value'])])
                 # y2 = [value[1]/1810822.755 for value in list(tn_not_considered_dataframe_for_plot['Value'])]
@@ -427,7 +441,7 @@ class TransitNeighborhood_Before_After(object):
         # lns = lns1 + lns2 + lns3
         lns = lns1 + lns3
         labs = [l.get_label() for l in lns]
-        legend_font = font_manageer.FontProperties(size=30, family='serif')
+        legend_font = font_manager.FontProperties(size=30, family='serif')
         ax.legend(lns, labs, prop=legend_font)
 
         # Draw the average of the sentiment level
@@ -435,7 +449,7 @@ class TransitNeighborhood_Before_After(object):
         if draw_sentiment:
             ax.axhline(y=0.07, color='r', linestyle='solid')
             ax.axhline(y=0, color='black', linestyle='--', alpha=0.5)
-            ax.text(3, 0.12, 'Average Sentiment: 0.07', horizontalalignment='center', color='r', size=20)
+            ax.text(3, 0.12, 'Overall Sentiment: 7%', horizontalalignment='center', color='r', size=20)
             ax.set_ylim(-0.3, 0.3)
         else:  # here I want to make sure that all three areas share the same y axis
             ax.set_ylim(0, 0.00032)
@@ -444,11 +458,11 @@ class TransitNeighborhood_Before_After(object):
         if draw_sentiment:
             ytick_vals = np.arange(-0.3, 0.4, 0.1)
             ax.set_yticks(ytick_vals)
-            ax.set_yticklabels(['-30', '-20', '-10', '0', '10', '20', '30'])
+            ax.set_yticklabels(['-30', '-20', '-10', '0', '10', '20', '30'], size=25)
         else:
             ytick_vals = np.arange(0, 3.5e-04, 5e-05)
             ax.set_yticks(ytick_vals)
-            ax.set_yticklabels(['0', '0.5', '1.0', '1.5', '2.0', '2.5', '3.0'])
+            ax.set_yticklabels(['0', '0.5', '1.0', '1.5', '2.0', '2.5', '3.0'], size=25)
 
         # ax.set_ylabel(ylabel, color='k')  # color='k' means black
         ax.set_xticks(x)
@@ -456,18 +470,18 @@ class TransitNeighborhood_Before_After(object):
 
     def plot_wordclouds(self):
         """
-        Plot the wordcloud comparison for the station influenced users and other users before & after the
+        Plot the wordcloud comparison for the sustaining users and other users before & after the
         introduction of MTR stations
         :return: None. The wordclouds have saved to the local directory
         """
         if self.oct_open:
-            station_influenced_users, other_users = self.find_station_influenced_other_users(
+            sustaining_users, other_users = self.find_sustaining_other_users(
                 start_time=datetime(2016, 5, 1, 0, 0, 0, tzinfo=time_zone_hk),
                 end_time=datetime(2017, 5, 1, 0, 0, 0, tzinfo=time_zone_hk))
             considered_start_time = datetime(2016, 5, 1, 0, 0, 0, tzinfo=time_zone_hk)
             considered_end_time = datetime(2017, 5, 1, 0, 0, tzinfo=time_zone_hk)
         else:
-            station_influenced_users, other_users = self.find_station_influenced_other_users(
+            sustaining_users, other_users = self.find_sustaining_other_users(
                 start_time=datetime(2016, 6, 1, 0, 0, 0, tzinfo=time_zone_hk),
                 end_time=datetime(2017, 7, 1, 0, 0, 0, tzinfo=time_zone_hk))
             considered_start_time = datetime(2016, 6, 1, 0, 0, 0, tzinfo=time_zone_hk)
@@ -475,22 +489,19 @@ class TransitNeighborhood_Before_After(object):
         self.tn_dataframe['user_id_str'] = self.tn_dataframe['user_id_str'].astype(float)
         self.tn_dataframe['user_id_str'] = self.tn_dataframe['user_id_str'].astype(np.int64)
         self.tn_dataframe['sentiment_vader_percent'] = self.tn_dataframe['sentiment_vader_percent'].astype(np.int)
-        data_selected = utils.get_tweets_before_after(self.tn_dataframe, start_time=considered_start_time,
-                                                       end_time=considered_end_time, oct_open=self.oct_open)
-        station_users_df = data_selected.loc[data_selected['user_id_str'].isin(station_influenced_users)]
+        data_selected_before, data_selected_after = utils.get_tweets_before_after(self.tn_dataframe,
+                                                                                  start_time=considered_start_time,
+                                                                                  end_time=considered_end_time,
+                                                                                  oct_open=self.oct_open)
+        data_selected = pd.concat([data_selected_before, data_selected_after], axis=0)
+        station_users_df = data_selected.loc[data_selected['user_id_str'].isin(sustaining_users)]
         other_users_df = data_selected.loc[data_selected['user_id_str'].isin(other_users)]
         station_users_pos = station_users_df.loc[station_users_df['sentiment_vader_percent'] == 2]
         other_users_pos = other_users_df.loc[other_users_df['sentiment_vader_percent'] == 2]
         before_text_station_users, after_text_station_users = build_text_for_wordcloud_topic_model(
-            df=station_users_pos, oct_open=self.oct_open, build_wordcloud=True, save_raw_text=True,
-            saving_path=os.path.join(data_paths.tweet_combined_path, 'longitudinal_plots'),
-            filename_before='{}_station_users_before_text_pos.npy'.format(self.name),
-            filename_after='{}_station_users_after_text_pos.npy'.format(self.name))
+            df=station_users_pos, oct_open=self.oct_open, build_wordcloud=True)
         before_text_other_users, after_text_other_users = build_text_for_wordcloud_topic_model(
-            df=other_users_pos, oct_open=self.oct_open, build_wordcloud=True, save_raw_text=True,
-            saving_path=os.path.join(data_paths.tweet_combined_path, 'longitudinal_plots'),
-            filename_before='{}_other_users_before_text_pos.npy'.format(self.name),
-            filename_after='{}_other_users_after_text_pos.npy'.format(self.name))
+            df=other_users_pos, oct_open=self.oct_open, build_wordcloud=True)
         generate_wordcloud(before_text_station_users, after_text_station_users, mask=wordcloud_tweets.circle_mask,
                            file_name_before='before_{}_station_users_wordcloud_pos'.format(self.name),
                            file_name_after="after_{}_station_users_wordcloud_pos".format(self.name),
@@ -504,7 +515,7 @@ class TransitNeighborhood_Before_After(object):
 
     def plot_poi_distribution(self):
         """
-        Plot the poi type distribution for the treatment group of a study area
+        Plot the POI type distribution for the treatment group of a study area
         :return: None. The created figure is saved to a local directory
         """
         count_dict = Counter(self.poi_dataframe['fclass'])
@@ -519,12 +530,18 @@ class TransitNeighborhood_Before_After(object):
         figure, axis = plt.subplots(1, 1, figsize=(10, 8), dpi=300)
         x = list(range(plot_dataframe_sorted_head.shape[0]))
         axis.bar(x, list(plot_dataframe_sorted_head['count']), color='blue')
-        # axis.set_ylabel('Count', size=18)
+
+        # Set the xticks, xlabel, yticks, and ylabel
         axis.set_xticks(x)
         axis.set_xticklabels(list(plot_dataframe_sorted_head['place_type']), rotation='vertical', size=18)
-        axis.set_ylabel('# of POIs')
+        axis.set_yticks(range(max(list(plot_dataframe_sorted_head['count'])) + 1))
+        axis.set_yticklabels(range(max(list(plot_dataframe_sorted_head['count'])) + 1), size=15)
+        axis.set_ylabel('# of POIs', size=18)
         axis.spines['right'].set_visible(False)
         axis.spines['top'].set_visible(False)
+
+        # Set the title
+        axis.set_title('Top Eight POI Types in {}'.format(self.name), size=20)
         figure.savefig(os.path.join(data_paths.plot_path, '{}_poi_types.tif'.format(self.name)), bbox_inches='tight')
 
     @staticmethod
@@ -688,7 +705,7 @@ class TransitNeighborhood_Before_After(object):
 
         fig = plt.figure(figsize=(20, 16), dpi=300)
 
-        sub1 = fig.add_subplot(2, 2, 1)  # two rows, two columns, fist cell
+        sub1 = fig.add_subplot(2, 2, 1)
         sub1.hist(tweet_count_select['max_days'], bins=len(xtick_values_time_span) - 1, color='orange')
         sub1.spines['right'].set_visible(False)
         sub1.spines['top'].set_visible(False)
@@ -713,7 +730,7 @@ class TransitNeighborhood_Before_After(object):
         sub2.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
         sub2.set_yticklabels(['0', '20', '40', '60', '80', '100'])
 
-        sub3 = fig.add_subplot(2, 2, 3)  # two rows, two colums, combined third and fourth cell
+        sub3 = fig.add_subplot(2, 2, 3)
         sub3.hist(tweet_count_dataframe['max_days'], bins=len(xtick_values_all) - 1, color='darkorchid', alpha=0.7)
         sub3.axvline(0, color='orange')
         sub3.axvline(timespan_check, color='orange')
@@ -738,6 +755,60 @@ class TransitNeighborhood_Before_After(object):
         fig.savefig(os.path.join(data_paths.plot_path, 'max_days_dist.tif'), bbox_inches='tight')
 
     @staticmethod
+    def plot_line_regress(x_list_tn, y_list_tn, x_list_non_tn, y_list_non_tn, y_ticks, plot_axis):
+        """
+        Plot the line regression comparison based on transit and non-transit neighborhood settings
+        :param x_list_tn: x list transit neighborhood time
+        :param y_list_tn: the tweet sentiment or tweet activity for a transit neighborhood at a given time
+        :param x_list_non_tn: x list non-transit neighborhood time
+        :param y_list_non_tn: the tweet sentiment or tweet activity for a non-transit neighborhood at a given time
+        :param y_ticks: y ticks used for plot
+        :param plot_axis: a matplotlib axis
+        :return:
+        """
+        x_arr_tn = np.array(x_list_tn)
+        y_arr_tn = np.array(y_list_tn)
+        x_arr_non_tn = np.array(x_list_non_tn)
+        y_arr_non_tn = np.array(y_list_non_tn)
+
+        if len(x_list_tn) == 5:
+            x_tick_labels = ['May 2016', 'Jun 2016', 'Jul 2016', 'Aug 2016', 'Sep 2016']
+        else:
+            x_tick_labels = ['May 2016', 'Jun 2016', 'Jul 2016', 'Aug 2016', 'Sep 2016',
+                             'Oct 2016', 'Nov 2016']
+
+        result_arr_tn = np.polyfit(x=x_arr_tn, y=y_arr_tn, deg=1)
+        result_arr_non_tn = np.polyfit(x=x_arr_non_tn, y=y_arr_non_tn, deg=1)
+        m_tn, b_tn = result_arr_tn[0], result_arr_tn[1]
+        m_non_tn, b_non_tn = result_arr_non_tn[0], result_arr_non_tn[1]
+        round_m_tn, round_b_tn = round(m_tn, 4), round(b_tn, 4)
+        round_m_non_tn, round_b_non_tn = round(m_non_tn, 4), round(b_non_tn, 4)
+
+        # For the treatment group
+        plot_axis.plot(x_arr_tn, m_tn * x_arr_tn + b_tn, label="y={}x+{}".format(round_m_tn, round_b_tn))
+        plot_axis.plot(x_arr_tn, y_arr_tn, 'o', color='#4659FF', label='Treatment')
+
+        # For the control group
+        plot_axis.plot(x_arr_non_tn, m_non_tn * x_arr_non_tn + b_non_tn, label="y={}x+{}".format(round_m_non_tn,
+                                                                                                 round_b_non_tn))
+        plot_axis.plot(x_arr_non_tn, y_arr_non_tn, 'o', color='#FFA238', label='Control')
+
+        # Set the xaxis ticks and labels
+        plot_axis.set_xticks(x_arr_tn)
+        plot_axis.set_xticklabels(x_tick_labels, size=18)
+        plot_axis.set_xlabel('Time', size=20)
+
+        # Set the spines
+        plot_axis.spines['right'].set_visible(False)
+        plot_axis.spines['top'].set_visible(False)
+
+        # Set the yticks
+        plot_axis.set_yticks(y_ticks)
+        plot_axis.set_yticklabels(y_ticks, size=18)
+
+        plot_axis.legend()
+
+    @staticmethod
     # Transform the string time to the datetime object
     def transform_string_time_to_datetime(string):
         """
@@ -749,8 +820,13 @@ class TransitNeighborhood_Before_After(object):
         return final_time_object
 
 
-# compute the percentage of positive Tweets: 2 is positive
 def positive_percent(df):
+    """
+    compute the percentage of positive Tweets: 2 is positive
+    :param df: a tweet dataframe
+    :return: percentage of positive tweets
+    """
+    assert 'sentiment_vader_percent' in df, "The pandas dataframe should contain the sentiment of each tweet"
     positive = 0
     for sentiment in list(df['sentiment_vader_percent']):
         if int(float(sentiment)) == 2:
@@ -760,8 +836,13 @@ def positive_percent(df):
     return positive / df.shape[0]
 
 
-# compute the percentage of positive Tweets: 0 is negative
 def negative_percent(df):
+    """
+    compute the percentage of positive Tweets: 0 is negative
+    :param df: a tweet dataframe
+    :return: percentage of negative tweets
+    """
+    assert 'sentiment_vader_percent' in df, "The pandas dataframe should contain the sentiment of each tweet"
     negative = 0
     for sentiment in list(df['sentiment_vader_percent']):
         if int(float(sentiment)) == 0:
@@ -771,16 +852,26 @@ def negative_percent(df):
     return negative / df.shape[0]
 
 
-# compute positive percentage minus negative percentage: metric used to evaluate the sentiment of an area
-# https://www.sciencedirect.com/science/article/pii/S0040162515002024
 def pos_percent_minus_neg_percent(df):
+    """
+    compute positive percentage minus negative percentage: metric used to evaluate the sentiment of an area
+    https://www.sciencedirect.com/science/article/pii/S0040162515002024
+    :param df: a pandas tweet dataframe
+    :return: sentiment index: percentage of positive tweets - percentage of negative tweets
+    """
     pos_percent = positive_percent(df)
     neg_percent = negative_percent(df)
     return pos_percent - neg_percent
 
 
-# compute the sentiment level for each month
 def sentiment_by_month(df, compute_positive_percent=False, compute_negative_percent=False):
+    """
+    Compute the sentiment index and number of tweets by month
+    :param df: a tweet dataframe
+    :param compute_positive_percent: Only output the percentage of positive tweet or not
+    :param compute_negative_percent: Only output the percentage of negative tweet or not
+    :return: a dictionary whose keys are time and values are sentiment index
+    """
     # check whether the value in the hk_time attribute is string or not
     if isinstance(list(df['hk_time'])[0], str):
         df['hk_time'] = df.apply(
@@ -802,13 +893,15 @@ def sentiment_by_month(df, compute_positive_percent=False, compute_negative_perc
         elif compute_negative_percent:
             tweet_month_sentiment[time] = (negative_percent(dataframe_dict[time]), dataframe_dict[time].shape[0])
         else:
-            tweet_month_sentiment[time] = (pos_percent_minus_neg_percent(dataframe_dict[time]),
-                                           dataframe_dict[time].shape[0])
+            try:
+                tweet_month_sentiment[time] = (pos_percent_minus_neg_percent(dataframe_dict[time]),
+                                               dataframe_dict[time].shape[0])
+            except KeyError:
+                tweet_month_sentiment[time] = (-np.nan, 0)
     return tweet_month_sentiment
 
 
-def build_text_for_wordcloud_topic_model(df, oct_open=True, build_wordcloud=True, save_raw_text=False, saving_path=None,
-                                         filename_before=None, filename_after=None):
+def build_text_for_wordcloud_topic_model(df, oct_open=True, build_wordcloud=True):
     """
     :param df: the whole dataframe for before and after study
     :param oct_open: if the station is opened in October or not
@@ -837,7 +930,7 @@ def build_text_for_wordcloud_topic_model(df, oct_open=True, build_wordcloud=True
             pass
         df_before = df_copy.loc[df_copy['hk_time'] < open_date_start]
         df_after = df_copy.loc[df_copy['hk_time'] > open_date_end]
-    if build_wordcloud:  # return a string, for wordcloud creation
+    if build_wordcloud:  # if true, return a string for wordcloud creation
         before_text = wordcloud_tweets.create_text_for_wordcloud(df_before)
         after_text = wordcloud_tweets.create_text_for_wordcloud(df_after)
         return before_text, after_text
@@ -863,16 +956,21 @@ def generate_wordcloud(words_before, words_after, mask, file_name_before, file_n
     word_cloud_after = WordCloud(width=520, height=520, background_color='white',
                                  font_path=wordcloud_tweets.symbola_font_path,
                                  mask=mask, max_words=800, collocations=False).generate((words_after))
+
+    # Draw the wordclouds for the before and after periods
     fig_before = plt.figure(figsize=(15, 13), facecolor='white', edgecolor='black', dpi=200)
     plt.imshow(word_cloud_before.recolor(color_func=color_func, random_state=3), interpolation="bilinear")
     plt.axis('off')
     plt.tight_layout(pad=0)
     fig_before.savefig(os.path.join(figure_saving_path, file_name_before))
+    plt.close(fig=fig_before)
+
     fig_after = plt.figure(figsize=(15, 13), facecolor='white', edgecolor='black', dpi=200)
     plt.imshow(word_cloud_after.recolor(color_func=color_func, random_state=3), interpolation="bilinear")
     plt.axis('off')
     plt.tight_layout(pad=0)
     fig_after.savefig(os.path.join(figure_saving_path, file_name_after), bbox_inches='tight')
+    plt.close(fig=fig_after)
 
 
 def draw_word_count_histogram(df, station_name, saved_file_name):
@@ -968,20 +1066,20 @@ def build_treatment_control_tpu_compare_for_one_line(treatment_csv, control_1000
     return treatment_tpus_set, control_1000_set, control_1500_set
 
 
-def select_dataframe_for_treatment_control(treatment_set, control_set, datapath, select_user_set,
+def select_dataframe_for_treatment_control(treatment_set, control_set, data_path, select_user_set,
                                            return_dataframe=False):
     """
     Create the treatment & control dataframe based on tweets posted in each TPU
     :param treatment_set: a set containing the treatment TPU name strings
     :param control_set: a set containing the control TPU name strings
-    :param datapath: the datapath used to save the tweets posted in each TPU
+    :param data_path: the data path used to save the tweets posted in each TPU
     :param select_user_set: a set containing the users we are interested in
     :param return_dataframe: whether return a pandas dataframe or not
     :return:
     """
     treatment_dataframe_list, control_dataframe_list = [], []
     for tpu_name in treatment_set:
-        dataframe_treatment = pd.read_csv(os.path.join(datapath, tpu_name, tpu_name + '_data.csv'), encoding='utf-8',
+        dataframe_treatment = pd.read_csv(os.path.join(data_path, tpu_name, tpu_name + '_data.csv'), encoding='utf-8',
                                           quoting=csv.QUOTE_NONNUMERIC, dtype='str', index_col=0)
         dataframe_treatment['month_plus_year'] = dataframe_treatment.apply(
             lambda row: str(int(float(row['year']))) + '_' + str(int(float(row['month']))), axis=1)
@@ -989,7 +1087,7 @@ def select_dataframe_for_treatment_control(treatment_set, control_set, datapath,
             lambda row: np.int64(float(row['user_id_str'])), axis=1)
         treatment_dataframe_list.append(dataframe_treatment)
     for tpu_name in control_set:
-        dataframe_control = pd.read_csv(os.path.join(datapath, tpu_name, tpu_name + '_data.csv'), encoding='utf-8',
+        dataframe_control = pd.read_csv(os.path.join(data_path, tpu_name, tpu_name + '_data.csv'), encoding='utf-8',
                                         quoting=csv.QUOTE_NONNUMERIC, dtype='str')
         dataframe_control['month_plus_year'] = dataframe_control.apply(
             lambda row: str(int(float(row['year']))) + '_' + str(int(float(row['month']))), axis=1)
@@ -1009,23 +1107,6 @@ def select_dataframe_for_treatment_control(treatment_set, control_set, datapath,
         treatment_sent_act_dict = sentiment_by_month(combined_treatment_final)
         control_sent_act_dict = sentiment_by_month(combined_control_final)
         return treatment_sent_act_dict, control_sent_act_dict
-
-
-def sort_data_based_on_date(df):
-    """
-    sort the monthly sentiment dataframe based on the predefined month list
-    :param df: a dataframe which contains the sentiment information. The first column is month and the second column
-    stores the monthly tweet sentiment
-    :return: a sorted sentiment dataframe
-    """
-    df_time_index = df.set_index('Date')
-    df_for_plot = df_time_index.loc[time_list]
-    df_for_plot['Date'] = time_list
-    final_df = df_for_plot.reset_index(drop=True)
-    final_df_copy = final_df.copy()
-    final_df_copy['sentiment_vader_percent'] = final_df_copy.apply(lambda row: row['Value'][0], axis=1)
-    final_df_copy['activity'] = final_df_copy.apply(lambda row: row['Value'][1], axis=1)
-    return final_df_copy
 
 
 if __name__ == '__main__':
@@ -1110,7 +1191,7 @@ if __name__ == '__main__':
         select_dataframe_for_treatment_control(treatment_set=kwun_tong_line_treatment_selected,
                                                control_set=kwun_tong_line_control_1000,
                                                select_user_set=users_not_visitors,
-                                               datapath=os.path.join(data_paths.tweet_combined_path,
+                                               data_path=os.path.join(data_paths.tweet_combined_path,
                                                                      'longitudinal_tpus'),
                                                return_dataframe=True)
     print('treatment vs 1500-meter control group')
@@ -1118,7 +1199,7 @@ if __name__ == '__main__':
         select_dataframe_for_treatment_control(treatment_set=kwun_tong_line_treatment_selected,
                                                control_set=kwun_tong_line_control_1500,
                                                select_user_set=users_not_visitors,
-                                               datapath=os.path.join(data_paths.tweet_combined_path,
+                                               data_path=os.path.join(data_paths.tweet_combined_path,
                                                                      'longitudinal_tpus'), return_dataframe=True)
     print('For South Horizons & Lei Tung...')
     print('treatment vs 1000-meter control group')
@@ -1126,7 +1207,7 @@ if __name__ == '__main__':
         select_dataframe_for_treatment_control(treatment_set=south_horizons_lei_tung_treatment_selected,
                                                control_set=south_horizons_lei_tung_control_1000,
                                                select_user_set=users_not_visitors,
-                                               datapath=os.path.join(data_paths.tweet_combined_path,
+                                               data_path=os.path.join(data_paths.tweet_combined_path,
                                                                      'longitudinal_tpus'),
                                                return_dataframe=True)
     print('treatment vs 1500-meter control group')
@@ -1134,7 +1215,7 @@ if __name__ == '__main__':
         select_dataframe_for_treatment_control(treatment_set=south_horizons_lei_tung_treatment_selected,
                                                control_set=south_horizons_lei_tung_control_1500,
                                                select_user_set=users_not_visitors,
-                                               datapath=os.path.join(data_paths.tweet_combined_path,
+                                               data_path=os.path.join(data_paths.tweet_combined_path,
                                                                      'longitudinal_tpus'),
                                                return_dataframe=True)
     print('For Ocean Park & Wong Chuk Hang...')
@@ -1143,7 +1224,7 @@ if __name__ == '__main__':
         select_dataframe_for_treatment_control(treatment_set=ocean_park_wong_chuk_hang_treatment_selected,
                                                control_set=ocean_park_wong_chuk_hang_control_1000,
                                                select_user_set=users_not_visitors,
-                                               datapath=os.path.join(data_paths.tweet_combined_path,
+                                               data_path=os.path.join(data_paths.tweet_combined_path,
                                                                      'longitudinal_tpus'),
                                                return_dataframe=True
                                                )
@@ -1152,7 +1233,7 @@ if __name__ == '__main__':
         select_dataframe_for_treatment_control(treatment_set=ocean_park_wong_chuk_hang_treatment_selected,
                                                control_set=ocean_park_wong_chuk_hang_control_1500,
                                                select_user_set=users_not_visitors,
-                                               datapath=os.path.join(data_paths.tweet_combined_path,
+                                               data_path=os.path.join(data_paths.tweet_combined_path,
                                                                      'longitudinal_tpus'),
                                                return_dataframe=True
                                                )
@@ -1170,42 +1251,42 @@ if __name__ == '__main__':
                                                                              tn_dataframe=kwun_tong_line_treatment_dataframe,
                                                                              non_tn_dataframe=kwun_tong_line_control_1000_dataframe,
                                                                              poi_dataframe=kwun_tong_poi_dataframe,
-                                                                             oct_open=True, before_and_after=True,
+                                                                             oct_open=True,
                                                                              compute_positive=False,
                                                                              compute_negative=False)
     kwun_tong_line_extension_1500_control = TransitNeighborhood_Before_After(name='Kwun_Tong_Line',
                                                                              tn_dataframe=kwun_tong_line_treatment_dataframe,
                                                                              non_tn_dataframe=kwun_tong_line_control_1500_dataframe,
                                                                              poi_dataframe=kwun_tong_poi_dataframe,
-                                                                             oct_open=True, before_and_after=True,
+                                                                             oct_open=True,
                                                                              compute_positive=False,
                                                                              compute_negative=False)
     south_horizons_lei_tung_1000_control = TransitNeighborhood_Before_After(name='South_Horizons_Lei_Tung',
                                                                             tn_dataframe=south_horizons_lei_tung_treatment_dataframe,
                                                                             non_tn_dataframe=south_horizons_lei_tung_control_1000_dataframe,
                                                                             poi_dataframe=south_horizons_poi_dataframe,
-                                                                            oct_open=False, before_and_after=True,
+                                                                            oct_open=False,
                                                                             compute_positive=False,
                                                                             compute_negative=False)
     south_horizons_lei_tung_1500_control = TransitNeighborhood_Before_After(name='South_Horizons_Lei_Tung',
                                                                             tn_dataframe=south_horizons_lei_tung_treatment_dataframe,
                                                                             non_tn_dataframe=south_horizons_lei_tung_control_1500_dataframe,
                                                                             poi_dataframe=south_horizons_poi_dataframe,
-                                                                            oct_open=False, before_and_after=True,
+                                                                            oct_open=False,
                                                                             compute_positive=False,
                                                                             compute_negative=False)
     ocean_park_wong_chuk_hang_1000_control = TransitNeighborhood_Before_After(name='Ocean_Park_Wong_Chuk_Hang',
                                                                               tn_dataframe=ocean_park_wong_chuk_hang_treatment_dataframe,
                                                                               non_tn_dataframe=ocean_park_wong_chuk_hang_control_1000_dataframe,
                                                                               poi_dataframe=ocean_park_poi_dataframe,
-                                                                              oct_open=False, before_and_after=True,
+                                                                              oct_open=False,
                                                                               compute_positive=False,
                                                                               compute_negative=False)
     ocean_park_wong_chuk_hang_1500_control = TransitNeighborhood_Before_After(name='Ocean_Park_Wong_Chuk_Hang',
                                                                               tn_dataframe=ocean_park_wong_chuk_hang_treatment_dataframe,
                                                                               non_tn_dataframe=ocean_park_wong_chuk_hang_control_1500_dataframe,
                                                                               poi_dataframe=ocean_park_poi_dataframe,
-                                                                              oct_open=False, before_and_after=True,
+                                                                              oct_open=False,
                                                                               compute_positive=False,
                                                                               compute_negative=False)
 
@@ -1285,9 +1366,59 @@ if __name__ == '__main__':
     # Compare the coefficient difference in the kwun tong line extension
     print('------------------------Kwun Tong Line Extension-------------------------------')
     print('***treatment vs 1000 control****')
-    kwun_tong_line_extension_1000_control.compute_abs_coeff_difference()
+    select_time_1000, tn_sent_1000, non_tn_sent_1000, tn_act_1000, non_tn_act_1000 = \
+        kwun_tong_line_extension_1000_control.compute_abs_coeff_difference()
     print('***treatment vs 1500 control****')
-    kwun_tong_line_extension_1500_control.compute_abs_coeff_difference()
+    select_time_1500, tn_sent_1500, non_tn_sent_1500, tn_act_1500, non_tn_act_1500 = \
+        kwun_tong_line_extension_1500_control.compute_abs_coeff_difference()
+    kwun_tong_act_fig, kwun_tong_act_axes = plt.subplots(1, 2, figsize=(20, 8), dpi=300)
+    kwun_tong_sent_fig, kwun_tong_sent_axes = plt.subplots(1, 2, figsize=(20, 8), dpi=300)
+    y_tick_act_vals = np.arange(0, 2000, 200)
+    y_tick_sent_vals = np.arange(-0.5, 0.75, 0.25)
+    y_tick_sent_labels = ['-50', '-25', '0', '25', '50']
+    TransitNeighborhood_Before_After.plot_line_regress(x_list_tn=select_time_1000,
+                                                       y_list_tn=tn_sent_1000,
+                                                       x_list_non_tn=select_time_1000,
+                                                       y_list_non_tn=non_tn_sent_1000,
+                                                       plot_axis=kwun_tong_sent_axes[0],
+                                                       y_ticks=y_tick_sent_vals)
+    TransitNeighborhood_Before_After.plot_line_regress(x_list_tn=select_time_1500,
+                                                       y_list_tn=tn_sent_1500,
+                                                       x_list_non_tn=select_time_1500,
+                                                       y_list_non_tn=non_tn_sent_1500,
+                                                       plot_axis=kwun_tong_sent_axes[1],
+                                                       y_ticks=y_tick_sent_vals)
+    TransitNeighborhood_Before_After.plot_line_regress(x_list_tn=select_time_1000,
+                                                       y_list_tn=tn_act_1000,
+                                                       x_list_non_tn=select_time_1000,
+                                                       y_list_non_tn=non_tn_act_1000,
+                                                       plot_axis=kwun_tong_act_axes[0],
+                                                       y_ticks=y_tick_act_vals)
+    TransitNeighborhood_Before_After.plot_line_regress(x_list_tn=select_time_1500,
+                                                       y_list_tn=tn_act_1500,
+                                                       x_list_non_tn=select_time_1500,
+                                                       y_list_non_tn=non_tn_act_1500,
+                                                       plot_axis=kwun_tong_act_axes[1],
+                                                       y_ticks=y_tick_act_vals)
+
+    # Set the title
+    kwun_tong_act_axes[0].set_title('500-meter Treatment Group Against 1000-meter Control Group', size=15)
+    kwun_tong_act_axes[1].set_title('500-meter Treatment Group Against 1500-meter Control Group', size=15)
+    kwun_tong_sent_axes[0].set_title('500-meter Treatment Group Against 1000-meter Control Group', size=15)
+    kwun_tong_sent_axes[1].set_title('500-meter Treatment Group Against 1500-meter Control Group', size=15)
+
+    # Set the ylabel
+    kwun_tong_act_axes[0].set_ylabel('Tweet activity', size=18)
+    kwun_tong_act_axes[1].set_ylabel('Tweet activity', size=18)
+    kwun_tong_sent_axes[0].set_ylabel('Tweet sentiment\n(% of positive tweets minus % of negative tweets)', size=18)
+    kwun_tong_sent_axes[1].set_ylabel('Tweet sentiment\n(% of positive tweets minus % of negative tweets)', size=18)
+    kwun_tong_sent_axes[0].set_yticklabels(y_tick_sent_labels)
+    kwun_tong_sent_axes[1].set_yticklabels(y_tick_sent_labels)
+
+    kwun_tong_act_fig.savefig(os.path.join(data_paths.plot_path, 'kwun_tong_coeff_act_compare.tif'),
+                              bbox_inches='tight')
+    kwun_tong_sent_fig.savefig(os.path.join(data_paths.plot_path, 'kwun_tong_coeff_sent_compare.tif'),
+                               bbox_inches='tight')
     print('-------------------------------------------------------------------------------')
 
     print('--------------------South Horizons & Lei Tung Line Extension-------------------')
@@ -1300,42 +1431,42 @@ if __name__ == '__main__':
     print('--------------------Ocean Park & Wong Chuk Hang Line Extension-------------------')
     print('***treatment vs 1000 control****')
     # the size of the control group is too small
-    # ocean_park_wong_chuk_hang_1000_control.compute_abs_coeff_difference()
+    ocean_park_wong_chuk_hang_1000_control.compute_abs_coeff_difference()
     print('***treatment vs 1500 control****')
     ocean_park_wong_chuk_hang_1500_control.compute_abs_coeff_difference()
     print('-------------------------------------------------------------------------------')
 
-    # # =========================================Build the wordcloud============================================
-    # print('Generating the wordcloud comparison plots...')
-    # kwun_tong_line_extension_1000_control.plot_wordclouds()
-    # south_horizons_lei_tung_1500_control.plot_wordclouds()
-    # ocean_park_wong_chuk_hang_1500_control.plot_wordclouds()
-    # # =========================================================================================================
-    #
-    # ====================================Footprint Comparison=================================================
+    # =========================================Build the wordcloud============================================
+    print('Generating the wordcloud comparison plots...')
+    kwun_tong_line_extension_1000_control.plot_wordclouds()
+    south_horizons_lei_tung_1500_control.plot_wordclouds()
+    ocean_park_wong_chuk_hang_1500_control.plot_wordclouds()
+    # =========================================================================================================
+
+    #====================================Footprint Comparison=================================================
     print('Generating the footprints comparison plots...')
     kwun_tong_line_extension_1000_control.plot_footprints(tweet_dataframe=tweet_combined, hk_shape=hk_shapefile)
     south_horizons_lei_tung_1500_control.plot_footprints(tweet_dataframe=tweet_combined, hk_shape=hk_shapefile)
     ocean_park_wong_chuk_hang_1500_control.plot_footprints(tweet_dataframe=tweet_combined, hk_shape=hk_shapefile)
+    #=========================================================================================================
+
+    # ====================================Sentiment Comparison=================================================
+    print('Generating the sentiment comparison plots...')
+    kwun_tong_line_extension_1000_control.plot_sentiment_comparison()
+    south_horizons_lei_tung_1500_control.plot_sentiment_comparison()
+    ocean_park_wong_chuk_hang_1500_control.plot_sentiment_comparison()
+    # ======================================================================================================
+
+    # ===================================Poi distribution comparison==========================================
+    kwun_tong_line_extension_1000_control.plot_poi_distribution()
+    south_horizons_lei_tung_1500_control.plot_poi_distribution()
+    ocean_park_wong_chuk_hang_1500_control.plot_poi_distribution()
     # =========================================================================================================
-    #
-    # # ====================================Sentiment Comparison=================================================
-    # print('Generating the sentiment comparison plots...')
-    # kwun_tong_line_extension_1000_control.plot_sentiment_comparison()
-    # south_horizons_lei_tung_1500_control.plot_sentiment_comparison()
-    # ocean_park_wong_chuk_hang_1500_control.plot_sentiment_comparison()
-    # # ======================================================================================================
-    #
-    # # ===================================Poi distribution comparison==========================================
-    # kwun_tong_line_extension_1000_control.plot_poi_distribution()
-    # south_horizons_lei_tung_1500_control.plot_poi_distribution()
-    # ocean_park_wong_chuk_hang_1500_control.plot_poi_distribution()
-    # # =========================================================================================================
-    #
-    # # ============================Plot tweet time span & count histograms======================================
-    # tweet_time_count_summary = pd.read_csv('tweet_time_count_summary.csv', index_col=0, encoding='utf-8')
-    # TransitNeighborhood_Before_After.plot_tweet_time_count_distribution(tweet_time_count_summary, timespan_check=90)
-    # # =========================================================================================================
+
+    # ============================Plot tweet time span & count histograms======================================
+    tweet_time_count_summary = pd.read_csv('tweet_time_count_summary.csv', index_col=0, encoding='utf-8')
+    TransitNeighborhood_Before_After.plot_tweet_time_count_distribution(tweet_time_count_summary, timespan_check=90)
+    # =========================================================================================================
 
     ending_time = time.time()
 

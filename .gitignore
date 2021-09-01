@@ -5,8 +5,6 @@ data_paths.py
 _config.yml
 *.xlsx
 utils.py
-tpu_data_check.xlsx
-tpu_group_data_check.xlsx
 
 # Ignore some paths
 .idea/

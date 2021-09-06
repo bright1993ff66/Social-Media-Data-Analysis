@@ -48,7 +48,7 @@ class RegexpReplacer(object):
         (r"(\w+)\'d", "\g<1> would")
     ]
 
-    def __init__(self, patterns):
+    def __init__(self):
         self.patterns = [(re.compile(regex), replace) for (regex, replace) in RegexpReplacer.replacement_patterns]
 
     def replace(self, text):

@@ -381,10 +381,10 @@ def get_median_income_three_areas_combined(dataframe: pd.DataFrame, tpu_info_dat
     return dataframe_copy
 
 
-def build_dataframe_based_on_set(datapath: str, tpu_set: set, selected_user_set: set):
+def build_dataframe_based_on_set(tpu_data_path: str, tpu_set: set, selected_user_set: set):
     """
     Build the dataframes based on the given tpu set
-    :param datapath: the datapath saving the tweets posted in each tpu
+    :param tpu_data_path: the data path saving the tweets posted in each tpu
     :param tpu_set: a python set saving the considered tpu names
     :param selected_user_set: a set containing the id of users we are interested in
     :return: a pandas dataframe saving the tweets posted in the considered tpus
@@ -393,7 +393,7 @@ def build_dataframe_based_on_set(datapath: str, tpu_set: set, selected_user_set:
     dataframe_list = []
     for tpu in tpu_set:
         tpu_name_list.append(tpu)
-        dataframe = pd.read_csv(os.path.join(datapath, tpu, tpu + '_data.csv'), encoding='utf-8', dtype='str',
+        dataframe = pd.read_csv(os.path.join(tpu_data_path, tpu, tpu + '_data.csv'), encoding='utf-8', dtype='str',
                                 quoting=csv.QUOTE_NONNUMERIC)
         dataframe['user_id_str'] = dataframe.apply(lambda row: np.int64(float(row['user_id_str'])), axis=1)
         dataframe_select = dataframe.loc[dataframe['user_id_str'].isin(selected_user_set)]
@@ -533,7 +533,7 @@ def build_regress_data_three_areas_combined(kwun_tong_treatment, kwun_tong_contr
     return final_dataframe.reset_index(drop=True)
 
 
-def build_regress_data_three_areas_seperate(kwun_tong_treatment, kwun_tong_control, south_horizons_treatment,
+def build_regress_data_three_areas_separate(kwun_tong_treatment, kwun_tong_control, south_horizons_treatment,
                                             south_horizons_control, ocean_park_treatment, ocean_park_control,
                                             tpu_info_dataframe, check_window_value=0):
     """
@@ -961,22 +961,22 @@ if __name__ == '__main__':
         data_paths.transit_non_transit_compare_code_path, 'users_not_visitors.npy'), allow_pickle=True).item()
 
     print('Load the treatment and control groups in three areas...')
-    kwun_tong_line_treatment_dataframe = build_dataframe_based_on_set(datapath=path,
+    kwun_tong_line_treatment_dataframe = build_dataframe_based_on_set(tpu_data_path=path,
                                                                       tpu_set=kwun_tong_line_treatment_tpu_set,
                                                                       selected_user_set=users_not_visitors)
-    kwun_tong_line_control_dataframe = build_dataframe_based_on_set(datapath=path,
+    kwun_tong_line_control_dataframe = build_dataframe_based_on_set(tpu_data_path=path,
                                                                     tpu_set=kwun_tong_line_control_tpu_set,
                                                                     selected_user_set=users_not_visitors)
-    south_horizons_treatment_dataframe = build_dataframe_based_on_set(datapath=path,
+    south_horizons_treatment_dataframe = build_dataframe_based_on_set(tpu_data_path=path,
                                                                       tpu_set=south_horizons_lei_tung_treatment_tpu_set,
                                                                       selected_user_set=users_not_visitors)
-    south_horizons_control_dataframe = build_dataframe_based_on_set(datapath=path,
+    south_horizons_control_dataframe = build_dataframe_based_on_set(tpu_data_path=path,
                                                                     tpu_set=south_horizons_lei_tung_control_tpu_set,
                                                                     selected_user_set=users_not_visitors)
-    ocean_park_treatment_dataframe = build_dataframe_based_on_set(datapath=path,
+    ocean_park_treatment_dataframe = build_dataframe_based_on_set(tpu_data_path=path,
                                                                   tpu_set=ocean_park_wong_chuk_hang_treatment_tpu_set,
                                                                   selected_user_set=users_not_visitors)
-    ocean_park_control_dataframe = build_dataframe_based_on_set(datapath=path,
+    ocean_park_control_dataframe = build_dataframe_based_on_set(tpu_data_path=path,
                                                                 tpu_set=ocean_park_wong_chuk_hang_control_tpu_set,
                                                                 selected_user_set=users_not_visitors)
     # Output the number of tweets and number of unique social media users for each study area
@@ -992,7 +992,7 @@ if __name__ == '__main__':
     print('Done!')
 
     # Check the population and median income of each TPU and TPU group
-    tpu_check = build_regress_data_three_areas_seperate(kwun_tong_treatment=kwun_tong_line_treatment_dataframe,
+    tpu_check = build_regress_data_three_areas_separate(kwun_tong_treatment=kwun_tong_line_treatment_dataframe,
                                                         kwun_tong_control=kwun_tong_line_control_dataframe,
                                                         south_horizons_treatment=south_horizons_treatment_dataframe,
                                                         south_horizons_control=south_horizons_control_dataframe,

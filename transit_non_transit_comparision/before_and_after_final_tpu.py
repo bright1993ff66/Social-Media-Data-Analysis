@@ -34,7 +34,7 @@ warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
 # Specify the font usage in the matplotlib
 font = {'family': 'serif', 'size': 20}
 matplotlib.rc('font', **font)
-matplotlib.rc('figure', max_open_warning = 0)
+matplotlib.rc('figure', max_open_warning=0)
 
 # List some time attributes for dataframe and plot generation
 months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -52,7 +52,6 @@ month_letter_list = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov',
                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan',
                      'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
                      'Sep', 'Oct', 'Nov', 'Dec']
-
 
 # Hong Kong and Shanghai share the same time zone.
 # Hence, we transform the utc time in our dataset into Shanghai time
@@ -135,20 +134,20 @@ class TransitNeighborhood_Before_After(object):
         print('The activity list for candidate control group: {}'.format(
             list(non_tn_dataframe_compute_diff_copy['activity'])))
         selected_time_value = list(tn_dataframe_compute_diff_copy['time'])
-        tn_dataframe_sentiment_list = list(tn_dataframe_compute_diff_copy['sentiment'])
-        non_tn_dataframe_sentiment_list = list(non_tn_dataframe_compute_diff_copy['sentiment'])
-        tn_dataframe_activity_list = list(tn_dataframe_compute_diff_copy['activity'])
-        non_tn_dataframe_activity_list = list(non_tn_dataframe_compute_diff_copy['activity'])
-        slope_tn_sentiment, _, _, _, _ = linregress(selected_time_value, tn_dataframe_sentiment_list)
-        slop_non_tn_sentiment, _, _, _, _ = linregress(selected_time_value, non_tn_dataframe_sentiment_list)
-        slope_tn_activity, _, _, _, _ = linregress(selected_time_value, tn_dataframe_activity_list)
-        slope_non_tn_activity, _, _, _, _ = linregress(selected_time_value, non_tn_dataframe_activity_list)
+        tn_data_sent_list = list(tn_dataframe_compute_diff_copy['sentiment'])
+        non_tn_data_sent_list = list(non_tn_dataframe_compute_diff_copy['sentiment'])
+        tn_data_act_list = list(tn_dataframe_compute_diff_copy['activity'])
+        non_tn_data_act_list = list(non_tn_dataframe_compute_diff_copy['activity'])
+        slope_tn_sentiment, _, _, _, _ = linregress(selected_time_value, tn_data_sent_list)
+        slop_non_tn_sentiment, _, _, _, _ = linregress(selected_time_value, non_tn_data_sent_list)
+        slope_tn_activity, _, _, _, _ = linregress(selected_time_value, tn_data_act_list)
+        slope_non_tn_activity, _, _, _, _ = linregress(selected_time_value, non_tn_data_act_list)
         print('For sentiment: The slope value for tn is: {} while for non-tn the value is: {}'.format(
             slope_tn_sentiment, slop_non_tn_sentiment))
         print('For activity: The slope value for tn is: {} while for non-tn the value is: {}'.format(
             slope_tn_activity, slope_non_tn_activity))
-        return selected_time_value, tn_dataframe_sentiment_list, non_tn_dataframe_sentiment_list, \
-               tn_dataframe_activity_list, non_tn_dataframe_activity_list
+
+        return selected_time_value, tn_data_sent_list, non_tn_data_sent_list, tn_data_act_list, non_tn_data_act_list
 
     # find the sustaining users for a study area
     def find_sustaining_other_users(self, start_time=datetime(2016, 5, 1, 0, 0, 0, tzinfo=time_zone_hk),
@@ -174,7 +173,8 @@ class TransitNeighborhood_Before_After(object):
             before_time_mask = (dataframe_copy['hk_time'] < october_1_start) & (start_time <= dataframe_copy['hk_time'])
             after_time_mask = (dataframe_copy['hk_time'] > october_31_end) & (end_time > dataframe_copy['hk_time'])
         else:
-            before_time_mask = (dataframe_copy['hk_time'] < december_1_start) & (start_time <= dataframe_copy['hk_time'])
+            before_time_mask = (dataframe_copy['hk_time'] < december_1_start) & (
+                    start_time <= dataframe_copy['hk_time'])
             after_time_mask = (dataframe_copy['hk_time'] > december_31_end) & (end_time > dataframe_copy['hk_time'])
         df_before = dataframe_copy.loc[before_time_mask]
         df_after = dataframe_copy.loc[after_time_mask]
@@ -600,18 +600,21 @@ class TransitNeighborhood_Before_After(object):
             # Compute the time range and tweet count
             start = pd.to_datetime(data_select_sort.head(1)['hk_time'].values[0])
             end = pd.to_datetime(data_select_sort.tail(1)['hk_time'].values[0])
+
             if data_select_2016.shape[0] > 0:
                 start_2016 = pd.to_datetime(data_select_2016.head(1)['hk_time'].values[0])
                 end_2016 = pd.to_datetime(data_select_2016.tail(1)['hk_time'].values[0])
                 days_2016_list.append((end_2016 - start_2016).days)
             else:
                 days_2016_list.append(0)
+
             if data_select_2017.shape[0] > 0:
                 start_2017 = pd.to_datetime(data_select_2017.head(1)['hk_time'].values[0])
                 end_2017 = pd.to_datetime(data_select_2017.tail(1)['hk_time'].values[0])
                 days_2017_list.append((end_2017 - start_2017).days)
             else:
                 days_2017_list.append(0)
+
             if data_select_2018.shape[0] > 0:
                 start_2018 = pd.to_datetime(data_select_2018.head(1)['hk_time'].values[0])
                 end_2018 = pd.to_datetime(data_select_2018.tail(1)['hk_time'].values[0])
@@ -758,6 +761,7 @@ class TransitNeighborhood_Before_After(object):
     def plot_line_regress(x_list_tn, y_list_tn, x_list_non_tn, y_list_non_tn, y_ticks, plot_axis):
         """
         Plot the line regression comparison based on transit and non-transit neighborhood settings
+        before the introduction of transit stations
         :param x_list_tn: x list transit neighborhood time
         :param y_list_tn: the tweet sentiment or tweet activity for a transit neighborhood at a given time
         :param x_list_non_tn: x list non-transit neighborhood time
@@ -1128,9 +1132,9 @@ if __name__ == '__main__':
                                  encoding='utf-8', index_col=0)
     tweet_combined['user_id_str'] = tweet_combined.apply(lambda row: np.int64(float(row['user_id_str'])), axis=1)
     tweet_combined['TPU_cross_sectional'] = tweet_combined.apply(lambda row: str(row['TPU_cross_sectional']), axis=1)
-    # users_not_visitors = TransitNeighborhood_Before_After.find_max_tweet_days_tweet_count(tweet_combined)
-    # np.save(os.path.join(data_paths.transit_non_transit_compare_code_path, 'users_not_visitors.npy'),
-    #         users_not_visitors)
+    users_not_visitors = TransitNeighborhood_Before_After.find_max_tweet_days_tweet_count(tweet_combined)
+    np.save(os.path.join(data_paths.transit_non_transit_compare_code_path, 'users_not_visitors.npy'),
+            users_not_visitors)
     hk_shapefile = gpd.read_file(os.path.join(data_paths.shapefile_path, 'hk_tpu_project.shp'))
     users_not_visitors = np.load(os.path.join(
         data_paths.transit_non_transit_compare_code_path, 'users_not_visitors.npy'), allow_pickle=True).item()
@@ -1192,7 +1196,7 @@ if __name__ == '__main__':
                                                control_set=kwun_tong_line_control_1000,
                                                select_user_set=users_not_visitors,
                                                data_path=os.path.join(data_paths.tweet_combined_path,
-                                                                     'longitudinal_tpus'),
+                                                                      'longitudinal_tpus'),
                                                return_dataframe=True)
     print('treatment vs 1500-meter control group')
     _, kwun_tong_line_control_1500_dataframe = \
@@ -1200,7 +1204,7 @@ if __name__ == '__main__':
                                                control_set=kwun_tong_line_control_1500,
                                                select_user_set=users_not_visitors,
                                                data_path=os.path.join(data_paths.tweet_combined_path,
-                                                                     'longitudinal_tpus'), return_dataframe=True)
+                                                                      'longitudinal_tpus'), return_dataframe=True)
     print('For South Horizons & Lei Tung...')
     print('treatment vs 1000-meter control group')
     south_horizons_lei_tung_treatment_dataframe, south_horizons_lei_tung_control_1000_dataframe = \
@@ -1208,7 +1212,7 @@ if __name__ == '__main__':
                                                control_set=south_horizons_lei_tung_control_1000,
                                                select_user_set=users_not_visitors,
                                                data_path=os.path.join(data_paths.tweet_combined_path,
-                                                                     'longitudinal_tpus'),
+                                                                      'longitudinal_tpus'),
                                                return_dataframe=True)
     print('treatment vs 1500-meter control group')
     _, south_horizons_lei_tung_control_1500_dataframe = \
@@ -1216,7 +1220,7 @@ if __name__ == '__main__':
                                                control_set=south_horizons_lei_tung_control_1500,
                                                select_user_set=users_not_visitors,
                                                data_path=os.path.join(data_paths.tweet_combined_path,
-                                                                     'longitudinal_tpus'),
+                                                                      'longitudinal_tpus'),
                                                return_dataframe=True)
     print('For Ocean Park & Wong Chuk Hang...')
     print('treatment vs 1000-meter control group')
@@ -1225,7 +1229,7 @@ if __name__ == '__main__':
                                                control_set=ocean_park_wong_chuk_hang_control_1000,
                                                select_user_set=users_not_visitors,
                                                data_path=os.path.join(data_paths.tweet_combined_path,
-                                                                     'longitudinal_tpus'),
+                                                                      'longitudinal_tpus'),
                                                return_dataframe=True
                                                )
     print('treatment vs 1500-meter control group')
@@ -1234,7 +1238,7 @@ if __name__ == '__main__':
                                                control_set=ocean_park_wong_chuk_hang_control_1500,
                                                select_user_set=users_not_visitors,
                                                data_path=os.path.join(data_paths.tweet_combined_path,
-                                                                     'longitudinal_tpus'),
+                                                                      'longitudinal_tpus'),
                                                return_dataframe=True
                                                )
 
@@ -1371,6 +1375,8 @@ if __name__ == '__main__':
     print('***treatment vs 1500 control****')
     select_time_1500, tn_sent_1500, non_tn_sent_1500, tn_act_1500, non_tn_act_1500 = \
         kwun_tong_line_extension_1500_control.compute_abs_coeff_difference()
+
+    print('Plot the treatment and control regression before the treatment')
     kwun_tong_act_fig, kwun_tong_act_axes = plt.subplots(1, 2, figsize=(20, 8), dpi=300)
     kwun_tong_sent_fig, kwun_tong_sent_axes = plt.subplots(1, 2, figsize=(20, 8), dpi=300)
     y_tick_act_vals = np.arange(0, 2000, 200)
@@ -1443,12 +1449,12 @@ if __name__ == '__main__':
     ocean_park_wong_chuk_hang_1500_control.plot_wordclouds()
     # =========================================================================================================
 
-    #====================================Footprint Comparison=================================================
+    # ====================================Footprint Comparison=================================================
     print('Generating the footprints comparison plots...')
     kwun_tong_line_extension_1000_control.plot_footprints(tweet_dataframe=tweet_combined, hk_shape=hk_shapefile)
     south_horizons_lei_tung_1500_control.plot_footprints(tweet_dataframe=tweet_combined, hk_shape=hk_shapefile)
     ocean_park_wong_chuk_hang_1500_control.plot_footprints(tweet_dataframe=tweet_combined, hk_shape=hk_shapefile)
-    #=========================================================================================================
+    # =========================================================================================================
 
     # ====================================Sentiment Comparison=================================================
     print('Generating the sentiment comparison plots...')

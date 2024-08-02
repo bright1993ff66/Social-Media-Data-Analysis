@@ -1,4 +1,4 @@
-keras==2.2.0
+keras==2.13.1
 numpy
 nltk
 botometer
